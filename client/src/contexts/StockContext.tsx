@@ -5,6 +5,7 @@ import React, {
   useMemo,
 } from "react";
 import { trpc } from "@/lib/trpc";
+import { isStockDateWithinPeriod } from "@/lib/stock-period";
 
 export interface StockMovement {
   id: string;
@@ -262,8 +263,7 @@ export function StockProvider({ children }: { children: React.ReactNode }) {
   const getTotalByPeriod = useCallback(
     (startDate: Date, endDate: Date) => {
       const filtered = movements.filter((item) => {
-        const itemDate = new Date(item.date);
-        return itemDate >= startDate && itemDate <= endDate;
+        return isStockDateWithinPeriod(item.date, startDate, endDate);
       });
       const orderedMovements = sortByDateAsc(filtered);
       const lastMovement = orderedMovements[orderedMovements.length - 1];
