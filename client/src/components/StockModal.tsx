@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -241,7 +240,6 @@ export function StockModal({
                     });
                   }}
                 />
-                <CalendarIcon className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
               </div>
               {errors.date && (
                 <p className="text-sm text-red-500">{errors.date.message}</p>

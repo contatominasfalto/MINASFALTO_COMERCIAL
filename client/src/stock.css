@@ -189,17 +189,25 @@
 
 [data-slot="dialog-content"].stock-dialog {
   display: grid;
+  box-sizing: border-box;
   width: min(672px, calc(100vw - 32px));
   max-width: 672px;
   max-height: calc(100vh - 32px);
   overflow-y: auto;
-  gap: 16px;
-  padding: 24px;
+  gap: 20px;
+  padding: 26px 28px 24px;
   color: #0f172a;
-  background: #fff !important;
+  background: #f1f3f5 !important;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   box-shadow: 0 24px 60px rgba(15, 23, 42, .35);
+}
+
+.stock-dialog,
+.stock-dialog *,
+.stock-dialog *::before,
+.stock-dialog *::after {
+  box-sizing: border-box;
 }
 
 .stock-dialog [data-slot="dialog-header"] {
@@ -227,7 +235,7 @@
   height: 28px;
   padding: 0;
   color: #475569;
-  background: #fff;
+  background: transparent;
   border: 0;
   border-radius: 4px;
   cursor: pointer;
@@ -236,19 +244,22 @@
 .stock-dialog form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
 .stock-dialog form > .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  align-items: start;
+  column-gap: 22px;
+  row-gap: 18px;
 }
 
 .stock-dialog form .space-y-2 {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
+  min-width: 0;
 }
 
 .stock-dialog label {
@@ -259,12 +270,33 @@
 
 .stock-dialog input,
 .stock-dialog textarea {
+  display: block;
   width: 100%;
   color: #0f172a;
   background: #fff;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   outline: none;
+}
+
+.stock-dialog .relative {
+  position: relative;
+  min-width: 0;
+}
+
+.stock-dialog .relative > svg {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  width: 16px;
+  height: 16px;
+  color: #64748b;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.stock-dialog input[type="date"] {
+  padding-right: 38px;
 }
 
 .stock-dialog input {
@@ -294,7 +326,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  padding-top: 16px;
+  padding-top: 18px;
   border-top: 1px solid #e2e8f0;
 }
 
@@ -332,6 +364,7 @@
 .stock-dialog .text-muted-foreground {
   margin: 0;
   color: #64748b;
+  line-height: 1.4;
 }
 
 @media (max-width: 900px) {
@@ -343,7 +376,7 @@
 @media (max-width: 600px) {
   [data-slot="dialog-content"].stock-dialog {
     width: calc(100vw - 20px);
-    padding: 18px;
+    padding: 20px;
   }
 
   .stock-dialog form > .grid {
