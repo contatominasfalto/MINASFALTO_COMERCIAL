@@ -12,6 +12,7 @@ import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { withAppBase } from "@/lib/app-base";
+import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
 
 type SortDirection = "asc" | "desc";
 type SortColumn =
@@ -26,20 +27,6 @@ type SortColumn =
   | "totalPedido"
   | "saldo"
   | "dataEntrega";
-
-function MinasfaltoLogo() {
-  return (
-    <div className="minas-logo" aria-label="Minasfalto">
-      <div />
-      <div />
-      <div />
-      <div />
-      <div />
-      <div />
-      <span>MINASFALTO</span>
-    </div>
-  );
-}
 
 const numberValue = (value: unknown) => Number(value) || 0;
 
@@ -242,7 +229,11 @@ export default function Dashboard() {
   return (
     <div className="desktop-shell">
       <header className="desktop-titlebar">
-        <MinasfaltoLogo />
+        <img
+          src={minasfaltoLogo}
+          alt="Minasfalto"
+          className="desktop-brand-logo"
+        />
         <div className="desktop-heading">
           <h1>CONTROLE COMERCIAL — PEDIDOS DE VENDAS</h1>
           <strong>TAP FÁCIL 25KG E A GRANEL</strong>
