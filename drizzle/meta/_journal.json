@@ -15,6 +15,13 @@
       "when": 1779448900706,
       "tag": "0001_adorable_nightshade",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1782730800000,
+      "tag": "0002_estoque_movimentacoes",
+      "breakpoints": true
     }
   ]
 }

@@ -2,9 +2,9 @@ import React, {
   createContext,
   useCallback,
   useContext,
-  useEffect,
-  useState,
+  useMemo,
 } from "react";
+import { trpc } from "@/lib/trpc";
 
 export interface StockMovement {
   id: string;
@@ -34,11 +34,23 @@ type StockMovementInput = Omit<
   | "bulkFinalTons"
 >;
 
+interface StockMovementRecord {
+  id: number;
+  dataMovimentacao: string;
+  estoqueInicial: string | number;
+  producaoSacos: string | number;
+  saidaSacos: string | number;
+  entradaGranelTon: string | number;
+  saidaGranelTon: string | number;
+  ocorrencias: string | null;
+  criadoEm: Date | string;
+}
+
 interface StockContextType {
   movements: StockMovement[];
-  addMovement: (data: StockMovementInput) => void;
-  updateMovement: (id: string, data: Partial<StockMovement>) => void;
-  deleteMovement: (id: string) => void;
+  addMovement: (data: StockMovementInput) => Promise<void>;
+  updateMovement: (id: string, data: Partial<StockMovement>) => Promise<void>;
+  deleteMovement: (id: string) => Promise<void>;
   getInitialStockForDate: (date: Date, excludeId?: string) => number;
   getBulkInitialTonsForDate: (date: Date, excludeId?: string) => number;
   canEditInitialStock: (id?: string | null, date?: Date) => boolean;
@@ -56,15 +68,12 @@ interface StockContextType {
   isLoading: boolean;
 }
 
-const STORAGE_KEY = "stock_movements";
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
 const BAG_WEIGHT_KG = 25;
 const KG_PER_TON = 1000;
-const LEGACY_BULK_ENTRY_KG_THRESHOLD = 1000;
 
 const StockContext = createContext<StockContextType | undefined>(undefined);
 
-const generateId = () => Math.random().toString(36).substring(2, 15);
 const getTime = (date: Date) => new Date(date).getTime();
 
 const sortByDateAsc = (items: StockMovement[]) =>
@@ -165,80 +174,73 @@ const isFirstMovement = (
 };
 
 export function StockProvider({ children }: { children: React.ReactNode }) {
-  const [movements, setMovements] = useState<StockMovement[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const utils = trpc.useUtils();
+  const { data = [], isLoading } = trpc.estoque.list.useQuery();
+  const createMutation = trpc.estoque.create.useMutation();
+  const updateMutation = trpc.estoque.update.useMutation();
+  const deleteMutation = trpc.estoque.delete.useMutation();
 
-  useEffect(() => {
-    try {
-      const storedMovements = localStorage.getItem(STORAGE_KEY);
-
-      if (storedMovements) {
-        const parsed = JSON.parse(storedMovements);
-        const withDates = parsed.map((item: StockMovement) => ({
-          ...item,
-          date: new Date(item.date),
-          createdAt: new Date(item.createdAt),
-          bulkEntryTons:
-            (item.bulkEntryTons ?? 0) > LEGACY_BULK_ENTRY_KG_THRESHOLD
-              ? (item.bulkEntryTons ?? 0) / KG_PER_TON
-              : (item.bulkEntryTons ?? 0),
-          bulkInitialTons: item.bulkInitialTons ?? 0,
-          bulkOutputTons: item.bulkOutputTons ?? 0,
-          bulkConsumedTons: item.bulkConsumedTons ?? 0,
-          bulkFinalTons: item.bulkFinalTons ?? 0,
-        }));
-
-        setMovements(rebuildStockSequence(withDates));
-      }
-    } catch (error) {
-      console.error("Erro ao carregar dados do localStorage:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(movements));
-    }
-  }, [movements, isLoading]);
-
-  const addMovement = useCallback((data: StockMovementInput) => {
-    const newMovement: StockMovement = {
-      ...data,
-      id: generateId(),
-      finalStock: data.initialStock + data.production - data.outputs,
-      bulkInitialTons: data.bulkEntryTons,
-      bulkConsumedTons: (data.production * BAG_WEIGHT_KG) / KG_PER_TON,
-      bulkFinalTons:
-        data.bulkEntryTons -
-        (data.production * BAG_WEIGHT_KG) / KG_PER_TON -
-        data.bulkOutputTons,
-      createdAt: new Date(),
-    };
-
-    setMovements((prev) => rebuildStockSequence([...prev, newMovement]));
-  }, []);
-
-  const updateMovement = useCallback(
-    (id: string, data: Partial<StockMovement>) => {
-      setMovements((prev) =>
-        rebuildStockSequence(
-          prev.map((item) => {
-            if (item.id !== id) return item;
-            return { ...item, ...data };
-          }),
-        ),
-      );
-    },
-    [],
+  const movements = useMemo(
+    () => rebuildStockSequence((data as StockMovementRecord[]).map((item) => ({
+      id: String(item.id),
+      date: new Date(`${item.dataMovimentacao}T12:00:00`),
+      day: 0,
+      weekday: "",
+      initialStock: Number(item.estoqueInicial),
+      production: Number(item.producaoSacos),
+      outputs: Number(item.saidaSacos),
+      finalStock: 0,
+      bulkEntryTons: Number(item.entradaGranelTon),
+      bulkOutputTons: Number(item.saidaGranelTon),
+      bulkInitialTons: 0,
+      bulkConsumedTons: 0,
+      bulkFinalTons: 0,
+      occurrences: item.ocorrencias || "",
+      createdAt: new Date(item.criadoEm),
+    }))),
+    [data],
   );
 
-  const deleteMovement = useCallback((id: string) => {
-    setMovements((prev) =>
-      rebuildStockSequence(prev.filter((item) => item.id !== id)),
-    );
-  }, []);
+  const toIsoDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const addMovement = useCallback(async (data: StockMovementInput) => {
+    await createMutation.mutateAsync({
+      dataMovimentacao: toIsoDate(data.date),
+      estoqueInicial: data.initialStock,
+      producaoSacos: data.production,
+      saidaSacos: data.outputs,
+      entradaGranelTon: data.bulkEntryTons,
+      saidaGranelTon: data.bulkOutputTons,
+      ocorrencias: data.occurrences,
+    });
+    await utils.estoque.list.invalidate();
+  }, [createMutation, utils]);
+
+  const updateMovement = useCallback(async (id: string, data: Partial<StockMovement>) => {
+    await updateMutation.mutateAsync({
+      id: Number(id),
+      data: {
+        ...(data.date ? { dataMovimentacao: toIsoDate(data.date) } : {}),
+        ...(data.initialStock !== undefined ? { estoqueInicial: data.initialStock } : {}),
+        ...(data.production !== undefined ? { producaoSacos: data.production } : {}),
+        ...(data.outputs !== undefined ? { saidaSacos: data.outputs } : {}),
+        ...(data.bulkEntryTons !== undefined ? { entradaGranelTon: data.bulkEntryTons } : {}),
+        ...(data.bulkOutputTons !== undefined ? { saidaGranelTon: data.bulkOutputTons } : {}),
+        ...(data.occurrences !== undefined ? { ocorrencias: data.occurrences } : {}),
+      },
+    });
+    await utils.estoque.list.invalidate();
+  }, [updateMutation, utils]);
+
+  const deleteMovement = useCallback(async (id: string) => {
+    await deleteMutation.mutateAsync(Number(id));
+    await utils.estoque.list.invalidate();
+  }, [deleteMutation, utils]);
 
   const getInitialStockForDate = useCallback(
     (date: Date, excludeId?: string) =>

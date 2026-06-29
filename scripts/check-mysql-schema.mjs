@@ -7,6 +7,7 @@ const REQUIRED_TABLES = [
   "historico",
   "contatos",
   "sincronizacaoCrti",
+  "estoque_movimentacoes",
 ];
 
 const REQUIRED_COLUMNS = {
@@ -42,6 +43,20 @@ const REQUIRED_COLUMNS = {
     "statusLocal",
     "dataImportacao",
     "dataUltimaSincronizacao",
+  ],
+  estoque_movimentacoes: [
+    "id",
+    "data_movimentacao",
+    "estoque_inicial",
+    "producao_sacos",
+    "saida_sacos",
+    "entrada_granel_ton",
+    "saida_granel_ton",
+    "ocorrencias",
+    "criado_por",
+    "atualizado_por",
+    "criado_em",
+    "atualizado_em",
   ],
 };
 

@@ -6,7 +6,8 @@ import {
   timestamp, 
   varchar,
   decimal,
-  index
+  index,
+  date
 } from "drizzle-orm/mysql-core";
 import { relations } from "drizzle-orm";
 
@@ -119,6 +120,30 @@ export const sincronizacaoCrti = mysqlTable("sincronizacaoCrti", {
 
 export type SincronizacaoCrti = typeof sincronizacaoCrti.$inferSelect;
 export type InsertSincronizacaoCrti = typeof sincronizacaoCrti.$inferInsert;
+
+/**
+ * Eventos que compõem o saldo sequencial do estoque.
+ * Saldos finais são derivados em ordem cronológica e não duplicados no banco.
+ */
+export const estoqueMovimentacoes = mysqlTable("estoque_movimentacoes", {
+  id: int("id").autoincrement().primaryKey(),
+  dataMovimentacao: date("data_movimentacao", { mode: "string" }).notNull(),
+  estoqueInicial: decimal("estoque_inicial", { precision: 18, scale: 2 }).default("0").notNull(),
+  producaoSacos: decimal("producao_sacos", { precision: 18, scale: 2 }).default("0").notNull(),
+  saidaSacos: decimal("saida_sacos", { precision: 18, scale: 2 }).default("0").notNull(),
+  entradaGranelTon: decimal("entrada_granel_ton", { precision: 18, scale: 3 }).default("0").notNull(),
+  saidaGranelTon: decimal("saida_granel_ton", { precision: 18, scale: 3 }).default("0").notNull(),
+  ocorrencias: text("ocorrencias"),
+  criadoPor: varchar("criado_por", { length: 100 }).default("Sistema").notNull(),
+  atualizadoPor: varchar("atualizado_por", { length: 100 }).default("Sistema").notNull(),
+  criadoEm: timestamp("criado_em").defaultNow().notNull(),
+  atualizadoEm: timestamp("atualizado_em").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  dataMovimentacaoIdx: index("estoque_data_movimentacao_idx").on(table.dataMovimentacao),
+}));
+
+export type EstoqueMovimentacao = typeof estoqueMovimentacoes.$inferSelect;
+export type InsertEstoqueMovimentacao = typeof estoqueMovimentacoes.$inferInsert;
 
 // Relations
 export const pedidosRelations = relations(pedidos, ({ many }) => ({

@@ -124,8 +124,6 @@ export function StockModal({
     setIsSubmitting(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
       if (editId) {
         const availableBags = data.initialStock + data.production;
         const bulkEntryTons = data.bulkEntryKg / 1000;
@@ -148,7 +146,7 @@ export function StockModal({
           return;
         }
 
-        updateMovement(editId, {
+        await updateMovement(editId, {
           date: data.date,
           initialStock: data.initialStock,
           production: data.production,
@@ -187,7 +185,7 @@ export function StockModal({
           return;
         }
 
-        addMovement({
+        await addMovement({
           date: data.date,
           production: data.production,
           outputs: data.outputs,

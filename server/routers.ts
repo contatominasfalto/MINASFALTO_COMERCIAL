@@ -74,6 +74,16 @@ const contatoSchema = z.object({
   descricao: z.string(),
 });
 
+const estoqueMovimentacaoSchema = z.object({
+  dataMovimentacao: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
+  estoqueInicial: z.number().nonnegative(),
+  producaoSacos: z.number().nonnegative(),
+  saidaSacos: z.number().nonnegative(),
+  entradaGranelTon: z.number().nonnegative(),
+  saidaGranelTon: z.number().nonnegative(),
+  ocorrencias: z.string().max(5000).optional(),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -225,6 +235,32 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return db.listHistoricoByPedido(input);
       }),
+  }),
+
+  estoque: router({
+    list: protectedProcedure.query(() => db.listEstoqueMovimentacoes()),
+
+    create: protectedProcedure
+      .input(estoqueMovimentacaoSchema)
+      .mutation(({ input, ctx }) => db.createEstoqueMovimentacao({
+        ...input,
+        usuario: ctx.user?.name || "Sistema",
+      })),
+
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        data: estoqueMovimentacaoSchema.partial(),
+      }))
+      .mutation(({ input, ctx }) => db.updateEstoqueMovimentacao(
+        input.id,
+        input.data,
+        ctx.user?.name || "Sistema",
+      )),
+
+    delete: protectedProcedure
+      .input(z.number().int().positive())
+      .mutation(({ input }) => db.deleteEstoqueMovimentacao(input)),
   }),
 
   // ─────────────────────────────────────────────

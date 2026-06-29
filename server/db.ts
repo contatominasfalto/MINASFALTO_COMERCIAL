@@ -1,7 +1,7 @@
-import { eq, and, or, like, desc, isNull } from "drizzle-orm";
+import { eq, and, or, like, desc, asc, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
-import { InsertUser, users, pedidos, historico, contatos, sincronizacaoCrti } from "../drizzle/schema";
+import { InsertUser, users, pedidos, historico, contatos, sincronizacaoCrti, estoqueMovimentacoes } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: any = null;
@@ -533,4 +533,79 @@ export async function getSincronizacaoByPedido(pedidoNum: string) {
     .limit(1);
 
   return result.length > 0 ? result[0] : null;
+}
+
+// ESTOQUE
+export async function listEstoqueMovimentacoes() {
+  const db = await getDb();
+  if (!db) return [];
+
+  return db.select().from(estoqueMovimentacoes).orderBy(
+    asc(estoqueMovimentacoes.dataMovimentacao),
+    asc(estoqueMovimentacoes.criadoEm),
+    asc(estoqueMovimentacoes.id),
+  );
+}
+
+export async function createEstoqueMovimentacao(data: {
+  dataMovimentacao: string;
+  estoqueInicial: number;
+  producaoSacos: number;
+  saidaSacos: number;
+  entradaGranelTon: number;
+  saidaGranelTon: number;
+  ocorrencias?: string;
+  usuario: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.insert(estoqueMovimentacoes).values({
+    dataMovimentacao: data.dataMovimentacao,
+    estoqueInicial: String(data.estoqueInicial),
+    producaoSacos: String(data.producaoSacos),
+    saidaSacos: String(data.saidaSacos),
+    entradaGranelTon: String(data.entradaGranelTon),
+    saidaGranelTon: String(data.saidaGranelTon),
+    ocorrencias: data.ocorrencias || "",
+    criadoPor: data.usuario,
+    atualizadoPor: data.usuario,
+  });
+}
+
+export async function updateEstoqueMovimentacao(
+  id: number,
+  data: {
+    dataMovimentacao?: string;
+    estoqueInicial?: number;
+    producaoSacos?: number;
+    saidaSacos?: number;
+    entradaGranelTon?: number;
+    saidaGranelTon?: number;
+    ocorrencias?: string;
+  },
+  usuario: string,
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const values: Record<string, unknown> = {
+    atualizadoPor: usuario,
+    atualizadoEm: new Date(),
+  };
+  if (data.dataMovimentacao !== undefined) values.dataMovimentacao = data.dataMovimentacao;
+  if (data.estoqueInicial !== undefined) values.estoqueInicial = String(data.estoqueInicial);
+  if (data.producaoSacos !== undefined) values.producaoSacos = String(data.producaoSacos);
+  if (data.saidaSacos !== undefined) values.saidaSacos = String(data.saidaSacos);
+  if (data.entradaGranelTon !== undefined) values.entradaGranelTon = String(data.entradaGranelTon);
+  if (data.saidaGranelTon !== undefined) values.saidaGranelTon = String(data.saidaGranelTon);
+  if (data.ocorrencias !== undefined) values.ocorrencias = data.ocorrencias;
+
+  return db.update(estoqueMovimentacoes).set(values).where(eq(estoqueMovimentacoes.id, id));
+}
+
+export async function deleteEstoqueMovimentacao(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.delete(estoqueMovimentacoes).where(eq(estoqueMovimentacoes.id, id));
 }

@@ -43,10 +43,15 @@ export default function StockPage() {
     setModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Tem certeza que deseja excluir esta movimentacao?")) {
-      deleteMovement(id);
-      toast.success("Movimentacao excluida com sucesso!");
+      try {
+        await deleteMovement(id);
+        toast.success("Movimentacao excluida com sucesso!");
+      } catch (error) {
+        console.error(error);
+        toast.error("Erro ao excluir movimentacao.");
+      }
     }
   };
 

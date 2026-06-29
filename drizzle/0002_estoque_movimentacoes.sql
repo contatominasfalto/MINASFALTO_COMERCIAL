@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS `estoque_movimentacoes` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `data_movimentacao` date NOT NULL,
+  `estoque_inicial` decimal(18,2) NOT NULL DEFAULT 0,
+  `producao_sacos` decimal(18,2) NOT NULL DEFAULT 0,
+  `saida_sacos` decimal(18,2) NOT NULL DEFAULT 0,
+  `entrada_granel_ton` decimal(18,3) NOT NULL DEFAULT 0,
+  `saida_granel_ton` decimal(18,3) NOT NULL DEFAULT 0,
+  `ocorrencias` text,
+  `criado_por` varchar(100) NOT NULL DEFAULT 'Sistema',
+  `atualizado_por` varchar(100) NOT NULL DEFAULT 'Sistema',
+  `criado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  INDEX `estoque_data_movimentacao_idx` (`data_movimentacao`),
+  CONSTRAINT `estoque_inicial_nao_negativo` CHECK (`estoque_inicial` >= 0),
+  CONSTRAINT `estoque_producao_nao_negativa` CHECK (`producao_sacos` >= 0),
+  CONSTRAINT `estoque_saida_sacos_nao_negativa` CHECK (`saida_sacos` >= 0),
+  CONSTRAINT `estoque_entrada_granel_nao_negativa` CHECK (`entrada_granel_ton` >= 0),
+  CONSTRAINT `estoque_saida_granel_nao_negativa` CHECK (`saida_granel_ton` >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

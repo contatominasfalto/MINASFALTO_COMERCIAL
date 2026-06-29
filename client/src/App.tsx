@@ -36,7 +36,11 @@ function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Dashboard} />
-      <Route path={"/estoque"} component={StockPage} />
+      <Route path={"/estoque"}>
+        <StockProvider>
+          <StockPage />
+        </StockProvider>
+      </Route>
       <Route path={"/login"} component={Dashboard} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
@@ -50,11 +54,9 @@ function App() {
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
-          <StockProvider>
-            <WouterRouter base={appBasePath || undefined}>
-              <Router />
-            </WouterRouter>
-          </StockProvider>
+          <WouterRouter base={appBasePath || undefined}>
+            <Router />
+          </WouterRouter>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
