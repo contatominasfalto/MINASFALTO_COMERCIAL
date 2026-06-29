@@ -14,6 +14,7 @@
     "env:check": "node ./scripts/check-env.mjs",
     "db:test": "node ./scripts/test-db.mjs",
     "db:schema:check": "node ./scripts/check-mysql-schema.mjs",
+    "db:data:check": "node ./scripts/check-mysql-data.mjs",
     "db:repair": "node ./scripts/repair-mysql-schema.mjs",
     "integration:check": "node ./scripts/integration-check.mjs",
     "format": "prettier --write .",
