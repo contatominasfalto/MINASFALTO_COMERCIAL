@@ -259,7 +259,7 @@ export default function Dashboard() {
           <Edit2 size={13} /> Editar
         </button>
         <button className="desk-action action-contact" onClick={openContato} disabled={!currentPedido}>
-          <Phone size={13} /> Contato
+          <Phone size={13} /> Registrar Contato
         </button>
         <button className="desk-action action-history" onClick={openHistorico} disabled={!currentPedido}>
           <FileText size={13} /> Histórico
@@ -418,7 +418,7 @@ export default function Dashboard() {
       <Dialog open={isContatoOpen} onOpenChange={setIsContatoOpen}>
         <DialogContent className="desktop-dialog contato-window">
           <DialogHeader>
-            <DialogTitle>☎ Contato — {selectedPedido?.cliente}</DialogTitle>
+            <DialogTitle>☎ Registrar Contato — {selectedPedido?.cliente}</DialogTitle>
             <DialogDescription>Registrar Contato — Pedido {selectedPedido?.pedido}</DialogDescription>
           </DialogHeader>
           {selectedPedido && <ContatoForm pedido={selectedPedido} onSuccess={() => setIsContatoOpen(false)} />}
