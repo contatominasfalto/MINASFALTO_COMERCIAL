@@ -1,4 +1,4 @@
-import { eq, and, or, like, desc, asc, isNull } from "drizzle-orm";
+import { eq, and, or, like, desc, asc, isNull, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import { InsertUser, users, pedidos, historico, contatos, sincronizacaoCrti, estoqueMovimentacoes } from "../drizzle/schema";
@@ -533,6 +533,51 @@ export async function getSincronizacaoByPedido(pedidoNum: string) {
     .limit(1);
 
   return result.length > 0 ? result[0] : null;
+}
+
+export async function registrarExecucaoSincronizacao() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [registro] = await db.select({ id: sincronizacaoCrti.id })
+    .from(sincronizacaoCrti)
+    .orderBy(desc(sincronizacaoCrti.dataImportacao), desc(sincronizacaoCrti.id))
+    .limit(1);
+
+  if (!registro) return null;
+
+  const data = new Date();
+  await db.update(sincronizacaoCrti)
+    .set({ dataUltimaSincronizacao: data })
+    .where(eq(sincronizacaoCrti.id, registro.id));
+
+  return data;
+}
+
+export async function getUltimaSincronizacao() {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [ultimaExecucao] = await db.select({
+    data: sincronizacaoCrti.dataUltimaSincronizacao,
+  })
+    .from(sincronizacaoCrti)
+    .where(isNotNull(sincronizacaoCrti.dataUltimaSincronizacao))
+    .orderBy(desc(sincronizacaoCrti.dataUltimaSincronizacao))
+    .limit(1);
+
+  const [ultimaImportacao] = await db.select({
+    data: sincronizacaoCrti.dataImportacao,
+  })
+    .from(sincronizacaoCrti)
+    .orderBy(desc(sincronizacaoCrti.dataImportacao))
+    .limit(1);
+
+  const datas = [ultimaExecucao?.data, ultimaImportacao?.data]
+    .filter((data): data is Date => data instanceof Date);
+
+  if (datas.length === 0) return null;
+  return new Date(Math.max(...datas.map((data) => data.getTime())));
 }
 
 // ESTOQUE

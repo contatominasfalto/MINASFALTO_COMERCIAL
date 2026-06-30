@@ -277,6 +277,9 @@ export const appRouter = router({
   // SINCRONIZAÇÃO CRTI
   // ─────────────────────────────────────────────
   crti: router({
+    ultimaAtualizacao: protectedProcedure
+      .query(() => db.getUltimaSincronizacao()),
+
     testarConexao: protectedProcedure
       .query(async () => {
         return crtiSync.testarConexaoCrti();

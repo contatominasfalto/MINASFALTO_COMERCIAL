@@ -42,6 +42,19 @@ const formatDecimal = (value: unknown, digits = 0) =>
     maximumFractionDigits: digits,
   }).format(numberValue(value));
 
+const formatDateTime = (value: unknown) => {
+  if (!value) return "Não disponível";
+  const date = new Date(value as string | number | Date);
+  if (Number.isNaN(date.getTime())) return "Não disponível";
+  return date.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
 const formatPrioridade = (value: unknown) => value === "PRIORIDADE" ? "PRIORIDADE" : "NORMAL";
 const STATUS_SAIDA_OK = "SA\u00cdDA OK";
 const formatStatus = (value: unknown) => {
@@ -115,6 +128,7 @@ export default function Dashboard() {
     prioridade: prioridadeFilter,
     search: searchTerm,
   });
+  const { data: ultimaAtualizacao } = trpc.crti.ultimaAtualizacao.useQuery();
 
   const { mutate: deletePedido } = trpc.pedidos.delete.useMutation({
     onSuccess: () => {
@@ -154,6 +168,7 @@ export default function Dashboard() {
     onError: (error) => toast.error(`Erro ao sincronizar CRTI: ${error.message}`),
     onSettled: () => {
       refetch();
+      void utils.crti.ultimaAtualizacao.invalidate();
     },
   });
 
@@ -388,7 +403,9 @@ export default function Dashboard() {
           <span>A Granel Total (ton): <b>{formatDecimal(totals.granel, 3)}</b></span>
         </div>
         <div className="desktop-statusbar">
-          <span>{visiblePedidos.length} pedido(s) exibido(s) | Última atualização: 22/05/2026 09:58</span>
+          <span>
+            {visiblePedidos.length} pedido(s) exibido(s) | Última atualização: {formatDateTime(ultimaAtualizacao)}
+          </span>
           <strong>Usuário: {user?.name ?? "admfull"}</strong>
         </div>
       </footer>

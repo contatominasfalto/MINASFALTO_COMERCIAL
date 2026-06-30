@@ -556,6 +556,10 @@ export async function sincronizacaoCompleta(dias?: number): Promise<{
 
   const concluidos = await sincronizarPedidosConcluidos(dias);
 
+  if (aprovados.sucesso && concluidos.sucesso) {
+    await db.registrarExecucaoSincronizacao();
+  }
+
   console.log("[CRTI] Sincronizacao completa finalizada");
 
   return { aprovados, concluidos };
