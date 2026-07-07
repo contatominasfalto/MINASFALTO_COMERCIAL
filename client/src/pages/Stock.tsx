@@ -300,15 +300,15 @@ export default function StockPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Data</TableHead>
-                  <TableHead className="text-right">Est. Inicial</TableHead>
-                  <TableHead className="text-right">Producao</TableHead>
-                  <TableHead className="text-right">Saidas</TableHead>
-                  <TableHead className="text-right">Saida Granel (t)</TableHead>
-                  <TableHead className="text-right">Entrada Granel (t)</TableHead>
-                  <TableHead className="text-right">Est. Final</TableHead>
-                  <TableHead className="text-right">Granel Final (t)</TableHead>
+                  <TableHead className="text-center">Est. Inicial</TableHead>
+                  <TableHead className="text-center">Producao</TableHead>
+                  <TableHead className="text-center">Saidas</TableHead>
+                  <TableHead className="text-center">Saida Granel (t)</TableHead>
+                  <TableHead className="text-center">Entrada Granel (t)</TableHead>
+                  <TableHead className="text-center">Est. Final</TableHead>
+                  <TableHead className="text-center">Granel Final (t)</TableHead>
                   <TableHead>Ocorrencias</TableHead>
-                  <TableHead className="text-right">Acoes</TableHead>
+                  <TableHead className="text-center">Acoes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -328,29 +328,29 @@ export default function StockPage() {
                           {item.weekday}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-center">
                         {item.initialStock.toFixed(2)}
                       </TableCell>
-                      <TableCell className="text-right text-blue-600">
+                      <TableCell className="text-center text-blue-600">
                         {item.production.toFixed(2)}
                       </TableCell>
-                      <TableCell className="text-right text-red-600">
+                      <TableCell className="text-center text-red-600">
                         {item.outputs.toFixed(2)}
                       </TableCell>
-                      <TableCell className="text-right text-red-600">
+                      <TableCell className="text-center text-red-600">
                         {item.bulkOutputTons.toFixed(2)}
                       </TableCell>
-                      <TableCell className="text-right text-blue-600">
+                      <TableCell className="text-center text-blue-600">
                         {item.bulkEntryTons.toFixed(2)}
                       </TableCell>
                       <TableCell
-                        className={`text-right font-semibold ${
+                        className={`text-center font-semibold ${
                           isPositive ? "text-green-600" : "text-red-600"
                         }`}
                       >
                         {item.finalStock.toFixed(2)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-center">
                         {item.bulkFinalTons.toFixed(2)}
                       </TableCell>
                       <TableCell>
@@ -363,8 +363,8 @@ export default function StockPage() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
+                      <TableCell className="text-center">
+                        <div className="flex justify-center gap-1">
                           <Button
                             variant="ghost"
                             size="icon"
