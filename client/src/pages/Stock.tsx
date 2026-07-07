@@ -82,6 +82,7 @@ export default function StockPage() {
         production: number;
         outputs: number;
         bulkOutputTons: number;
+        bulkEntryTons: number;
         finalStock: number;
         bulkFinalTons: number;
         occurrences: string[];
@@ -100,6 +101,7 @@ export default function StockPage() {
           production: movement.production,
           outputs: movement.outputs,
           bulkOutputTons: movement.bulkOutputTons,
+          bulkEntryTons: movement.bulkEntryTons,
           finalStock: movement.finalStock,
           bulkFinalTons: movement.bulkFinalTons,
           occurrences: movement.occurrences ? [movement.occurrences] : [],
@@ -110,6 +112,7 @@ export default function StockPage() {
       existing.production += movement.production;
       existing.outputs += movement.outputs;
       existing.bulkOutputTons += movement.bulkOutputTons;
+      existing.bulkEntryTons += movement.bulkEntryTons;
       existing.finalStock = movement.finalStock;
       existing.bulkFinalTons = movement.bulkFinalTons;
 
@@ -124,6 +127,7 @@ export default function StockPage() {
       "Producao - Sacos",
       "Saidas Tapfacil",
       "Saida a Granel (t)",
+      "Entrada a Granel (t)",
       "Estoque Final",
       "Granel Final (t)",
       "Ocorrencias",
@@ -134,6 +138,7 @@ export default function StockPage() {
       formatExcelNumber(item.production),
       formatExcelNumber(item.outputs),
       formatExcelNumber(item.bulkOutputTons),
+      formatExcelNumber(item.bulkEntryTons),
       formatExcelNumber(item.finalStock),
       formatExcelNumber(item.bulkFinalTons),
       item.occurrences.join(" | "),
@@ -299,6 +304,7 @@ export default function StockPage() {
                   <TableHead className="text-right">Producao</TableHead>
                   <TableHead className="text-right">Saidas</TableHead>
                   <TableHead className="text-right">Saida Granel (t)</TableHead>
+                  <TableHead className="text-right">Entrada Granel (t)</TableHead>
                   <TableHead className="text-right">Est. Final</TableHead>
                   <TableHead className="text-right">Granel Final (t)</TableHead>
                   <TableHead>Ocorrencias</TableHead>
@@ -333,6 +339,9 @@ export default function StockPage() {
                       </TableCell>
                       <TableCell className="text-right text-red-600">
                         {item.bulkOutputTons.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right text-blue-600">
+                        {item.bulkEntryTons.toFixed(2)}
                       </TableCell>
                       <TableCell
                         className={`text-right font-semibold ${

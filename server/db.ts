@@ -69,8 +69,8 @@ const STATUS_SAIDA_OK = "SA\u00cdDA OK";
 const STATUS_SAIDA_OK_VARIANTS = [
   STATUS_SAIDA_OK,
   "SAIDA OK",
-  "SAÃDA OK",
-  "SAÃƒÂDA OK",
+  "SA\u00c3\u008dDA OK",
+  "SA\u00c3\u0192\u00c2\u008dDA OK",
 ];
 function normalizeStatus(value: unknown) {
   const text = String(value || "").toUpperCase();
