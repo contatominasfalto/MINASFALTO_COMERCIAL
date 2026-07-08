@@ -250,8 +250,7 @@ export default function Dashboard() {
           className="desktop-brand-logo"
         />
         <div className="desktop-heading">
-          <h1>CONTROLE COMERCIAL — PEDIDOS DE VENDAS</h1>
-          <strong>TAP FÁCIL 25KG E A GRANEL</strong>
+          <h1>TAP FACIL 25 KG E A GRANEL</h1>
         </div>
         <button
           type="button"
