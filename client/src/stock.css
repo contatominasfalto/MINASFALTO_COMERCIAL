@@ -54,9 +54,23 @@
 
 .stock-exit-button {
   height: 31px;
+  min-width: 82px;
+  padding: 0 12px;
+  border: 1px solid #cbd2d8;
   border-radius: 0;
-  background: #eef3f7;
-  color: #1f3448;
+  background: #edf2f3;
+  color: #2c3e50;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.stock-exit-button:hover {
+  background: #dde6ea;
 }
 
 .stock-action-bar {

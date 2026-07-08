@@ -208,8 +208,7 @@ export default function StockPage() {
           />
           <div>
             <div className="stock-system-title">
-              CONTROLE DE ESTOQUE
-              <span>TAP FACIL 25KG E A GRANEL</span>
+              TAP FACIL 25 KG E A GRANEL
             </div>
             <p className="stock-system-subtitle">
               Gerencie suas movimentacoes de estoque diariamente
@@ -221,8 +220,8 @@ export default function StockPage() {
           className="stock-exit-button"
           onClick={() => navigate("/")}
         >
-          <LogOut className="h-4 w-4 mr-2" />
-          Voltar
+          <LogOut size={16} />
+          Sair
         </Button>
       </header>
 
