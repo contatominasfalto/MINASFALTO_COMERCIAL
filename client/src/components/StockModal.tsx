@@ -158,9 +158,15 @@ export function StockModal({
         toast.success("Movimentacao atualizada com sucesso!");
       } else {
         const day = data.date.getDate();
-        const weekday = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"][
-          data.date.getDay()
-        ];
+        const weekday = [
+          "Domingo",
+          "Segunda-feira",
+          "Terça-feira",
+          "Quarta-feira",
+          "Quinta-feira",
+          "Sexta-feira",
+          "Sábado",
+        ][data.date.getDay()];
         const initialStock = canEditInitialStock(null, data.date)
           ? data.initialStock
           : getInitialStockForDate(data.date);
