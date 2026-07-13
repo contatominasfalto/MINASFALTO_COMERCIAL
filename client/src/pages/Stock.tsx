@@ -322,7 +322,7 @@ export default function StockPage() {
                       <TableCell className="font-medium">
                         {format(new Date(item.date), "dd/MM/yyyy", {
                           locale: ptBR,
-                        })}
+                        })}{" "}
                         <span className="text-xs text-muted-foreground ml-2">
                           {item.weekday}
                         </span>
