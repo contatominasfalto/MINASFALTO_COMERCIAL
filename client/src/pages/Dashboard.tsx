@@ -13,6 +13,7 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { withAppBase } from "@/lib/app-base";
 import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
+import assinaturaMaxwell from "@/assets/assinatura-maxwell.png";
 
 type SortDirection = "asc" | "desc";
 type SortColumn =
@@ -405,6 +406,11 @@ export default function Dashboard() {
           <span>
             {visiblePedidos.length} pedido(s) exibido(s) | Última atualização: {formatDateTime(ultimaAtualizacao)}
           </span>
+          <img
+            src={assinaturaMaxwell}
+            alt="Assinatura digital"
+            className="desktop-signature"
+          />
           <strong>Usuário: {user?.name ?? "admfull"}</strong>
         </div>
       </footer>

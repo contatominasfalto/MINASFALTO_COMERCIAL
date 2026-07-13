@@ -560,10 +560,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
+}
+
+.desktop-signature {
+  width: 160px;
+  height: 48px;
+  object-fit: contain;
+  flex: 0 0 160px;
+  margin-left: auto;
 }
 
 .desktop-statusbar strong {
   padding-right: 6px;
+  flex: 0 0 auto;
 }
 
 .desktop-dialog {
