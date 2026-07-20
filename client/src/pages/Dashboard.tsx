@@ -7,11 +7,10 @@ import ContatoForm from "@/components/ContatoForm";
 import CSVImportForm from "@/components/CSVImportForm";
 import HistoricoModal from "@/components/HistoricoModal";
 import PedidoForm from "@/components/PedidoForm";
-import { Edit2, FileText, LogOut, Phone, RefreshCw, Search, Trash2, Warehouse, X } from "lucide-react";
+import { ArrowLeft, Edit2, FileText, Phone, RefreshCw, Search, Trash2, Warehouse, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { withAppBase } from "@/lib/app-base";
 import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
 import assinaturaMaxwell from "@/assets/assinatura-maxwell.png";
 
@@ -139,15 +138,6 @@ export default function Dashboard() {
     },
   });
 
-  const { mutate: logout, isPending: isLoggingOut } = trpc.auth.logout.useMutation({
-    onSuccess: async () => {
-      utils.auth.me.setData(undefined, null);
-      await utils.auth.me.invalidate();
-      window.location.href = withAppBase("/login");
-    },
-    onError: (error) => toast.error(`Erro ao sair: ${error.message}`),
-  });
-
   const { mutate: sincronizarCrti, isPending: isSyncingCrti } = trpc.crti.sincronizacaoCompleta.useMutation({
     onSuccess: (data) => {
       const aprovados = data.aprovados;
@@ -256,13 +246,12 @@ export default function Dashboard() {
         <button
           type="button"
           className="desktop-logout"
-          onClick={() => logout()}
-          disabled={isLoggingOut}
-          title="Sair"
-          aria-label="Sair"
+          onClick={() => navigate("/")}
+          title="Voltar"
+          aria-label="Voltar"
         >
-          <LogOut size={16} />
-          <span>{isLoggingOut ? "Saindo..." : "Sair"}</span>
+          <ArrowLeft size={16} />
+          <span>Voltar</span>
         </button>
       </header>
 
