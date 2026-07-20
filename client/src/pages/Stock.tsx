@@ -23,7 +23,7 @@ import {
   TrendingUp,
   TrendingDown,
   BarChart3,
-  LogOut,
+  ArrowLeft,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -220,8 +220,8 @@ export default function StockPage() {
           className="stock-exit-button"
           onClick={() => navigate("/comercial")}
         >
-          <LogOut size={16} />
-          Sair
+          <ArrowLeft size={16} />
+          Voltar
         </Button>
       </header>
 
