@@ -45,10 +45,11 @@ export default function Login() {
         <aside className="login-brand">
           <MinasfaltoLogo />
           <div className="login-product">
-            <b>Controle Comercial</b>
-            <span>Pedidos de Vendas</span>
+            <b>Sistema Integrado Minasfalto</b>
+            <span>Gestao Comercial, Obras e Medicoes</span>
+            <span>Integrado ao CRTI</span>
           </div>
-          <small>v1.0  •  2026</small>
+          <small>v1.0 • 2026</small>
         </aside>
 
         <section className="login-panel">
