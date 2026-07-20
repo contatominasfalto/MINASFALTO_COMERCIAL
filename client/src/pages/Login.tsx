@@ -46,7 +46,7 @@ export default function Login() {
           <MinasfaltoLogo />
           <div className="login-product">
             <b>Sistema Integrado Minasfalto</b>
-            <span>Gestao Comercial, Obras e Medicoes</span>
+            <span>Gestão </span>
             <span>Integrado ao CRTI</span>
           </div>
           <small>v1.0 • 2026</small>
