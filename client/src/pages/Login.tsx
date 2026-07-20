@@ -3,17 +3,15 @@ import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { toast } from "sonner";
 import { withAppBase } from "@/lib/app-base";
+import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
 
-function MinasfaltoMark() {
+function MinasfaltoLogo() {
   return (
-    <div className="login-mark" aria-label="Minasfalto">
-      <div />
-      <div />
-      <div />
-      <div />
-      <div />
-      <div />
-    </div>
+    <img
+      src={minasfaltoLogo}
+      alt="Minasfalto"
+      className="login-logo"
+    />
   );
 }
 
@@ -45,8 +43,7 @@ export default function Login() {
     <main className="login-shell">
       <section className="login-card" aria-label="Acesso ao Sistema">
         <aside className="login-brand">
-          <MinasfaltoMark />
-          <strong>MINASFALTO</strong>
+          <MinasfaltoLogo />
           <div className="login-product">
             <b>Controle Comercial</b>
             <span>Pedidos de Vendas</span>
