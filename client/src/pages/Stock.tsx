@@ -218,7 +218,7 @@ export default function StockPage() {
         <Button
           variant="outline"
           className="stock-exit-button"
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/comercial")}
         >
           <LogOut size={16} />
           Sair

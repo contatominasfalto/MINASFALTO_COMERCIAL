@@ -1,6 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
+import Home from "@/pages/Home";
 import Dashboard from "@/pages/Dashboard";
 import StockPage from "@/pages/Stock";
 import Login from "@/pages/Login";
@@ -35,13 +36,21 @@ function Router() {
 
   return (
     <Switch>
-      <Route path={"/"} component={Dashboard} />
+      <Route path={"/"}>
+        <Home />
+      </Route>
+      <Route path={"/comercial"} component={Dashboard} />
+      <Route path={"/custo-obras"}>
+        <Home view="costs" />
+      </Route>
       <Route path={"/estoque"}>
         <StockProvider>
           <StockPage />
         </StockProvider>
       </Route>
-      <Route path={"/login"} component={Dashboard} />
+      <Route path={"/login"}>
+        <Home />
+      </Route>
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
