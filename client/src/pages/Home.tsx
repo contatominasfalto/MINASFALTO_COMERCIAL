@@ -13,19 +13,17 @@ import {
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
 
 type HomeView = "welcome" | "costs";
 
-function MinasfaltoMark({ compact = false }: { compact?: boolean }) {
+function MinasfaltoLogo({ compact = false }: { compact?: boolean }) {
   return (
-    <div className={compact ? "home-mark home-mark-compact" : "home-mark"} aria-hidden="true">
-      <span />
-      <span />
-      <span />
-      <span />
-      <span />
-      <span />
-    </div>
+    <img
+      src={minasfaltoLogo}
+      alt="Minasfalto"
+      className={compact ? "home-logo home-logo-compact" : "home-logo"}
+    />
   );
 }
 
@@ -51,8 +49,7 @@ export default function Home({ view = "welcome" }: { view?: HomeView }) {
     <main className={collapsed ? "home-shell home-shell-collapsed" : "home-shell"}>
       <aside className="home-sidebar">
         <section className="home-brand">
-          <MinasfaltoMark compact={collapsed} />
-          {!collapsed && <strong>MINASFALTO</strong>}
+          <MinasfaltoLogo compact={collapsed} />
         </section>
 
         <nav className="home-menu" aria-label="Menu principal">
@@ -149,8 +146,7 @@ export default function Home({ view = "welcome" }: { view?: HomeView }) {
             </div>
           ) : (
             <div className="home-center">
-              <MinasfaltoMark />
-              <h1>MINASFALTO</h1>
+              <MinasfaltoLogo />
               <h2>Bem-vindo!</h2>
               <p>Selecione uma opcao no menu ao lado para comecar.</p>
             </div>
