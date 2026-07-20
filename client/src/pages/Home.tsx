@@ -16,6 +16,11 @@ import { toast } from "sonner";
 import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
 
 type HomeView = "welcome" | "costs";
+const HIDDEN_COST_PROFILES = new Set(["comercial", "subcomercial"]);
+
+function normalizeUserKey(value: unknown) {
+  return String(value || "").trim().toLowerCase();
+}
 
 function MinasfaltoLogo({ compact = false }: { compact?: boolean }) {
   return (
@@ -35,6 +40,10 @@ export default function Home({ view = "welcome" }: { view?: HomeView }) {
   const [commercialOpen, setCommercialOpen] = useState(true);
   const [costsOpen, setCostsOpen] = useState(true);
   const [userOpen, setUserOpen] = useState(false);
+  const userProfile = normalizeUserKey((user as { profile?: unknown } | null)?.profile);
+  const userName = normalizeUserKey(user?.name);
+  const canAccessCosts = !HIDDEN_COST_PROFILES.has(userProfile || userName);
+  const activeView = view === "costs" && canAccessCosts ? "costs" : "welcome";
 
   const logout = trpc.auth.logout.useMutation({
     onSuccess: async () => {
@@ -78,23 +87,27 @@ export default function Home({ view = "welcome" }: { view?: HomeView }) {
             </div>
           )}
 
-          <button
-            type="button"
-            className="home-menu-trigger"
-            onClick={() => setCostsOpen((current) => !current)}
-            title="Custo Obras"
-          >
-            <Calculator size={22} />
-            {!collapsed && <span>Custo Obras</span>}
-            {!collapsed && <ChevronDown className={costsOpen ? "home-chevron open" : "home-chevron"} size={18} />}
-          </button>
-
-          {costsOpen && !collapsed && (
-            <div className="home-submenu">
-              <button type="button" onClick={() => navigate("/custo-obras")}>
-                Painel de Custos
+          {canAccessCosts && (
+            <>
+              <button
+                type="button"
+                className="home-menu-trigger"
+                onClick={() => setCostsOpen((current) => !current)}
+                title="Custo Obras"
+              >
+                <Calculator size={22} />
+                {!collapsed && <span>Custo Obras</span>}
+                {!collapsed && <ChevronDown className={costsOpen ? "home-chevron open" : "home-chevron"} size={18} />}
               </button>
-            </div>
+
+              {costsOpen && !collapsed && (
+                <div className="home-submenu">
+                  <button type="button" onClick={() => navigate("/custo-obras")}>
+                    Painel de Custos
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </nav>
 
@@ -137,7 +150,7 @@ export default function Home({ view = "welcome" }: { view?: HomeView }) {
           <div className="home-watermark home-watermark-left" />
           <div className="home-watermark home-watermark-right" />
 
-          {view === "costs" ? (
+          {activeView === "costs" ? (
             <div className="home-center">
               <Calculator className="home-cost-icon" size={74} />
               <h1>CUSTO OBRAS</h1>
