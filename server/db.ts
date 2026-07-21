@@ -1,4 +1,4 @@
-import { eq, and, or, like, desc, asc, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, or, like, desc, asc, isNull, isNotNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import {
@@ -458,20 +458,35 @@ export async function listPedidosObras(filters?: {
   status?: string;
   prioridade?: string;
   search?: string;
+  page?: number;
+  pageSize?: number;
 }) {
+  const page = Math.max(1, Math.trunc(filters?.page || 1));
+  const pageSize = Math.min(200, Math.max(10, Math.trunc(filters?.pageSize || 50)));
+  const offset = (page - 1) * pageSize;
+
   const db = await getDb();
   if (!db) {
-    if (!shouldUseDemoData()) return [];
-    return demoPedidosObras.filter((pedido) => {
+    if (!shouldUseDemoData()) {
+      return { items: [], total: 0, page, pageSize, totalPages: 1 };
+    }
+    const filtered = demoPedidosObras.filter((pedido) => {
       const matchesStatus = !filters?.status || filters.status === "TODOS" || pedido.status === filters.status;
       const matchesPrioridade = !filters?.prioridade || filters.prioridade === "TODOS" || normalizePrioridade(pedido.prioridade) === filters.prioridade;
       const search = filters?.search?.toLowerCase();
       const matchesSearch = !search || String(pedido.pedido).toLowerCase().includes(search) || String(pedido.cliente).toLowerCase().includes(search);
       return matchesStatus && matchesPrioridade && matchesSearch;
     });
+    const total = filtered.length;
+    return {
+      items: filtered.slice(offset, offset + pageSize),
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
   }
 
-  let query: any = db.select().from(pedidosObras);
   const conditions: any[] = [];
 
   if (filters?.status && filters.status !== "TODOS") {
@@ -491,11 +506,30 @@ export async function listPedidosObras(filters?: {
     );
   }
 
-  if (conditions.length > 0) {
-    query = query.where(and(...conditions));
-  }
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  let countQuery: any = db
+    .select({ total: sql<number>`count(*)` })
+    .from(pedidosObras);
+  if (whereClause) countQuery = countQuery.where(whereClause);
 
-  return query.orderBy(desc(pedidosObras.criadoEm), desc(pedidosObras.id));
+  const [{ total: totalRaw } = { total: 0 }] = await countQuery;
+
+  const total = Number(totalRaw) || 0;
+  let query: any = db.select().from(pedidosObras);
+  if (whereClause) query = query.where(whereClause);
+
+  const items = await query
+    .orderBy(desc(pedidosObras.criadoEm), desc(pedidosObras.id))
+    .limit(pageSize)
+    .offset(offset);
+
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
 }
 
 export async function getPedidoObraByNumber(pedidoNum: string) {

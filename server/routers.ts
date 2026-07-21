@@ -275,6 +275,8 @@ export const appRouter = router({
         status: z.string().optional(),
         prioridade: z.string().optional(),
         search: z.string().optional(),
+        page: z.number().int().positive().optional(),
+        pageSize: z.number().int().min(10).max(200).optional(),
       }).optional())
       .query(({ input }) => db.listPedidosObras(input)),
 

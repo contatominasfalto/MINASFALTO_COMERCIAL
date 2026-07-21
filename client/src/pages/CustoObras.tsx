@@ -3,8 +3,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ArrowLeft, Calculator, RefreshCw, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowLeft, Calculator, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCw, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
@@ -22,6 +22,13 @@ type SortColumn =
   | "saldo";
 
 type ActiveTab = "pedidos" | "tabela";
+
+type PaginationState = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
 
 const numberValue = (value: unknown) => Number(value) || 0;
 
@@ -88,6 +95,53 @@ const tableColumns: { key: SortColumn; label: string; align?: "num" }[] = [
   { key: "saldo", label: "Saldo (R$)", align: "num" },
 ];
 
+function PaginationControls({
+  page,
+  pageSize,
+  total,
+  totalPages,
+  onPageChange,
+  onPageSizeChange,
+}: PaginationState & {
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+}) {
+  const firstItem = total === 0 ? 0 : ((page - 1) * pageSize) + 1;
+  const lastItem = Math.min(total, page * pageSize);
+
+  return (
+    <div className="cost-pagination" aria-label="Paginacao">
+      <span>
+        {firstItem}-{lastItem} de {total}
+      </span>
+      <Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}>
+        <SelectTrigger className="cost-page-size">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="25">25</SelectItem>
+          <SelectItem value="50">50</SelectItem>
+          <SelectItem value="100">100</SelectItem>
+          <SelectItem value="200">200</SelectItem>
+        </SelectContent>
+      </Select>
+      <button type="button" onClick={() => onPageChange(1)} disabled={page <= 1}>
+        <ChevronsLeft size={15} />
+      </button>
+      <button type="button" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
+        <ChevronLeft size={15} />
+      </button>
+      <strong>Pagina {page} de {totalPages}</strong>
+      <button type="button" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}>
+        <ChevronRight size={15} />
+      </button>
+      <button type="button" onClick={() => onPageChange(totalPages)} disabled={page >= totalPages}>
+        <ChevronsRight size={15} />
+      </button>
+    </div>
+  );
+}
+
 export default function CustoObras() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
@@ -97,13 +151,22 @@ export default function CustoObras() {
   const [statusFilter, setStatusFilter] = useState("TODOS");
   const [selectedPedido, setSelectedPedido] = useState<any>(null);
   const [modalPedido, setModalPedido] = useState<any>(null);
+  const [pedidosPage, setPedidosPage] = useState(1);
+  const [pedidosPageSize, setPedidosPageSize] = useState(50);
+  const [tabelaPage, setTabelaPage] = useState(1);
+  const [tabelaPageSize, setTabelaPageSize] = useState(50);
   const [sortColumn, setSortColumn] = useState<SortColumn>("pedido");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-  const { data: pedidos = [], error, isLoading, refetch } = trpc.pedidosObras.list.useQuery({
+  const { data: pedidosResult, error, isLoading, refetch } = trpc.pedidosObras.list.useQuery({
     status: statusFilter,
     search: searchTerm,
+    page: pedidosPage,
+    pageSize: pedidosPageSize,
   });
+  const pedidos = pedidosResult?.items ?? [];
+  const pedidosTotal = pedidosResult?.total ?? 0;
+  const pedidosTotalPages = pedidosResult?.totalPages ?? 1;
   const { data: ultimaAtualizacao } = trpc.crti.ultimaAtualizacaoObras.useQuery();
 
   const { mutate: sincronizarObras, isPending: isSyncing } = trpc.crti.sincronizarPedidosObras.useMutation({
@@ -166,6 +229,17 @@ export default function CustoObras() {
     const column = tableColumns[index]?.key;
     if (column) toggleSort(column);
   };
+
+  useEffect(() => {
+    setPedidosPage(1);
+    setSelectedPedido(null);
+  }, [searchTerm, statusFilter, pedidosPageSize]);
+
+  useEffect(() => {
+    if (pedidosPage > pedidosTotalPages) {
+      setPedidosPage(pedidosTotalPages);
+    }
+  }, [pedidosPage, pedidosTotalPages]);
 
   return (
     <div className="desktop-shell costs-shell">
@@ -304,20 +378,51 @@ export default function CustoObras() {
               <span>Total: <b>{formatCurrency(totals.total)}</b></span>
               <span>Saldo: <b>{formatCurrency(totals.saldo)}</b></span>
             </div>
+            <PaginationControls
+              page={pedidosPage}
+              pageSize={pedidosPageSize}
+              total={pedidosTotal}
+              totalPages={pedidosTotalPages}
+              onPageChange={setPedidosPage}
+              onPageSizeChange={setPedidosPageSize}
+            />
             <div className="desktop-statusbar">
               <span>
-                {visiblePedidos.length} pedido(s) exibido(s) | Ultima atualizacao: {formatDateTime(ultimaAtualizacao)}
+                {visiblePedidos.length} pedido(s) nesta pagina | Ultima atualizacao: {formatDateTime(ultimaAtualizacao)}
               </span>
               <strong>Usuario: {user?.name ?? "admfull"}</strong>
             </div>
           </footer>
         </>
       ) : (
-        <section className="cost-placeholder">
-          <Calculator size={42} />
-          <h2>CUSTO TABELA GERAL</h2>
-          <p>Modulo criado para integracao posterior.</p>
-        </section>
+        <>
+          <section className="cost-placeholder">
+            <Calculator size={42} />
+            <h2>CUSTO TABELA GERAL</h2>
+            <p>Modulo criado para integracao posterior.</p>
+          </section>
+          <footer className="desktop-footer">
+            <div className="desktop-subtotals">
+              <strong>CUSTO TABELA GERAL:</strong>
+              <span>Nenhum registro integrado ainda</span>
+            </div>
+            <PaginationControls
+              page={tabelaPage}
+              pageSize={tabelaPageSize}
+              total={0}
+              totalPages={1}
+              onPageChange={setTabelaPage}
+              onPageSizeChange={(pageSize) => {
+                setTabelaPageSize(pageSize);
+                setTabelaPage(1);
+              }}
+            />
+            <div className="desktop-statusbar">
+              <span>0 registro(s) nesta pagina</span>
+              <strong>Usuario: {user?.name ?? "admfull"}</strong>
+            </div>
+          </footer>
+        </>
       )}
 
       <Dialog open={Boolean(modalPedido)} onOpenChange={(open) => !open && setModalPedido(null)}>

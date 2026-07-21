@@ -1460,6 +1460,50 @@
   font-size: 15px;
 }
 
+.cost-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  color: #001b34;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.cost-pagination span,
+.cost-pagination strong {
+  min-width: 92px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.cost-pagination button {
+  width: 30px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #b9c5d0;
+  border-radius: 3px;
+  background: #ffffff;
+  color: #0f2747;
+  cursor: pointer;
+}
+
+.cost-pagination button:disabled {
+  cursor: not-allowed;
+  color: #8b98a6;
+  background: #eef2f5;
+}
+
+.cost-page-size {
+  width: 76px;
+  height: 28px;
+  border-radius: 3px;
+  background: #ffffff;
+}
+
 [data-slot="dialog-content"].cost-detail-dialog {
   width: calc(100vw - 32px);
   max-width: none;
