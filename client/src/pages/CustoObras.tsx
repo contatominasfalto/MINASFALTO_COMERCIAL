@@ -111,7 +111,7 @@ function PaginationControls({
 
   return (
     <div className="cost-pagination" aria-label="Paginacao">
-      <span>
+      <span className="cost-page-range">
         {firstItem}-{lastItem} de {total}
       </span>
       <Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}>
@@ -131,7 +131,7 @@ function PaginationControls({
       <button type="button" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
         <ChevronLeft size={15} />
       </button>
-      <strong>Pagina {page} de {totalPages}</strong>
+      <strong className="cost-page-label">Pagina {page} de {totalPages}</strong>
       <button type="button" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}>
         <ChevronRight size={15} />
       </button>
@@ -164,9 +164,13 @@ export default function CustoObras() {
     page: pedidosPage,
     pageSize: pedidosPageSize,
   });
-  const pedidos = pedidosResult?.items ?? [];
-  const pedidosTotal = pedidosResult?.total ?? 0;
-  const pedidosTotalPages = pedidosResult?.totalPages ?? 1;
+  const pedidosPayload = pedidosResult as unknown as
+    | { items?: any[]; total?: number; totalPages?: number }
+    | any[]
+    | undefined;
+  const pedidos = Array.isArray(pedidosPayload) ? pedidosPayload : pedidosPayload?.items ?? [];
+  const pedidosTotal = Array.isArray(pedidosPayload) ? pedidos.length : pedidosPayload?.total ?? pedidos.length;
+  const pedidosTotalPages = Array.isArray(pedidosPayload) ? 1 : pedidosPayload?.totalPages ?? 1;
   const { data: ultimaAtualizacao } = trpc.crti.ultimaAtualizacaoObras.useQuery();
 
   const { mutate: sincronizarObras, isPending: isSyncing } = trpc.crti.sincronizarPedidosObras.useMutation({

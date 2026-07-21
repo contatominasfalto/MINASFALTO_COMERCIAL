@@ -1460,7 +1460,36 @@
   font-size: 15px;
 }
 
+.costs-shell .desktop-footer {
+  height: auto;
+  min-height: 82px;
+  display: grid;
+  grid-template-columns: minmax(340px, 1fr) auto minmax(260px, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 8px 10px;
+}
+
+.costs-shell .desktop-subtotals {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+}
+
+.costs-shell .desktop-statusbar {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  text-align: right;
+}
+
 .cost-pagination {
+  grid-column: 2;
+  grid-row: 1 / span 2;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1471,9 +1500,14 @@
   white-space: nowrap;
 }
 
-.cost-pagination span,
-.cost-pagination strong {
-  min-width: 92px;
+.cost-page-range {
+  min-width: 82px;
+  text-align: right;
+  font-weight: 700;
+}
+
+.cost-page-label {
+  min-width: 88px;
   text-align: center;
   font-weight: 700;
 }
@@ -1502,6 +1536,21 @@
   height: 28px;
   border-radius: 3px;
   background: #ffffff;
+}
+
+@media (max-width: 1120px) {
+  .costs-shell .desktop-footer {
+    grid-template-columns: 1fr;
+  }
+
+  .costs-shell .desktop-subtotals,
+  .costs-shell .cost-pagination,
+  .costs-shell .desktop-statusbar {
+    grid-column: 1;
+    grid-row: auto;
+    justify-content: center;
+    text-align: center;
+  }
 }
 
 [data-slot="dialog-content"].cost-detail-dialog {
