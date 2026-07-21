@@ -288,6 +288,17 @@ export const appRouter = router({
       .mutation(({ input }) => db.updatePedidoObraObservacoes(input.id, input.data)),
   }),
 
+  despesasTabelaGeral: router({
+    list: protectedProcedure
+      .input(z.object({
+        tipoConta: z.string().optional(),
+        search: z.string().optional(),
+        page: z.number().int().positive().optional(),
+        pageSize: z.number().int().min(10).max(200).optional(),
+      }).optional())
+      .query(({ input }) => db.listDespesasTabelaGeral(input)),
+  }),
+
   // ─────────────────────────────────────────────
   // INDICADORES
   // ─────────────────────────────────────────────
@@ -334,6 +345,11 @@ export const appRouter = router({
     sincronizarPedidosObras: protectedProcedure
       .mutation(async () => {
         return crtiSync.sincronizarPedidosObras();
+      }),
+
+    sincronizacaoCustosObras: protectedProcedure
+      .mutation(async () => {
+        return crtiSync.sincronizacaoCustosObras();
       }),
   }),
 });

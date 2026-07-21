@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ArrowLeft, Calculator, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCw, Search } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCw, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -149,6 +149,8 @@ export default function CustoObras() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("pedidos");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("TODOS");
+  const [despesasSearchTerm, setDespesasSearchTerm] = useState("");
+  const [tipoContaFilter, setTipoContaFilter] = useState("TODOS");
   const [selectedPedido, setSelectedPedido] = useState<any>(null);
   const [modalPedido, setModalPedido] = useState<any>(null);
   const [pedidosPage, setPedidosPage] = useState(1);
@@ -171,19 +173,32 @@ export default function CustoObras() {
   const pedidos = Array.isArray(pedidosPayload) ? pedidosPayload : pedidosPayload?.items ?? [];
   const pedidosTotal = Array.isArray(pedidosPayload) ? pedidos.length : pedidosPayload?.total ?? pedidos.length;
   const pedidosTotalPages = Array.isArray(pedidosPayload) ? 1 : pedidosPayload?.totalPages ?? 1;
+  const { data: despesasResult, error: despesasError, isLoading: isLoadingDespesas } = trpc.despesasTabelaGeral.list.useQuery({
+    tipoConta: tipoContaFilter,
+    search: despesasSearchTerm,
+    page: tabelaPage,
+    pageSize: tabelaPageSize,
+  });
+  const despesas = despesasResult?.items ?? [];
+  const despesasTotal = despesasResult?.total ?? 0;
+  const despesasTotalPages = despesasResult?.totalPages ?? 1;
   const { data: ultimaAtualizacao } = trpc.crti.ultimaAtualizacaoObras.useQuery();
 
-  const { mutate: sincronizarObras, isPending: isSyncing } = trpc.crti.sincronizarPedidosObras.useMutation({
+  const { mutate: sincronizarCustos, isPending: isSyncing } = trpc.crti.sincronizacaoCustosObras.useMutation({
     onSuccess: (data) => {
-      if (!data.sucesso) {
-        toast.error(`CRTI Obras: ${data.mensagem}`);
+      if (!data.obras.sucesso || !data.despesas.sucesso) {
+        const mensagem = !data.obras.sucesso ? data.obras.mensagem : data.despesas.mensagem;
+        toast.error(`CRTI Custos: ${mensagem}`);
         return;
       }
-      toast.success(`CRTI Obras: ${data.pedidosImportados} novos, ${data.pedidosAtualizados} atualizados`);
+      toast.success(
+        `CRTI Custos: obras ${data.obras.pedidosImportados} novos/${data.obras.pedidosAtualizados} atualizados, despesas ${data.despesas.pedidosAtualizados} processadas`
+      );
     },
-    onError: (syncError) => toast.error(`Erro ao sincronizar CRTI Obras: ${syncError.message}`),
+    onError: (syncError) => toast.error(`Erro ao sincronizar CRTI Custos: ${syncError.message}`),
     onSettled: () => {
       refetch();
+      void utils.despesasTabelaGeral.list.invalidate();
       void utils.crti.ultimaAtualizacaoObras.invalidate();
     },
   });
@@ -245,6 +260,26 @@ export default function CustoObras() {
     }
   }, [pedidosPage, pedidosTotalPages]);
 
+  useEffect(() => {
+    setTabelaPage(1);
+  }, [despesasSearchTerm, tipoContaFilter, tabelaPageSize]);
+
+  useEffect(() => {
+    if (tabelaPage > despesasTotalPages) {
+      setTabelaPage(despesasTotalPages);
+    }
+  }, [tabelaPage, despesasTotalPages]);
+
+  const despesasTotals = useMemo(() => {
+    return despesas.reduce(
+      (acc: { valor: number }, despesa: any) => {
+        acc.valor += numberValue(despesa.valorTotalDocumento);
+        return acc;
+      },
+      { valor: 0 }
+    );
+  }, [despesas]);
+
   return (
     <div className="desktop-shell costs-shell">
       <header className="desktop-titlebar">
@@ -278,7 +313,7 @@ export default function CustoObras() {
           className={activeTab === "tabela" ? "active" : ""}
           onClick={() => setActiveTab("tabela")}
         >
-          CUSTO TABELA GERAL
+          DESPESAS TABELA GERAL
         </button>
       </nav>
 
@@ -308,7 +343,7 @@ export default function CustoObras() {
               className="desktop-search"
             />
 
-            <button className="desktop-refresh" onClick={() => sincronizarObras()} disabled={isSyncing}>
+            <button className="desktop-refresh" onClick={() => sincronizarCustos()} disabled={isSyncing}>
               <RefreshCw size={13} /> {isSyncing ? "Sincronizando..." : "Atualizar CRTI"}
             </button>
           </section>
@@ -400,21 +435,95 @@ export default function CustoObras() {
         </>
       ) : (
         <>
-          <section className="cost-placeholder">
-            <Calculator size={42} />
-            <h2>CUSTO TABELA GERAL</h2>
-            <p>Modulo criado para integracao posterior.</p>
+          <section className="desktop-filters">
+            <label>Tipo Conta:</label>
+            <Select value={tipoContaFilter} onValueChange={setTipoContaFilter}>
+              <SelectTrigger className="desktop-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TODOS">TODOS</SelectItem>
+                <SelectItem value="Pagar">Pagar</SelectItem>
+                <SelectItem value="Receber">Receber</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <label className="desktop-search-label">
+              <Search size={13} /> Buscar:
+            </label>
+            <Input
+              value={despesasSearchTerm}
+              onChange={(event) => setDespesasSearchTerm(event.target.value)}
+              className="desktop-search"
+            />
+
+            <button className="desktop-refresh" onClick={() => sincronizarCustos()} disabled={isSyncing}>
+              <RefreshCw size={13} /> {isSyncing ? "Sincronizando..." : "Atualizar CRTI"}
+            </button>
           </section>
+
+          <main className="desktop-grid-frame costs-grid-frame">
+            <div className="desktop-table-scroll">
+              <table className="desktop-table expenses-table">
+                <thead>
+                  <tr>
+                    <th>Codigo Forn./Cliente</th>
+                    <th>Fornecedor/Cliente</th>
+                    <th>Numero Documento</th>
+                    <th>Tipo Conta</th>
+                    <th>Tipo Documento</th>
+                    <th>Data Emissao</th>
+                    <th>Data Vencimento</th>
+                    <th>Valor Total</th>
+                    <th>Complemento</th>
+                    <th>Observacoes (Aprovacao)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoadingDespesas ? (
+                    <tr>
+                      <td colSpan={10} className="desktop-empty">Carregando despesas...</td>
+                    </tr>
+                  ) : despesasError ? (
+                    <tr>
+                      <td colSpan={10} className="desktop-empty">
+                        Erro ao carregar despesas: {despesasError.message}
+                      </td>
+                    </tr>
+                  ) : despesas.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="desktop-empty">Nenhuma despesa encontrada</td>
+                    </tr>
+                  ) : (
+                    despesas.map((despesa: any) => (
+                      <tr key={despesa.id}>
+                        <td>{despesa.codigoFornecedorCliente}</td>
+                        <td className="desktop-client">{despesa.fornecedorCliente}</td>
+                        <td>{despesa.numeroDocumento}</td>
+                        <td>{despesa.tipoConta}</td>
+                        <td>{despesa.tipoDocumento}</td>
+                        <td>{despesa.dataEmissao}</td>
+                        <td>{despesa.dataVencimento}</td>
+                        <td className="num">{formatCurrency(despesa.valorTotalDocumento)}</td>
+                        <td className="expense-complement" title={despesa.complemento || ""}>{despesa.complemento}</td>
+                        <td>{despesa.observacoesAprovacao}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </main>
           <footer className="desktop-footer">
             <div className="desktop-subtotals">
-              <strong>CUSTO TABELA GERAL:</strong>
-              <span>Nenhum registro integrado ainda</span>
+              <strong>SUBTOTAL DAS DESPESAS EXIBIDAS:</strong>
+              <span>Valor: <b>{formatCurrency(despesasTotals.valor)}</b></span>
             </div>
             <PaginationControls
               page={tabelaPage}
               pageSize={tabelaPageSize}
-              total={0}
-              totalPages={1}
+              total={despesasTotal}
+              totalPages={despesasTotalPages}
               onPageChange={setTabelaPage}
               onPageSizeChange={(pageSize) => {
                 setTabelaPageSize(pageSize);
@@ -422,7 +531,7 @@ export default function CustoObras() {
               }}
             />
             <div className="desktop-statusbar">
-              <span>0 registro(s) nesta pagina</span>
+              <span>{despesas.length} registro(s) nesta pagina</span>
               <strong>Usuario: {user?.name ?? "admfull"}</strong>
             </div>
           </footer>

@@ -98,6 +98,32 @@ export const pedidosObras = mysqlTable("pedidos_obras", {
 export type PedidoObra = typeof pedidosObras.$inferSelect;
 export type InsertPedidoObra = typeof pedidosObras.$inferInsert;
 
+export const despesasTabelaGeral = mysqlTable("despesas_tabela_geral", {
+  id: int("id").autoincrement().primaryKey(),
+  sourceKey: varchar("sourceKey", { length: 191 }).notNull().unique(),
+  codigoFornecedorCliente: varchar("codigoFornecedorCliente", { length: 50 }),
+  fornecedorCliente: varchar("fornecedorCliente", { length: 255 }),
+  numeroDocumento: varchar("numeroDocumento", { length: 80 }),
+  tipoConta: varchar("tipoConta", { length: 50 }),
+  tipoDocumento: varchar("tipoDocumento", { length: 100 }),
+  dataEmissao: varchar("dataEmissao", { length: 10 }),
+  dataVencimento: varchar("dataVencimento", { length: 10 }),
+  valorTotalDocumento: decimal("valorTotalDocumento", { precision: 18, scale: 2 }).default("0"),
+  complemento: text("complemento").default(""),
+  observacoesAprovacao: text("observacoesAprovacao").default(""),
+  situacao: varchar("situacao", { length: 80 }),
+  criadoEm: timestamp("criadoEm").defaultNow(),
+  atualizadoEm: timestamp("atualizadoEm").defaultNow().onUpdateNow(),
+}, (table) => ({
+  sourceKeyIdx: index("despesas_sourceKey_idx").on(table.sourceKey),
+  fornecedorIdx: index("despesas_fornecedor_idx").on(table.fornecedorCliente),
+  documentoIdx: index("despesas_documento_idx").on(table.numeroDocumento),
+  vencimentoIdx: index("despesas_vencimento_idx").on(table.dataVencimento),
+}));
+
+export type DespesaTabelaGeral = typeof despesasTabelaGeral.$inferSelect;
+export type InsertDespesaTabelaGeral = typeof despesasTabelaGeral.$inferInsert;
+
 /**
  * Tabela de histórico de alterações
  */

@@ -29,6 +29,13 @@
       "when": 1784655600000,
       "tag": "0003_pedidos_obras",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1784659200000,
+      "tag": "0004_despesas_tabela_geral",
+      "breakpoints": true
     }
   ]
 }

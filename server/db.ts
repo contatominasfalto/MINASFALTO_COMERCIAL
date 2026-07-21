@@ -721,6 +721,145 @@ export async function getUltimaSincronizacaoObras() {
 // CONTATOS
 // ─────────────────────────────────────────────
 
+// DESPESAS TABELA GERAL
+export async function listDespesasTabelaGeral(filters?: {
+  tipoConta?: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}) {
+  const page = Math.max(1, Math.trunc(filters?.page || 1));
+  const pageSize = Math.min(200, Math.max(10, Math.trunc(filters?.pageSize || 50)));
+  const offset = (page - 1) * pageSize;
+
+  const db = await getDb();
+  if (!db || !_pool) {
+    return { items: [], total: 0, page, pageSize, totalPages: 1 };
+  }
+
+  const whereSql: string[] = [];
+  const params: Array<string | number> = [];
+
+  if (filters?.tipoConta && filters.tipoConta !== "TODOS") {
+    whereSql.push("tipoConta = ?");
+    params.push(filters.tipoConta);
+  }
+
+  if (filters?.search) {
+    whereSql.push("(codigoFornecedorCliente LIKE ? OR fornecedorCliente LIKE ? OR numeroDocumento LIKE ? OR complemento LIKE ?)");
+    const search = `%${filters.search}%`;
+    params.push(search, search, search, search);
+  }
+
+  const whereClause = whereSql.length > 0 ? `WHERE ${whereSql.join(" AND ")}` : "";
+  const [countRows] = await _pool.query<mysql.RowDataPacket[]>(
+    `SELECT COUNT(*) AS total FROM despesas_tabela_geral ${whereClause}`,
+    params,
+  );
+
+  const total = Number(countRows[0]?.total) || 0;
+  const [items] = await _pool.query<mysql.RowDataPacket[]>(
+    `
+      SELECT
+        id,
+        sourceKey,
+        codigoFornecedorCliente,
+        fornecedorCliente,
+        numeroDocumento,
+        tipoConta,
+        tipoDocumento,
+        dataEmissao,
+        dataVencimento,
+        valorTotalDocumento,
+        complemento,
+        observacoesAprovacao,
+        situacao,
+        criadoEm,
+        atualizadoEm
+      FROM despesas_tabela_geral
+      ${whereClause}
+      ORDER BY id DESC
+      LIMIT ? OFFSET ?
+    `,
+    [...params, pageSize, offset],
+  );
+
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
+}
+
+export async function upsertDespesasTabelaGeralFromCrti(items: Array<{
+  sourceKey: string;
+  codigoFornecedorCliente: string;
+  fornecedorCliente: string;
+  numeroDocumento: string;
+  tipoConta: string;
+  tipoDocumento: string;
+  dataEmissao: string;
+  dataVencimento: string;
+  valorTotalDocumento: number;
+  complemento: string;
+  situacao: string;
+}>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (!_pool) throw new Error("Database pool not available");
+  if (items.length === 0) return { affectedRows: 0 };
+
+  const columns = [
+    "sourceKey",
+    "codigoFornecedorCliente",
+    "fornecedorCliente",
+    "numeroDocumento",
+    "tipoConta",
+    "tipoDocumento",
+    "dataEmissao",
+    "dataVencimento",
+    "valorTotalDocumento",
+    "complemento",
+    "situacao",
+  ];
+  const placeholders = items.map(() => `(${columns.map(() => "?").join(", ")})`).join(", ");
+  const values = items.flatMap((item) => [
+    item.sourceKey,
+    item.codigoFornecedorCliente,
+    item.fornecedorCliente,
+    item.numeroDocumento,
+    item.tipoConta,
+    item.tipoDocumento,
+    item.dataEmissao,
+    item.dataVencimento,
+    item.valorTotalDocumento,
+    item.complemento,
+    item.situacao,
+  ]);
+
+  return _pool.query(
+    `
+      INSERT INTO despesas_tabela_geral (${columns.map((column) => `\`${column}\``).join(", ")})
+      VALUES ${placeholders}
+      ON DUPLICATE KEY UPDATE
+        codigoFornecedorCliente = VALUES(codigoFornecedorCliente),
+        fornecedorCliente = VALUES(fornecedorCliente),
+        numeroDocumento = VALUES(numeroDocumento),
+        tipoConta = VALUES(tipoConta),
+        tipoDocumento = VALUES(tipoDocumento),
+        dataEmissao = VALUES(dataEmissao),
+        dataVencimento = VALUES(dataVencimento),
+        valorTotalDocumento = VALUES(valorTotalDocumento),
+        complemento = VALUES(complemento),
+        situacao = VALUES(situacao),
+        atualizadoEm = CURRENT_TIMESTAMP
+    `,
+    values,
+  );
+}
+
 export async function listContatosByPedido(pedidoId: number) {
   const db = await getDb();
   if (!db) return shouldUseDemoData() ? demoContatos.filter((contato) => contato.pedidoId === pedidoId) : [];

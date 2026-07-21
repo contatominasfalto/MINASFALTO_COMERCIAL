@@ -9,6 +9,7 @@ const REQUIRED_TABLES = [
   "sincronizacaoCrti",
   "pedidos_obras",
   "sincronizacaoCrtiObras",
+  "despesas_tabela_geral",
   "estoque_movimentacoes",
 ];
 
@@ -76,6 +77,23 @@ const REQUIRED_COLUMNS = {
     "statusCrti",
     "dataImportacao",
     "dataUltimaSincronizacao",
+  ],
+  despesas_tabela_geral: [
+    "id",
+    "sourceKey",
+    "codigoFornecedorCliente",
+    "fornecedorCliente",
+    "numeroDocumento",
+    "tipoConta",
+    "tipoDocumento",
+    "dataEmissao",
+    "dataVencimento",
+    "valorTotalDocumento",
+    "complemento",
+    "observacoesAprovacao",
+    "situacao",
+    "criadoEm",
+    "atualizadoEm",
   ],
   estoque_movimentacoes: [
     "id",

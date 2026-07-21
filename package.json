@@ -22,6 +22,7 @@
     "crti:check": "node scripts/check-crti-readonly.mjs",
     "crti:summary": "node scripts/crti-summary.mjs",
     "crti:obras:probe": "node scripts/probe-crti-obras.mjs",
+    "crti:despesas:probe": "node scripts/probe-crti-despesas.mjs",
     "crti:balance": "node scripts/crti-balance-audit.mjs",
     "crti:find": "node scripts/find-crti-pedido.mjs",
     "crti:inspect": "node scripts/inspect-crti-table.mjs",

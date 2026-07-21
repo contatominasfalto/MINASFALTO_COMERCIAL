@@ -74,6 +74,32 @@ try {
     )
   `);
 
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS despesas_tabela_geral (
+      id int AUTO_INCREMENT NOT NULL,
+      sourceKey varchar(191) NOT NULL,
+      codigoFornecedorCliente varchar(50) NULL,
+      fornecedorCliente varchar(255) NULL,
+      numeroDocumento varchar(80) NULL,
+      tipoConta varchar(50) NULL,
+      tipoDocumento varchar(100) NULL,
+      dataEmissao varchar(10) NULL,
+      dataVencimento varchar(10) NULL,
+      valorTotalDocumento decimal(18,2) DEFAULT '0',
+      complemento text DEFAULT (''),
+      observacoesAprovacao text DEFAULT (''),
+      situacao varchar(80) NULL,
+      criadoEm timestamp DEFAULT CURRENT_TIMESTAMP,
+      atualizadoEm timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY despesas_tabela_geral_sourceKey_unique (sourceKey),
+      INDEX despesas_sourceKey_idx (sourceKey),
+      INDEX despesas_fornecedor_idx (fornecedorCliente),
+      INDEX despesas_documento_idx (numeroDocumento),
+      INDEX despesas_vencimento_idx (dataVencimento)
+    )
+  `);
+
   const [userProfileColumns] = await connection.query("SHOW COLUMNS FROM users LIKE 'profile'");
   if (userProfileColumns.length === 0) {
     await connection.query(

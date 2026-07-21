@@ -1436,6 +1436,27 @@
 .costs-table th:nth-child(8), .costs-table td:nth-child(8) { width: 124px; text-align: right; }
 .costs-table th:nth-child(9), .costs-table td:nth-child(9) { width: 124px; text-align: right; }
 
+.expenses-table {
+  min-width: 1760px;
+}
+
+.expenses-table th:nth-child(1), .expenses-table td:nth-child(1) { width: 132px; text-align: center; }
+.expenses-table th:nth-child(2), .expenses-table td:nth-child(2) { width: 270px; }
+.expenses-table th:nth-child(3), .expenses-table td:nth-child(3) { width: 136px; text-align: center; }
+.expenses-table th:nth-child(4), .expenses-table td:nth-child(4) { width: 94px; text-align: center; }
+.expenses-table th:nth-child(5), .expenses-table td:nth-child(5) { width: 126px; }
+.expenses-table th:nth-child(6), .expenses-table td:nth-child(6) { width: 112px; text-align: center; }
+.expenses-table th:nth-child(7), .expenses-table td:nth-child(7) { width: 122px; text-align: center; }
+.expenses-table th:nth-child(8), .expenses-table td:nth-child(8) { width: 128px; text-align: right; }
+.expenses-table th:nth-child(9), .expenses-table td:nth-child(9) { width: 520px; }
+.expenses-table th:nth-child(10), .expenses-table td:nth-child(10) { width: 220px; }
+
+.expense-complement {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .cost-placeholder {
   min-height: calc(100vh - 150px);
   display: flex;

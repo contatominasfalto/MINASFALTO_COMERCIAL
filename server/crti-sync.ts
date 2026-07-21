@@ -4,6 +4,7 @@
  */
 
 import "dotenv/config";
+import { createHash } from "node:crypto";
 import { Client, type ClientConfig } from "pg";
 import * as db from "./db";
 
@@ -50,6 +51,19 @@ type CrtiPedido = {
 
 type CrtiPedidoObra = CrtiPedido & {
   condicaopagamento: string | null;
+};
+
+type CrtiDespesa = {
+  codigoemissor: string | number | null;
+  fornecedorcliente: string | null;
+  numerodoc: string | number | null;
+  tipo: string | null;
+  tipodocumento: string | null;
+  dataemissao: Date | string | null;
+  datavencimento: Date | string | null;
+  valortotal: string | number | null;
+  complemento: string | null;
+  situacao: string | null;
 };
 
 function envFlag(name: string, defaultValue: boolean): boolean {
@@ -173,6 +187,12 @@ function formatDate(value: Date | string | null): string {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
   return date.toLocaleDateString("pt-BR");
+}
+
+function createSourceKey(parts: unknown[]): string {
+  return createHash("sha1")
+    .update(parts.map((part) => String(part ?? "")).join("|"))
+    .digest("hex");
 }
 
 function isGranel(tipoPedido: string): boolean {
@@ -360,6 +380,27 @@ async function buscarPedidosObras(client: Client): Promise<CrtiPedidoObra[]> {
   `;
 
   const { rows } = await client.query<CrtiPedidoObra>(query);
+  return rows;
+}
+
+async function buscarDespesasTabelaGeral(client: Client): Promise<CrtiDespesa[]> {
+  const query = `
+    SELECT
+      codigoemissor,
+      fornecedorcliente,
+      numerodoc,
+      tipo,
+      tipodocumento,
+      dataemissao,
+      datavencimento,
+      valortotal,
+      complemento,
+      situacao
+    FROM public.contas_pagar_receber
+    ORDER BY dataemissao DESC NULLS LAST, numerodoc DESC NULLS LAST
+  `;
+
+  const { rows } = await client.query<CrtiDespesa>(query);
   return rows;
 }
 
@@ -701,6 +742,77 @@ export async function sincronizarPedidosObras(): Promise<SincronizacaoResultado>
     console.error(`[CRTI] Erro obras: ${formatCrtiError(error)}`);
     return resultado;
   }
+}
+
+export async function sincronizarDespesasTabelaGeral(): Promise<SincronizacaoResultado> {
+  const resultado = createEmptyResult();
+  const batchSize = 500;
+
+  try {
+    console.log("[CRTI] Sincronizando despesas tabela geral...");
+    const despesas = await withCrtiClient((client) => buscarDespesasTabelaGeral(client));
+    resultado.pedidosEncontrados = despesas.length;
+
+    for (let index = 0; index < despesas.length; index += batchSize) {
+      const batch = despesas.slice(index, index + batchSize).map((item) => {
+        const codigoFornecedorCliente = String(item.codigoemissor ?? "");
+        const numeroDocumento = String(item.numerodoc ?? "");
+        const tipoConta = item.tipo || "";
+        const tipoDocumento = item.tipodocumento || "";
+        const dataEmissao = formatDate(item.dataemissao);
+        const dataVencimento = formatDate(item.datavencimento);
+        const valorTotalDocumento = normalizeNumber(item.valortotal);
+        const complemento = item.complemento || "";
+
+        return {
+          sourceKey: createSourceKey([
+            codigoFornecedorCliente,
+            numeroDocumento,
+            tipoConta,
+            tipoDocumento,
+            dataEmissao,
+            dataVencimento,
+            valorTotalDocumento,
+            complemento,
+          ]),
+          codigoFornecedorCliente,
+          fornecedorCliente: item.fornecedorcliente || "",
+          numeroDocumento,
+          tipoConta,
+          tipoDocumento,
+          dataEmissao,
+          dataVencimento,
+          valorTotalDocumento,
+          complemento,
+          situacao: item.situacao || "",
+        };
+      });
+
+      await db.upsertDespesasTabelaGeralFromCrti(batch);
+      resultado.pedidosAtualizados += batch.length;
+    }
+
+    resultado.sucesso = true;
+    resultado.mensagem = `Sincronizacao despesas concluida: ${resultado.pedidosAtualizados} registros processados`;
+    console.log(`[CRTI] ${resultado.mensagem}`);
+    return resultado;
+  } catch (error: any) {
+    resultado.sucesso = false;
+    resultado.mensagem = `Erro na sincronizacao despesas: ${formatCrtiError(error)}`;
+    console.error(`[CRTI] Erro despesas: ${formatCrtiError(error)}`);
+    return resultado;
+  }
+}
+
+export async function sincronizacaoCustosObras(): Promise<{
+  obras: SincronizacaoResultado;
+  despesas: SincronizacaoResultado;
+}> {
+  console.log("[CRTI] Iniciando sincronizacao do painel de custos...");
+  const obras = await sincronizarPedidosObras();
+  const despesas = await sincronizarDespesasTabelaGeral();
+  console.log("[CRTI] Sincronizacao do painel de custos finalizada");
+  return { obras, despesas };
 }
 
 /**
