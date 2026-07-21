@@ -517,29 +517,44 @@ export async function listPedidosObras(filters?: {
   const [items] = await _pool!.query<mysql.RowDataPacket[]>(
     `
       SELECT
-        id,
-        dataPedido,
-        cliente,
-        pedido,
-        situacao,
-        qtde,
-        qtdeTapFacil,
-        qtdeGranel,
-        valorUnit,
-        totalPedido,
-        saldo,
-        prioridade,
-        status,
-        observacoesPagamento,
-        observacoes,
-        observacoesOperador,
-        condicaoPagamento,
-        materiais,
-        criadoEm,
-        atualizadoEm
-      FROM pedidos_obras
+        po.id,
+        po.dataPedido,
+        po.cliente,
+        po.pedido,
+        po.situacao,
+        po.qtde,
+        po.qtdeTapFacil,
+        po.qtdeGranel,
+        po.valorUnit,
+        CASE
+          WHEN pof.id IS NULL THEN NULL
+          ELSE COALESCE(pof.nfes, 0) + COALESCE(pof.faturamentoDireto, 0)
+        END AS totalPedido,
+        CASE
+          WHEN pof.id IS NULL THEN NULL
+          ELSE
+            (COALESCE(pof.nfes, 0) + COALESCE(pof.faturamentoDireto, 0))
+            - (COALESCE(pof.valorTotalImposto, 0) * (COALESCE(pof.porcentagemImposto, 17) / 100))
+            - COALESCE(pod.totalDespesas, 0)
+        END AS saldo,
+        po.prioridade,
+        po.status,
+        po.observacoesPagamento,
+        po.observacoes,
+        po.observacoesOperador,
+        po.condicaoPagamento,
+        po.materiais,
+        po.criadoEm,
+        po.atualizadoEm
+      FROM pedidos_obras po
+      LEFT JOIN pedido_obra_financeiro pof ON pof.pedidoObraId = po.id
+      LEFT JOIN (
+        SELECT pedidoObraId, SUM(COALESCE(valorTotalDocumento, 0)) AS totalDespesas
+        FROM pedido_obra_despesas
+        GROUP BY pedidoObraId
+      ) pod ON pod.pedidoObraId = po.id
       ${whereClause}
-      ORDER BY id DESC
+      ORDER BY po.id DESC
       LIMIT ? OFFSET ?
     `,
     [...params, pageSize, offset],

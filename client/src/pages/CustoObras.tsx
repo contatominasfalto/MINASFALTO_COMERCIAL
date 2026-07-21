@@ -50,6 +50,11 @@ const formatCurrency = (value: unknown) =>
     currency: "BRL",
   }).format(numberValue(value));
 
+const formatCurrencyOrBlank = (value: unknown) => {
+  if (value === null || value === undefined || value === "") return "";
+  return formatCurrency(value);
+};
+
 const formatDecimal = (value: unknown, digits = 0) =>
   new Intl.NumberFormat("pt-BR", {
     minimumFractionDigits: digits,
@@ -267,6 +272,7 @@ export default function CustoObras() {
     if (modalPedidoId) {
       void utils.pedidosObras.modal.invalidate({ pedidoObraId: modalPedidoId });
       void utils.pedidosObras.despesasDisponiveis.invalidate();
+      void utils.pedidosObras.list.invalidate();
     }
   };
 
@@ -678,8 +684,8 @@ export default function CustoObras() {
                           <td className="num">{formatDecimal(pedido.qtde)}</td>
                           <td className="num">{formatDecimal(pedido.qtdeTapFacil)}</td>
                           <td className="num">{formatDecimal(pedido.qtdeGranel, 3)}</td>
-                          <td className="num">{formatCurrency(pedido.totalPedido)}</td>
-                          <td className="num">{formatCurrency(pedido.saldo)}</td>
+                          <td className="num">{formatCurrencyOrBlank(pedido.totalPedido)}</td>
+                          <td className="num">{formatCurrencyOrBlank(pedido.saldo)}</td>
                         </tr>
                       );
                     })
