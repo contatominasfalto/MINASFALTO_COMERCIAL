@@ -15,7 +15,6 @@ type SortColumn =
   | "dataPedido"
   | "cliente"
   | "status"
-  | "prioridade"
   | "qtde"
   | "qtdeTapFacil"
   | "qtdeGranel"
@@ -69,10 +68,7 @@ const compareText = (left: unknown, right: unknown) =>
     sensitivity: "base",
   });
 
-const formatPrioridade = (value: unknown) => value === "PRIORIDADE" ? "PRIORIDADE" : "NORMAL";
-
 const sortValue = (pedido: any, column: SortColumn) => {
-  if (column === "prioridade") return formatPrioridade(pedido.prioridade);
   if (column === "dataPedido") return parseDateValue(pedido[column]);
   if (["qtde", "qtdeTapFacil", "qtdeGranel", "totalPedido", "saldo"].includes(column)) {
     return numberValue(pedido[column]);
@@ -85,7 +81,6 @@ const tableColumns: { key: SortColumn; label: string; align?: "num" }[] = [
   { key: "dataPedido", label: "Data Ped." },
   { key: "cliente", label: "Cliente" },
   { key: "status", label: "Status" },
-  { key: "prioridade", label: "Prioridade" },
   { key: "qtde", label: "Qtde", align: "num" },
   { key: "qtdeTapFacil", label: "Tap Facil", align: "num" },
   { key: "qtdeGranel", label: "A Granel", align: "num" },
@@ -100,7 +95,6 @@ export default function CustoObras() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("pedidos");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("TODOS");
-  const [prioridadeFilter, setPrioridadeFilter] = useState("TODOS");
   const [selectedPedido, setSelectedPedido] = useState<any>(null);
   const [modalPedido, setModalPedido] = useState<any>(null);
   const [sortColumn, setSortColumn] = useState<SortColumn>("pedido");
@@ -108,7 +102,6 @@ export default function CustoObras() {
 
   const { data: pedidos = [], error, isLoading, refetch } = trpc.pedidosObras.list.useQuery({
     status: statusFilter,
-    prioridade: prioridadeFilter,
     search: searchTerm,
   });
   const { data: ultimaAtualizacao } = trpc.crti.ultimaAtualizacaoObras.useQuery();
@@ -228,18 +221,6 @@ export default function CustoObras() {
               </SelectContent>
             </Select>
 
-            <label>Prioridade:</label>
-            <Select value={prioridadeFilter} onValueChange={setPrioridadeFilter}>
-              <SelectTrigger className="desktop-select">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="TODOS">TODOS</SelectItem>
-                <SelectItem value="NORMAL">NORMAL</SelectItem>
-                <SelectItem value="PRIORIDADE">PRIORIDADE</SelectItem>
-              </SelectContent>
-            </Select>
-
             <label className="desktop-search-label">
               <Search size={13} /> Buscar:
             </label>
@@ -263,7 +244,6 @@ export default function CustoObras() {
                     <th>Data Ped.</th>
                     <th>Cliente</th>
                     <th>Status</th>
-                    <th>Prioridade</th>
                     <th>Qtde</th>
                     <th>Tap Facil</th>
                     <th>A Granel</th>
@@ -274,17 +254,17 @@ export default function CustoObras() {
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td colSpan={10} className="desktop-empty">Carregando pedidos de obras...</td>
+                      <td colSpan={9} className="desktop-empty">Carregando pedidos de obras...</td>
                     </tr>
                   ) : error ? (
                     <tr>
-                      <td colSpan={10} className="desktop-empty">
+                      <td colSpan={9} className="desktop-empty">
                         Erro ao carregar pedidos de obras: {error.message}
                       </td>
                     </tr>
                   ) : visiblePedidos.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="desktop-empty">Nenhum pedido de obras encontrado</td>
+                      <td colSpan={9} className="desktop-empty">Nenhum pedido de obras encontrado</td>
                     </tr>
                   ) : (
                     visiblePedidos.map((pedido) => {
@@ -303,7 +283,6 @@ export default function CustoObras() {
                           <td>{pedido.dataPedido}</td>
                           <td className="desktop-client" title={pedido.materiais || ""}>{pedido.cliente}</td>
                           <td className="desktop-status">{pedido.status}</td>
-                          <td>{formatPrioridade(pedido.prioridade)}</td>
                           <td className="num">{formatDecimal(pedido.qtde)}</td>
                           <td className="num">{formatDecimal(pedido.qtdeTapFacil)}</td>
                           <td className="num">{formatDecimal(pedido.qtdeGranel, 3)}</td>
