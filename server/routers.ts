@@ -116,6 +116,21 @@ const pedidoObraDespesaBaseSchema = z.object({
   }
 });
 
+const pedidoObraDespesaUpdateSchema = z.object({
+  id: z.number().int().positive(),
+  pedidoObraId: z.number().int().positive(),
+  categoria: pedidoObraCategoriaSchema,
+  justificativaOutros: z.string().max(1000).optional(),
+}).superRefine((data, ctx) => {
+  if (data.categoria === "Outros" && !data.justificativaOutros?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["justificativaOutros"],
+      message: "Justificativa obrigatoria para Outros",
+    });
+  }
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -340,9 +355,7 @@ export const appRouter = router({
       })),
 
     updateDespesa: protectedProcedure
-      .input(z.object({
-        id: z.number().int().positive(),
-      }).and(pedidoObraDespesaBaseSchema.omit({ pedidoNum: true })))
+      .input(pedidoObraDespesaUpdateSchema)
       .mutation(({ input }) => db.updatePedidoObraDespesa(input)),
 
     deleteDespesa: protectedProcedure
