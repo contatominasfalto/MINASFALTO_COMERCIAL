@@ -1,4 +1,4 @@
-import { eq, and, or, like, desc, asc, isNull, isNotNull, sql } from "drizzle-orm";
+import { eq, and, or, like, desc, asc, isNull, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import {
@@ -487,41 +487,61 @@ export async function listPedidosObras(filters?: {
     };
   }
 
-  const conditions: any[] = [];
+  const whereSql: string[] = [];
+  const params: Array<string | number> = [];
 
   if (filters?.status && filters.status !== "TODOS") {
-    conditions.push(eq(pedidosObras.status, filters.status as any));
+    whereSql.push("status = ?");
+    params.push(filters.status);
   }
 
   if (filters?.prioridade && filters.prioridade !== "TODOS") {
-    conditions.push(eq(pedidosObras.prioridade, normalizePrioridade(filters.prioridade) as any));
+    whereSql.push("prioridade = ?");
+    params.push(normalizePrioridade(filters.prioridade));
   }
 
   if (filters?.search) {
-    conditions.push(
-      or(
-        like(pedidosObras.pedido, `%${filters.search}%`),
-        like(pedidosObras.cliente, `%${filters.search}%`)
-      )
-    );
+    whereSql.push("(pedido LIKE ? OR cliente LIKE ?)");
+    params.push(`%${filters.search}%`, `%${filters.search}%`);
   }
 
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-  let countQuery: any = db
-    .select({ total: sql<number>`count(*)` })
-    .from(pedidosObras);
-  if (whereClause) countQuery = countQuery.where(whereClause);
+  const whereClause = whereSql.length > 0 ? `WHERE ${whereSql.join(" AND ")}` : "";
+  const [countRows] = await _pool!.query<mysql.RowDataPacket[]>(
+    `SELECT COUNT(*) AS total FROM pedidos_obras ${whereClause}`,
+    params,
+  );
 
-  const [{ total: totalRaw } = { total: 0 }] = await countQuery;
-
-  const total = Number(totalRaw) || 0;
-  let query: any = db.select().from(pedidosObras);
-  if (whereClause) query = query.where(whereClause);
-
-  const items = await query
-    .orderBy(desc(pedidosObras.criadoEm), desc(pedidosObras.id))
-    .limit(pageSize)
-    .offset(offset);
+  const total = Number(countRows[0]?.total) || 0;
+  const [items] = await _pool!.query<mysql.RowDataPacket[]>(
+    `
+      SELECT
+        id,
+        dataPedido,
+        cliente,
+        pedido,
+        situacao,
+        qtde,
+        qtdeTapFacil,
+        qtdeGranel,
+        valorUnit,
+        totalPedido,
+        saldo,
+        prioridade,
+        status,
+        observacoesPagamento,
+        observacoes,
+        observacoesOperador,
+        condicaoPagamento,
+        materiais,
+        criadoEm,
+        atualizadoEm
+      FROM pedidos_obras
+      ${whereClause}
+      ORDER BY id DESC
+      LIMIT ? OFFSET ?
+    `,
+    [...params, pageSize, offset],
+  );
 
   return {
     items,
