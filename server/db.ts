@@ -1,7 +1,17 @@
 import { eq, and, or, like, desc, asc, isNull, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
-import { InsertUser, users, pedidos, historico, contatos, sincronizacaoCrti, estoqueMovimentacoes } from "../drizzle/schema";
+import {
+  InsertUser,
+  users,
+  pedidos,
+  pedidosObras,
+  historico,
+  contatos,
+  sincronizacaoCrti,
+  sincronizacaoCrtiObras,
+  estoqueMovimentacoes,
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: any = null;
@@ -101,6 +111,31 @@ let demoHistorico = [
 
 const demoContatos = [
   { id: 1, pedidoId: 1, pedidoNum: "5143", tipo: "Ligação", descricao: "Cliente confirmou programação para entrega parcial.", usuario: "admfull", dataContato: new Date("2026-05-22T09:58:00") },
+];
+
+let demoPedidosObras: any[] = [
+  {
+    id: 1,
+    pedido: "5962",
+    dataPedido: "20/07/2026",
+    cliente: "ASSOCIACAO DO RESIDENCIAL GRAN VILLE IGARAPE",
+    status: "Aprovado",
+    prioridade: "NORMAL",
+    qtde: 0,
+    qtdeTapFacil: 0,
+    qtdeGranel: 0,
+    valorUnit: 0,
+    totalPedido: 0,
+    saldo: 0,
+    situacao: "Aprovado",
+    observacoesPagamento: "",
+    observacoes: "",
+    observacoesOperador: "",
+    condicaoPagamento: "",
+    materiais: "Dados demonstrativos aguardando sincronizacao CRTI",
+    criadoEm: new Date(),
+    atualizadoEm: new Date(),
+  },
 ];
 
 const HISTORICO_CAMPOS = [
@@ -416,6 +451,216 @@ export async function deletePedido(id: number) {
   await db.delete(sincronizacaoCrti).where(eq(sincronizacaoCrti.pedidoId, id));
 
   return db.delete(pedidos).where(eq(pedidos.id, id));
+}
+
+// PEDIDOS OBRAS
+export async function listPedidosObras(filters?: {
+  status?: string;
+  prioridade?: string;
+  search?: string;
+}) {
+  const db = await getDb();
+  if (!db) {
+    if (!shouldUseDemoData()) return [];
+    return demoPedidosObras.filter((pedido) => {
+      const matchesStatus = !filters?.status || filters.status === "TODOS" || pedido.status === filters.status;
+      const matchesPrioridade = !filters?.prioridade || filters.prioridade === "TODOS" || normalizePrioridade(pedido.prioridade) === filters.prioridade;
+      const search = filters?.search?.toLowerCase();
+      const matchesSearch = !search || String(pedido.pedido).toLowerCase().includes(search) || String(pedido.cliente).toLowerCase().includes(search);
+      return matchesStatus && matchesPrioridade && matchesSearch;
+    });
+  }
+
+  let query: any = db.select().from(pedidosObras);
+  const conditions: any[] = [];
+
+  if (filters?.status && filters.status !== "TODOS") {
+    conditions.push(eq(pedidosObras.status, filters.status as any));
+  }
+
+  if (filters?.prioridade && filters.prioridade !== "TODOS") {
+    conditions.push(eq(pedidosObras.prioridade, normalizePrioridade(filters.prioridade) as any));
+  }
+
+  if (filters?.search) {
+    conditions.push(
+      or(
+        like(pedidosObras.pedido, `%${filters.search}%`),
+        like(pedidosObras.cliente, `%${filters.search}%`)
+      )
+    );
+  }
+
+  if (conditions.length > 0) {
+    query = query.where(and(...conditions));
+  }
+
+  return query.orderBy(desc(pedidosObras.criadoEm), desc(pedidosObras.id));
+}
+
+export async function getPedidoObraByNumber(pedidoNum: string) {
+  const db = await getDb();
+  if (!db) return shouldUseDemoData() ? demoPedidosObras.find((pedido) => pedido.pedido === pedidoNum) ?? null : null;
+
+  const result = await db.select().from(pedidosObras).where(eq(pedidosObras.pedido, pedidoNum)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function upsertPedidoObraFromCrti(data: {
+  dataPedido: string;
+  cliente: string;
+  pedido: string;
+  situacao: string;
+  qtde: number;
+  qtdeTapFacil: number;
+  qtdeGranel: number;
+  valorUnit: number;
+  totalPedido: number;
+  saldo: number;
+  status: string;
+  condicaoPagamento?: string;
+  materiais?: string;
+}) {
+  const db = await getDb();
+  const values = {
+    dataPedido: data.dataPedido,
+    cliente: data.cliente,
+    pedido: data.pedido,
+    situacao: data.situacao,
+    qtde: String(data.qtde),
+    qtdeTapFacil: String(data.qtdeTapFacil),
+    qtdeGranel: String(data.qtdeGranel),
+    valorUnit: String(data.valorUnit),
+    totalPedido: String(data.totalPedido),
+    saldo: String(data.saldo),
+    prioridade: "NORMAL" as const,
+    status: data.status,
+    condicaoPagamento: data.condicaoPagamento || "",
+    materiais: data.materiais || "",
+  };
+
+  if (!db) {
+    if (!shouldUseDemoData()) throw new Error("Database not available");
+    const existing = demoPedidosObras.find((pedido) => pedido.pedido === data.pedido);
+    if (existing) {
+      Object.assign(existing, values, { atualizadoEm: new Date() });
+      return { affectedRows: 1 };
+    }
+    const next = {
+      id: Math.max(0, ...demoPedidosObras.map((pedido) => pedido.id || 0)) + 1,
+      ...values,
+      observacoesPagamento: "",
+      observacoes: "",
+      observacoesOperador: "",
+      criadoEm: new Date(),
+      atualizadoEm: new Date(),
+    };
+    demoPedidosObras = [next, ...demoPedidosObras];
+    return { insertId: next.id };
+  }
+
+  return db.insert(pedidosObras).values(values).onDuplicateKeyUpdate({
+    set: {
+      dataPedido: values.dataPedido,
+      cliente: values.cliente,
+      situacao: values.situacao,
+      qtde: values.qtde,
+      qtdeTapFacil: values.qtdeTapFacil,
+      qtdeGranel: values.qtdeGranel,
+      valorUnit: values.valorUnit,
+      totalPedido: values.totalPedido,
+      saldo: values.saldo,
+      status: values.status,
+      condicaoPagamento: values.condicaoPagamento,
+      materiais: values.materiais,
+      atualizadoEm: new Date(),
+    },
+  });
+}
+
+export async function updatePedidoObraObservacoes(
+  id: number,
+  data: {
+    observacoesPagamento?: string;
+    observacoes?: string;
+    observacoesOperador?: string;
+  },
+) {
+  const values: Record<string, unknown> = { atualizadoEm: new Date() };
+  if (data.observacoesPagamento !== undefined) values.observacoesPagamento = data.observacoesPagamento;
+  if (data.observacoes !== undefined) values.observacoes = data.observacoes;
+  if (data.observacoesOperador !== undefined) values.observacoesOperador = data.observacoesOperador;
+
+  const db = await getDb();
+  if (!db) {
+    if (!shouldUseDemoData()) throw new Error("Database not available");
+    demoPedidosObras = demoPedidosObras.map((pedido) => pedido.id === id ? { ...pedido, ...values } : pedido);
+    return { affectedRows: 1 };
+  }
+
+  return db.update(pedidosObras).set(values).where(eq(pedidosObras.id, id));
+}
+
+export async function createSincronizacaoObras(data: {
+  pedidoObraId: number | null;
+  pedidoNum: string;
+  tipoPedido: string;
+  statusCrti: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.insert(sincronizacaoCrtiObras).values({
+    pedidoObraId: data.pedidoObraId || null,
+    pedidoNum: data.pedidoNum,
+    tipoPedido: data.tipoPedido,
+    statusCrti: data.statusCrti,
+  });
+}
+
+export async function registrarExecucaoSincronizacaoObras() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [registro] = await db.select({ id: sincronizacaoCrtiObras.id })
+    .from(sincronizacaoCrtiObras)
+    .orderBy(desc(sincronizacaoCrtiObras.dataImportacao), desc(sincronizacaoCrtiObras.id))
+    .limit(1);
+
+  if (!registro) return null;
+
+  const data = new Date();
+  await db.update(sincronizacaoCrtiObras)
+    .set({ dataUltimaSincronizacao: data })
+    .where(eq(sincronizacaoCrtiObras.id, registro.id));
+
+  return data;
+}
+
+export async function getUltimaSincronizacaoObras() {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [ultimaExecucao] = await db.select({
+    data: sincronizacaoCrtiObras.dataUltimaSincronizacao,
+  })
+    .from(sincronizacaoCrtiObras)
+    .where(isNotNull(sincronizacaoCrtiObras.dataUltimaSincronizacao))
+    .orderBy(desc(sincronizacaoCrtiObras.dataUltimaSincronizacao))
+    .limit(1);
+
+  const [ultimaImportacao] = await db.select({
+    data: sincronizacaoCrtiObras.dataImportacao,
+  })
+    .from(sincronizacaoCrtiObras)
+    .orderBy(desc(sincronizacaoCrtiObras.dataImportacao))
+    .limit(1);
+
+  const datas = [ultimaExecucao?.data, ultimaImportacao?.data]
+    .filter((data): data is Date => data instanceof Date);
+
+  if (datas.length === 0) return null;
+  return new Date(Math.max(...datas.map((data) => data.getTime())));
 }
 
 // ─────────────────────────────────────────────

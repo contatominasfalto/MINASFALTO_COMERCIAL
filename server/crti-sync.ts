@@ -48,6 +48,10 @@ type CrtiPedido = {
   materiais: string | null;
 };
 
+type CrtiPedidoObra = CrtiPedido & {
+  condicaopagamento: string | null;
+};
+
 function envFlag(name: string, defaultValue: boolean): boolean {
   const value = process.env[name];
   if (value === undefined || value === "") return defaultValue;
@@ -154,6 +158,10 @@ function quoteIdentifierPath(identifierPath: string): string {
     .join(".");
 }
 
+function normalizeSql(field: string): string {
+  return `TRANSLATE(UPPER(${field}), 'ÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ', 'AAAAEEEIIIOOOOUUUC')`;
+}
+
 function normalizeNumber(value: unknown): number {
   if (value === null || value === undefined || value === "") return 0;
   const parsed = Number(value);
@@ -208,6 +216,21 @@ async function createSincronizacaoIfPossible(data: {
     await db.createSincronizacao(data);
   } catch (error) {
     console.warn(`[CRTI] Pedido ${data.pedidoNum} importado, mas falhou ao registrar sincronizacao:`, error);
+  }
+}
+
+async function createSincronizacaoObrasIfPossible(data: {
+  pedidoObraId: number | null;
+  pedidoNum: string;
+  tipoPedido: string;
+  statusCrti: string;
+}) {
+  if (!data.pedidoObraId) return;
+
+  try {
+    await db.createSincronizacaoObras(data);
+  } catch (error) {
+    console.warn(`[CRTI] Pedido obra ${data.pedidoNum} sincronizado, mas falhou ao registrar sincronizacao:`, error);
   }
 }
 
@@ -288,6 +311,55 @@ async function buscarPedidosConcluidos(client: Client, dias: number): Promise<Cr
   `;
 
   const { rows } = await client.query<CrtiPedido>(query, [dias]);
+  return rows;
+}
+
+async function buscarPedidosObras(client: Client): Promise<CrtiPedidoObra[]> {
+  const table = quoteIdentifierPath(CRTI_CONFIG.tableAprovados);
+  const tableSaidas = quoteIdentifierPath(CRTI_CONFIG.tableSaidas);
+  const tipoPedidoNormalizado = normalizeSql("pedidos.tipopedido");
+  const statusNormalizado = normalizeSql("pedidos.situacaopedido");
+  const statusAgregadoNormalizado = normalizeSql("MAX(pedidos.situacaopedido)");
+  const query = `
+    WITH saidas AS (
+      SELECT
+        numeropedido::text AS numeropedido,
+        SUM(valortotalliquido) AS valor_saida
+      FROM ${tableSaidas}
+      GROUP BY numeropedido
+    )
+    SELECT
+      pedidos.numeropedido::text AS numeropedido,
+      MIN(pedidos.datapedido) AS datapedido,
+      MAX(pedidos.nomecliente) AS nomecliente,
+      MAX(pedidos.situacaopedido) AS situacaopedido,
+      MAX(pedidos.tipopedido) AS tipopedido,
+      MAX(pedidos.condicaopagamento) AS condicaopagamento,
+      SUM(pedidos.quantidadepedido) AS quantidade_total,
+      CASE
+        WHEN SUM(pedidos.quantidadepedido) = 0 THEN 0
+        ELSE SUM(pedidos.valortotalitem) / SUM(pedidos.quantidadepedido)
+      END AS valor_unitario,
+      SUM(pedidos.valortotalitem) AS valor_total,
+      COALESCE(MAX(saidas.valor_saida), 0) AS valor_saida,
+      CASE
+        WHEN ${statusAgregadoNormalizado} IN ('CONCLUIDO', 'CANCELADO') THEN 0
+        ELSE GREATEST(SUM(pedidos.valortotalitem) - COALESCE(MAX(saidas.valor_saida), 0), 0)
+      END AS saldo_total,
+      STRING_AGG(DISTINCT pedidos.descricaomaterial, ' | ') AS materiais
+    FROM ${table} pedidos
+    LEFT JOIN saidas ON saidas.numeropedido = pedidos.numeropedido::text
+    WHERE (
+        ${tipoPedidoNormalizado} LIKE '%MATERIAL%OBRAS%PROPRIAS%'
+        OR ${tipoPedidoNormalizado} LIKE '%MATERIAL%OBRA%PROPRIA%'
+        OR ${tipoPedidoNormalizado} LIKE '%OBRAS%PROPRIAS%'
+      )
+      AND ${statusNormalizado} IN ('APROVADO', 'CONCLUIDO', 'CANCELADO')
+    GROUP BY pedidos.numeropedido
+    ORDER BY MIN(pedidos.datapedido) DESC, pedidos.numeropedido DESC
+  `;
+
+  const { rows } = await client.query<CrtiPedidoObra>(query);
   return rows;
 }
 
@@ -533,6 +605,100 @@ export async function sincronizarPedidosConcluidos(dias?: number): Promise<Sincr
     resultado.sucesso = false;
     resultado.mensagem = `Erro na sincronizacao: ${formatCrtiError(error)}`;
     console.error(`[CRTI] Erro: ${formatCrtiError(error)}`);
+    return resultado;
+  }
+}
+
+/**
+ * Sincroniza pedidos MATERIAL OBRAS PROPRIAS do CRTI.
+ */
+export async function sincronizarPedidosObras(): Promise<SincronizacaoResultado> {
+  const resultado = createEmptyResult();
+
+  try {
+    console.log("[CRTI] Sincronizando pedidos de material obras proprias...");
+    const pedidosObras = await withCrtiClient((client) => buscarPedidosObras(client));
+    resultado.pedidosEncontrados = pedidosObras.length;
+
+    for (const pedido of pedidosObras) {
+      const pedidoNum = String(pedido.numeropedido);
+
+      try {
+        const pedidoExistente = await db.getPedidoObraByNumber(pedidoNum);
+        const quantidade = normalizeNumber(pedido.quantidade_total);
+        const valorTotal = normalizeNumber(pedido.valor_total);
+        const saldo = normalizeNumber(pedido.saldo_total ?? pedido.valor_total);
+        const valorUnitario = normalizeNumber(pedido.valor_unitario);
+        const statusLocal = pedido.situacaopedido || "Aprovado";
+        const quantidadePendente = statusLocal === "Aprovado"
+          ? calculateRemainingQuantity(quantidade, valorTotal, saldo)
+          : quantidade;
+
+        await db.upsertPedidoObraFromCrti({
+          dataPedido: formatDate(pedido.datapedido),
+          cliente: pedido.nomecliente,
+          pedido: pedidoNum,
+          situacao: statusLocal,
+          qtde: quantidadePendente,
+          qtdeTapFacil: 0,
+          qtdeGranel: quantidadePendente,
+          valorUnit: valorUnitario,
+          totalPedido: valorTotal,
+          saldo,
+          status: statusLocal,
+          condicaoPagamento: pedido.condicaopagamento || "",
+          materiais: pedido.materiais || "",
+        });
+
+        const pedidoLocal = await db.getPedidoObraByNumber(pedidoNum);
+        await createSincronizacaoObrasIfPossible({
+          pedidoObraId: pedidoLocal?.id ?? null,
+          pedidoNum,
+          tipoPedido: pedido.tipopedido,
+          statusCrti: statusLocal,
+        });
+
+        if (pedidoExistente) {
+          resultado.pedidosAtualizados++;
+          resultado.detalhes.push({
+            pedido: pedidoNum,
+            status: "ATUALIZADO",
+            cliente: pedido.nomecliente,
+            statusCrti: statusLocal,
+          });
+        } else {
+          resultado.pedidosImportados++;
+          resultado.detalhes.push({
+            pedido: pedidoNum,
+            status: "IMPORTADO",
+            cliente: pedido.nomecliente,
+            statusCrti: statusLocal,
+          });
+        }
+      } catch (error: any) {
+        resultado.erros++;
+        console.error(`[CRTI] Erro ao sincronizar pedido obra ${pedidoNum}: ${error.message}`);
+        resultado.detalhes.push({
+          pedido: pedidoNum,
+          status: "ERRO",
+          cliente: pedido.nomecliente,
+          erro: error.message,
+        });
+      }
+    }
+
+    if (resultado.pedidosImportados > 0 || resultado.pedidosAtualizados > 0) {
+      await db.registrarExecucaoSincronizacaoObras();
+    }
+
+    resultado.sucesso = resultado.erros === 0 || resultado.pedidosImportados > 0 || resultado.pedidosAtualizados > 0;
+    resultado.mensagem = `Sincronizacao obras concluida: ${resultado.pedidosImportados} novos, ${resultado.pedidosAtualizados} atualizados, ${resultado.erros} erros`;
+    console.log(`[CRTI] ${resultado.mensagem}`);
+    return resultado;
+  } catch (error: any) {
+    resultado.sucesso = false;
+    resultado.mensagem = `Erro na sincronizacao obras: ${formatCrtiError(error)}`;
+    console.error(`[CRTI] Erro obras: ${formatCrtiError(error)}`);
     return resultado;
   }
 }

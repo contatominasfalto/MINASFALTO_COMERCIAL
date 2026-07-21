@@ -93,12 +93,27 @@ async function checkCrti() {
       `,
       [days],
     );
+    const obrasSummary = await client.query(
+      `
+        SELECT tipopedido, situacaopedido, COUNT(DISTINCT numeropedido)::int AS total
+        FROM ${quoteIdentifierPath(tableName)}
+        WHERE (
+            ${normalizeSql("tipopedido")} LIKE '%MATERIAL%OBRAS%PROPRIAS%'
+            OR ${normalizeSql("tipopedido")} LIKE '%MATERIAL%OBRA%PROPRIA%'
+            OR ${normalizeSql("tipopedido")} LIKE '%OBRAS%PROPRIAS%'
+          )
+          AND ${normalizeSql("situacaopedido")} IN ('APROVADO', 'CONCLUIDO', 'CANCELADO')
+        GROUP BY tipopedido, situacaopedido
+        ORDER BY total DESC
+      `,
+    );
 
     return {
       ok: true,
-      message: `CRTI OK. Pedidos TapFacil dos ultimos ${days} dias encontrados.`,
+      message: `CRTI OK. Pedidos TapFacil e Obras encontrados.`,
       table: tableName,
       summary: summary.rows,
+      obrasSummary: obrasSummary.rows,
     };
   } catch (error) {
     return {
@@ -122,6 +137,10 @@ function quoteIdentifierPath(identifierPath) {
     .join(".");
 }
 
+function normalizeSql(field) {
+  return `TRANSLATE(UPPER(${field}), 'ÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ', 'AAAAEEEIIIOOOOUUUC')`;
+}
+
 const [mysqlResult, crtiResult] = await Promise.all([checkMysql(), checkCrti()]);
 
 console.log("\n=== Diagnostico de Integracao ===\n");
@@ -133,6 +152,10 @@ console.log("");
 console.log(crtiResult.message);
 if (crtiResult.table) console.log(`Tabela CRTI: ${crtiResult.table}`);
 if (crtiResult.summary) console.table(crtiResult.summary);
+if (crtiResult.obrasSummary) {
+  console.log("\nResumo CRTI Obras:");
+  console.table(crtiResult.obrasSummary);
+}
 
 if (!mysqlResult.ok || !crtiResult.ok) {
   process.exitCode = 1;

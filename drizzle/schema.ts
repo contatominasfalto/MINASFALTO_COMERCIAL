@@ -64,6 +64,41 @@ export type Pedido = typeof pedidos.$inferSelect;
 export type InsertPedido = typeof pedidos.$inferInsert;
 
 /**
+ * Pedidos de material para obras proprias importados do CRTI.
+ * Observacoes sao campos locais e nao devem ser sobrescritas pela sincronizacao.
+ */
+export const pedidosObras = mysqlTable("pedidos_obras", {
+  id: int("id").autoincrement().primaryKey(),
+  dataPedido: varchar("dataPedido", { length: 10 }),
+  cliente: varchar("cliente", { length: 255 }).notNull(),
+  pedido: varchar("pedido", { length: 50 }).notNull().unique(),
+  situacao: varchar("situacao", { length: 50 }).default("Aprovado"),
+  qtde: decimal("qtde", { precision: 18, scale: 3 }).default("0"),
+  qtdeTapFacil: decimal("qtdeTapFacil", { precision: 18, scale: 3 }).default("0"),
+  qtdeGranel: decimal("qtdeGranel", { precision: 18, scale: 3 }).default("0"),
+  valorUnit: decimal("valorUnit", { precision: 18, scale: 2 }).default("0"),
+  totalPedido: decimal("totalPedido", { precision: 18, scale: 2 }).default("0"),
+  saldo: decimal("saldo", { precision: 18, scale: 2 }).default("0"),
+  prioridade: mysqlEnum("prioridade", ["NORMAL", "PRIORIDADE"]).default("NORMAL"),
+  status: varchar("status", { length: 20 }).default("Aprovado"),
+  observacoesPagamento: text("observacoesPagamento").default(""),
+  observacoes: text("observacoes").default(""),
+  observacoesOperador: text("observacoesOperador").default(""),
+  condicaoPagamento: text("condicaoPagamento").default(""),
+  materiais: text("materiais").default(""),
+  criadoEm: timestamp("criadoEm").defaultNow(),
+  atualizadoEm: timestamp("atualizadoEm").defaultNow().onUpdateNow(),
+}, (table) => ({
+  pedidoIdx: index("pedidos_obras_pedido_idx").on(table.pedido),
+  clienteIdx: index("pedidos_obras_cliente_idx").on(table.cliente),
+  statusIdx: index("pedidos_obras_status_idx").on(table.status),
+  prioridadeIdx: index("pedidos_obras_prioridade_idx").on(table.prioridade),
+}));
+
+export type PedidoObra = typeof pedidosObras.$inferSelect;
+export type InsertPedidoObra = typeof pedidosObras.$inferInsert;
+
+/**
  * Tabela de histórico de alterações
  */
 export const historico = mysqlTable("historico", {
@@ -121,6 +156,21 @@ export const sincronizacaoCrti = mysqlTable("sincronizacaoCrti", {
 export type SincronizacaoCrti = typeof sincronizacaoCrti.$inferSelect;
 export type InsertSincronizacaoCrti = typeof sincronizacaoCrti.$inferInsert;
 
+export const sincronizacaoCrtiObras = mysqlTable("sincronizacaoCrtiObras", {
+  id: int("id").autoincrement().primaryKey(),
+  pedidoObraId: int("pedidoObraId"),
+  pedidoNum: varchar("pedidoNum", { length: 50 }).notNull(),
+  tipoPedido: varchar("tipoPedido", { length: 100 }),
+  statusCrti: varchar("statusCrti", { length: 50 }),
+  dataImportacao: timestamp("dataImportacao").defaultNow(),
+  dataUltimaSincronizacao: timestamp("dataUltimaSincronizacao"),
+}, (table) => ({
+  pedidoNumIdx: index("sincronizacao_obras_pedidoNum_idx").on(table.pedidoNum),
+}));
+
+export type SincronizacaoCrtiObras = typeof sincronizacaoCrtiObras.$inferSelect;
+export type InsertSincronizacaoCrtiObras = typeof sincronizacaoCrtiObras.$inferInsert;
+
 /**
  * Eventos que compõem o saldo sequencial do estoque.
  * Saldos finais são derivados em ordem cronológica e não duplicados no banco.
@@ -152,6 +202,10 @@ export const pedidosRelations = relations(pedidos, ({ many }) => ({
   sincronizacao: many(sincronizacaoCrti),
 }));
 
+export const pedidosObrasRelations = relations(pedidosObras, ({ many }) => ({
+  sincronizacao: many(sincronizacaoCrtiObras),
+}));
+
 export const historicoRelations = relations(historico, ({ one }) => ({
   pedido: one(pedidos, {
     fields: [historico.pedidoId],
@@ -170,5 +224,12 @@ export const sincronizacaoRelations = relations(sincronizacaoCrti, ({ one }) => 
   pedido: one(pedidos, {
     fields: [sincronizacaoCrti.pedidoId],
     references: [pedidos.id],
+  }),
+}));
+
+export const sincronizacaoObrasRelations = relations(sincronizacaoCrtiObras, ({ one }) => ({
+  pedido: one(pedidosObras, {
+    fields: [sincronizacaoCrtiObras.pedidoObraId],
+    references: [pedidosObras.id],
   }),
 }));

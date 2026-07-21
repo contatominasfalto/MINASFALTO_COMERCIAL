@@ -84,6 +84,12 @@ const estoqueMovimentacaoSchema = z.object({
   ocorrencias: z.string().max(5000).optional(),
 });
 
+const pedidoObraObservacoesSchema = z.object({
+  observacoesPagamento: z.string().max(5000).optional(),
+  observacoes: z.string().max(5000).optional(),
+  observacoesOperador: z.string().max(5000).optional(),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -263,6 +269,23 @@ export const appRouter = router({
       .mutation(({ input }) => db.deleteEstoqueMovimentacao(input)),
   }),
 
+  pedidosObras: router({
+    list: protectedProcedure
+      .input(z.object({
+        status: z.string().optional(),
+        prioridade: z.string().optional(),
+        search: z.string().optional(),
+      }).optional())
+      .query(({ input }) => db.listPedidosObras(input)),
+
+    updateObservacoes: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        data: pedidoObraObservacoesSchema,
+      }))
+      .mutation(({ input }) => db.updatePedidoObraObservacoes(input.id, input.data)),
+  }),
+
   // ─────────────────────────────────────────────
   // INDICADORES
   // ─────────────────────────────────────────────
@@ -301,6 +324,14 @@ export const appRouter = router({
       .input(z.object({ dias: z.number().optional() }).optional())
       .mutation(async ({ input }) => {
         return crtiSync.sincronizacaoCompleta(input?.dias);
+      }),
+
+    ultimaAtualizacaoObras: protectedProcedure
+      .query(() => db.getUltimaSincronizacaoObras()),
+
+    sincronizarPedidosObras: protectedProcedure
+      .mutation(async () => {
+        return crtiSync.sincronizarPedidosObras();
       }),
   }),
 });
