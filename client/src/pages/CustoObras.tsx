@@ -32,7 +32,14 @@ type PaginationState = {
 };
 
 const numberValue = (value: unknown) => Number(value) || 0;
-const parseMoneyInput = (value: unknown) => Number(String(value || "0").replace(/\./g, "").replace(",", ".")) || 0;
+const parseMoneyInput = (value: unknown) => {
+  const text = String(value ?? "0").trim();
+  if (!text) return 0;
+  if (text.includes(",")) {
+    return Number(text.replace(/\./g, "").replace(",", ".")) || 0;
+  }
+  return Number(text) || 0;
+};
 const parsePercentInput = (value: unknown) => Number(String(value || "0").replace(",", ".")) || 0;
 const moneyInputValue = (value: unknown) => String(value ?? "0");
 const categoryOptions: CostCategory[] = ["Custo", "Despesa", "Outros"];
