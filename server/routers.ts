@@ -116,12 +116,25 @@ const pedidoObraDespesaBaseSchema = z.object({
   }
 });
 
+const pedidoObraDespesaFieldsSchema = z.object({
+  codigoFornecedorCliente: z.string().max(50).optional(),
+  fornecedorCliente: z.string().max(255).optional(),
+  numeroDocumento: z.string().max(80).optional(),
+  tipoConta: z.string().max(50).optional(),
+  tipoDocumento: z.string().max(100).optional(),
+  dataEmissao: z.string().max(10).optional(),
+  dataVencimento: z.string().max(10).optional(),
+  valorTotalDocumento: z.coerce.number().nonnegative(),
+  complemento: z.string().max(5000).optional(),
+  observacoesAprovacao: z.string().max(5000).optional(),
+});
+
 const pedidoObraDespesaUpdateSchema = z.object({
   id: z.number().int().positive(),
   pedidoObraId: z.number().int().positive(),
   categoria: pedidoObraCategoriaSchema,
   justificativaOutros: z.string().max(1000).optional(),
-}).superRefine((data, ctx) => {
+}).and(pedidoObraDespesaFieldsSchema).superRefine((data, ctx) => {
   if (data.categoria === "Outros" && !data.justificativaOutros?.trim()) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -344,11 +357,7 @@ export const appRouter = router({
       .mutation(({ input }) => db.clearPedidoObraFinanceiro(input.pedidoObraId, input.pedidoNum)),
 
     createDespesaManual: protectedProcedure
-      .input(pedidoObraDespesaBaseSchema.and(z.object({
-        valorTotalDocumento: z.coerce.number().nonnegative(),
-        complemento: z.string().max(5000).optional(),
-        observacoesAprovacao: z.string().max(5000).optional(),
-      })))
+      .input(pedidoObraDespesaBaseSchema.and(pedidoObraDespesaFieldsSchema))
       .mutation(({ input, ctx }) => db.createPedidoObraDespesaManual({
         ...input,
         criadoPor: ctx.user?.name || "Sistema",

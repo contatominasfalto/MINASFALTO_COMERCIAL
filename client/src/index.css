@@ -1639,7 +1639,7 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 10px;
   padding: 12px 16px;
   background: #f3f6f9;
@@ -1677,6 +1677,7 @@
 
 .cost-modal-cards input,
 .manual-expense-panel input,
+.money-input-wrap input,
 .link-justification {
   height: 30px;
   border: 1px solid #b7c4d2;
@@ -1684,6 +1685,33 @@
   background: #ffffff;
   color: #001b34;
   font-size: 12px;
+}
+
+.money-input-wrap {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  height: 30px;
+  border: 1px solid #b7c4d2;
+  background: #ffffff;
+}
+
+.money-input-wrap span {
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid #d5dde6;
+  background: #eef4fb;
+  color: #001b34;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.money-input-wrap input {
+  height: 28px;
+  border: 0;
+  border-radius: 0;
 }
 
 .cost-modal-cards .readonly {
@@ -1739,6 +1767,14 @@
 .table-icon-button {
   width: 28px;
   height: 28px;
+}
+
+.modal-expenses-table td:last-child {
+  white-space: nowrap;
+}
+
+.modal-expenses-table td:last-child .table-icon-button + .table-icon-button {
+  margin-left: 4px;
 }
 
 .table-icon-button.danger {
@@ -1819,6 +1855,96 @@
   border: 1px solid #9fb0c2;
   border-radius: 4px;
   background: #f3f6f9;
+}
+
+[data-slot="dialog-content"].manual-expense-dialog {
+  width: min(860px, calc(100vw - 64px));
+  max-width: none;
+  max-height: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid #9fb0c2;
+  border-radius: 4px;
+  background: #f3f6f9;
+}
+
+.manual-expense-dialog [data-slot="dialog-title"] {
+  color: #001b34;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.manual-expense-dialog [data-slot="dialog-description"] {
+  color: #415265;
+  font-size: 12px;
+}
+
+.manual-expense-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  overflow: auto;
+}
+
+.manual-expense-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.manual-expense-form label.span-2 {
+  grid-column: span 2;
+}
+
+.manual-expense-form span {
+  color: #001b34;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.manual-expense-form input {
+  height: 30px;
+  border: 1px solid #b7c4d2;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #001b34;
+  font-size: 12px;
+}
+
+.manual-expense-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #c9d4df;
+}
+
+.manual-expense-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 16px;
+  border: 1px solid #0b294d;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #001b34;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.manual-expense-actions button:hover {
+  background: #eef4fb;
+}
+
+.manual-expense-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .expense-link-dialog [data-slot="dialog-header"] {

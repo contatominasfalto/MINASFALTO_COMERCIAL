@@ -975,6 +975,13 @@ export async function createPedidoObraDespesaManual(data: {
   pedidoNum: string;
   categoria: "Custo" | "Despesa" | "Outros";
   justificativaOutros?: string;
+  codigoFornecedorCliente?: string;
+  fornecedorCliente?: string;
+  numeroDocumento?: string;
+  tipoConta?: string;
+  tipoDocumento?: string;
+  dataEmissao?: string;
+  dataVencimento?: string;
   valorTotalDocumento: number;
   complemento?: string;
   observacoesAprovacao?: string;
@@ -989,6 +996,13 @@ export async function createPedidoObraDespesaManual(data: {
     origem: "manual",
     categoria: data.categoria,
     justificativaOutros: data.justificativaOutros || "",
+    codigoFornecedorCliente: data.codigoFornecedorCliente || "",
+    fornecedorCliente: data.fornecedorCliente || "",
+    numeroDocumento: data.numeroDocumento || "",
+    tipoConta: data.tipoConta || "",
+    tipoDocumento: data.tipoDocumento || "",
+    dataEmissao: data.dataEmissao || "",
+    dataVencimento: data.dataVencimento || "",
     valorTotalDocumento: String(data.valorTotalDocumento),
     complemento: data.complemento || "",
     observacoesAprovacao: data.observacoesAprovacao || "",
@@ -1001,16 +1015,48 @@ export async function updatePedidoObraDespesa(data: {
   pedidoObraId: number;
   categoria: "Custo" | "Despesa" | "Outros";
   justificativaOutros?: string;
+  codigoFornecedorCliente?: string;
+  fornecedorCliente?: string;
+  numeroDocumento?: string;
+  tipoConta?: string;
+  tipoDocumento?: string;
+  dataEmissao?: string;
+  dataVencimento?: string;
+  valorTotalDocumento?: number;
+  complemento?: string;
+  observacoesAprovacao?: string;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
+  const values: Record<string, unknown> = {
+    categoria: data.categoria,
+    justificativaOutros: data.justificativaOutros || "",
+    atualizadoEm: new Date(),
+  };
+
+  const textFields = [
+    "codigoFornecedorCliente",
+    "fornecedorCliente",
+    "numeroDocumento",
+    "tipoConta",
+    "tipoDocumento",
+    "dataEmissao",
+    "dataVencimento",
+    "complemento",
+    "observacoesAprovacao",
+  ] as const;
+
+  for (const field of textFields) {
+    if (data[field] !== undefined) values[field] = data[field] || "";
+  }
+
+  if (data.valorTotalDocumento !== undefined) {
+    values.valorTotalDocumento = String(data.valorTotalDocumento);
+  }
+
   return db.update(pedidoObraDespesas)
-    .set({
-      categoria: data.categoria,
-      justificativaOutros: data.justificativaOutros || "",
-      atualizadoEm: new Date(),
-    })
+    .set(values)
     .where(and(eq(pedidoObraDespesas.id, data.id), eq(pedidoObraDespesas.pedidoObraId, data.pedidoObraId)));
 }
 

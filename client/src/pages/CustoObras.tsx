@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Link2, Plus, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Link2, Pencil, Plus, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -33,6 +33,7 @@ type PaginationState = {
 
 const numberValue = (value: unknown) => Number(value) || 0;
 const parseMoneyInput = (value: unknown) => Number(String(value || "0").replace(/\./g, "").replace(",", ".")) || 0;
+const parsePercentInput = (value: unknown) => Number(String(value || "0").replace(",", ".")) || 0;
 const moneyInputValue = (value: unknown) => String(value ?? "0");
 const categoryOptions: CostCategory[] = ["Custo", "Despesa", "Outros"];
 
@@ -170,12 +171,21 @@ export default function CustoObras() {
     porcentagemImposto: "17",
   });
   const [manualExpense, setManualExpense] = useState({
+    id: null as number | null,
     categoria: "Despesa" as CostCategory,
     justificativaOutros: "",
+    codigoFornecedorCliente: "",
+    fornecedorCliente: "",
+    numeroDocumento: "",
+    tipoConta: "",
+    tipoDocumento: "",
+    dataEmissao: "",
+    dataVencimento: "",
     valorTotalDocumento: "",
     complemento: "",
     observacoesAprovacao: "",
   });
+  const [manualExpenseModalOpen, setManualExpenseModalOpen] = useState(false);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [linkSearchTerm, setLinkSearchTerm] = useState("");
   const [linkTipoContaFilter, setLinkTipoContaFilter] = useState("TODOS");
@@ -272,16 +282,21 @@ export default function CustoObras() {
   const createDespesaManual = trpc.pedidosObras.createDespesaManual.useMutation({
     onSuccess: () => {
       toast.success("Despesa cadastrada");
-      setManualExpense({
-        categoria: "Despesa",
-        justificativaOutros: "",
-        valorTotalDocumento: "",
-        complemento: "",
-        observacoesAprovacao: "",
-      });
+      resetManualExpenseForm();
+      setManualExpenseModalOpen(false);
       invalidateModal();
     },
     onError: (mutationError) => toast.error(`Erro ao cadastrar despesa: ${mutationError.message}`),
+  });
+
+  const updateDespesa = trpc.pedidosObras.updateDespesa.useMutation({
+    onSuccess: () => {
+      toast.success("Despesa atualizada");
+      resetManualExpenseForm();
+      setManualExpenseModalOpen(false);
+      invalidateModal();
+    },
+    onError: (mutationError) => toast.error(`Erro ao atualizar despesa: ${mutationError.message}`),
   });
 
   const deleteDespesa = trpc.pedidosObras.deleteDespesa.useMutation({
@@ -416,7 +431,7 @@ export default function CustoObras() {
     const faturamentoDireto = parseMoneyInput(financeForm.faturamentoDireto);
     const receita = nfes + faturamentoDireto;
     const valorTotalImposto = parseMoneyInput(financeForm.valorTotalImposto);
-    const porcentagemImposto = parseMoneyInput(financeForm.porcentagemImposto);
+    const porcentagemImposto = parsePercentInput(financeForm.porcentagemImposto);
     const valorPorcentagemImposto = valorTotalImposto * (porcentagemImposto / 100);
     const totalDespesas = modalDespesas.reduce((total: number, despesa: any) => {
       return total + numberValue(despesa.valorTotalDocumento);
@@ -434,6 +449,48 @@ export default function CustoObras() {
     setFinanceForm((current) => ({ ...current, [field]: value }));
   };
 
+  function resetManualExpenseForm() {
+    setManualExpense({
+      id: null,
+      categoria: "Despesa",
+      justificativaOutros: "",
+      codigoFornecedorCliente: "",
+      fornecedorCliente: "",
+      numeroDocumento: "",
+      tipoConta: "",
+      tipoDocumento: "",
+      dataEmissao: "",
+      dataVencimento: "",
+      valorTotalDocumento: "",
+      complemento: "",
+      observacoesAprovacao: "",
+    });
+  }
+
+  const openNewManualExpense = () => {
+    resetManualExpenseForm();
+    setManualExpenseModalOpen(true);
+  };
+
+  const openEditManualExpense = (despesa: any) => {
+    setManualExpense({
+      id: despesa.id,
+      categoria: despesa.categoria || "Despesa",
+      justificativaOutros: despesa.justificativaOutros || "",
+      codigoFornecedorCliente: despesa.codigoFornecedorCliente || "",
+      fornecedorCliente: despesa.fornecedorCliente || "",
+      numeroDocumento: despesa.numeroDocumento || "",
+      tipoConta: despesa.tipoConta || "",
+      tipoDocumento: despesa.tipoDocumento || "",
+      dataEmissao: despesa.dataEmissao || "",
+      dataVencimento: despesa.dataVencimento || "",
+      valorTotalDocumento: moneyInputValue(despesa.valorTotalDocumento),
+      complemento: despesa.complemento || "",
+      observacoesAprovacao: despesa.observacoesAprovacao || "",
+    });
+    setManualExpenseModalOpen(true);
+  };
+
   const handleSaveFinanceiro = () => {
     if (!modalPedido) return;
     saveFinanceiro.mutate({
@@ -442,7 +499,7 @@ export default function CustoObras() {
       nfes: parseMoneyInput(financeForm.nfes),
       faturamentoDireto: parseMoneyInput(financeForm.faturamentoDireto),
       valorTotalImposto: parseMoneyInput(financeForm.valorTotalImposto),
-      porcentagemImposto: parseMoneyInput(financeForm.porcentagemImposto),
+      porcentagemImposto: parsePercentInput(financeForm.porcentagemImposto),
     });
   };
 
@@ -456,15 +513,32 @@ export default function CustoObras() {
 
   const handleCreateDespesaManual = () => {
     if (!modalPedido) return;
-    createDespesaManual.mutate({
+    const payload = {
       pedidoObraId: modalPedido.id,
       pedidoNum: String(modalPedido.pedido),
       categoria: manualExpense.categoria,
       justificativaOutros: manualExpense.justificativaOutros,
+      codigoFornecedorCliente: manualExpense.codigoFornecedorCliente,
+      fornecedorCliente: manualExpense.fornecedorCliente,
+      numeroDocumento: manualExpense.numeroDocumento,
+      tipoConta: manualExpense.tipoConta,
+      tipoDocumento: manualExpense.tipoDocumento,
+      dataEmissao: manualExpense.dataEmissao,
+      dataVencimento: manualExpense.dataVencimento,
       valorTotalDocumento: parseMoneyInput(manualExpense.valorTotalDocumento),
       complemento: manualExpense.complemento,
       observacoesAprovacao: manualExpense.observacoesAprovacao,
-    });
+    };
+
+    if (manualExpense.id) {
+      updateDespesa.mutate({
+        id: manualExpense.id,
+        ...payload,
+      });
+      return;
+    }
+
+    createDespesaManual.mutate(payload);
   };
 
   const handleVincularDespesa = (despesa: any) => {
@@ -750,17 +824,23 @@ export default function CustoObras() {
                 <div className="cost-modal-cards">
                   <label>
                     <span>NFes</span>
-                    <Input
-                      value={financeForm.nfes}
-                      onChange={(event) => updateFinanceField("nfes", event.target.value)}
-                    />
+                    <div className="money-input-wrap">
+                      <span>R$</span>
+                      <Input
+                        value={financeForm.nfes}
+                        onChange={(event) => updateFinanceField("nfes", event.target.value)}
+                      />
+                    </div>
                   </label>
                   <label>
                     <span>Faturamento Direto</span>
-                    <Input
-                      value={financeForm.faturamentoDireto}
-                      onChange={(event) => updateFinanceField("faturamentoDireto", event.target.value)}
-                    />
+                    <div className="money-input-wrap">
+                      <span>R$</span>
+                      <Input
+                        value={financeForm.faturamentoDireto}
+                        onChange={(event) => updateFinanceField("faturamentoDireto", event.target.value)}
+                      />
+                    </div>
                   </label>
                   <label className="readonly">
                     <span>Receita</span>
@@ -768,10 +848,13 @@ export default function CustoObras() {
                   </label>
                   <label>
                     <span>Valor total Imposto</span>
-                    <Input
-                      value={financeForm.valorTotalImposto}
-                      onChange={(event) => updateFinanceField("valorTotalImposto", event.target.value)}
-                    />
+                    <div className="money-input-wrap">
+                      <span>R$</span>
+                      <Input
+                        value={financeForm.valorTotalImposto}
+                        onChange={(event) => updateFinanceField("valorTotalImposto", event.target.value)}
+                      />
+                    </div>
                   </label>
                   <label>
                     <span>Porcentagem %</span>
@@ -797,14 +880,7 @@ export default function CustoObras() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (manualExpense.categoria === "Outros" && !manualExpense.justificativaOutros.trim()) {
-                        toast.error("Informe a justificativa para Outros.");
-                        return;
-                      }
-                      handleCreateDespesaManual();
-                    }}
-                    disabled={createDespesaManual.isPending}
+                    onClick={openNewManualExpense}
                   >
                     <Plus size={14} />
                     Cadastrar despesa
@@ -813,55 +889,6 @@ export default function CustoObras() {
                     <Link2 size={14} />
                     Vincular saida
                   </button>
-                </div>
-
-                <div className="manual-expense-panel">
-                  <label>
-                    <span>Tipo</span>
-                    <Select
-                      value={manualExpense.categoria}
-                      onValueChange={(value) => setManualExpense((current) => ({ ...current, categoria: value as CostCategory }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categoryOptions.map((option) => (
-                          <SelectItem key={option} value={option}>{option}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </label>
-                  <label>
-                    <span>Valor</span>
-                    <Input
-                      value={manualExpense.valorTotalDocumento}
-                      onChange={(event) => setManualExpense((current) => ({ ...current, valorTotalDocumento: event.target.value }))}
-                    />
-                  </label>
-                  <label className="wide">
-                    <span>Complemento</span>
-                    <Input
-                      value={manualExpense.complemento}
-                      onChange={(event) => setManualExpense((current) => ({ ...current, complemento: event.target.value }))}
-                    />
-                  </label>
-                  <label className="wide">
-                    <span>Observacoes (Aprovacao)</span>
-                    <Input
-                      value={manualExpense.observacoesAprovacao}
-                      onChange={(event) => setManualExpense((current) => ({ ...current, observacoesAprovacao: event.target.value }))}
-                    />
-                  </label>
-                  {manualExpense.categoria === "Outros" && (
-                    <label className="wide">
-                      <span>Justificativa Outros</span>
-                      <Input
-                        value={manualExpense.justificativaOutros}
-                        onChange={(event) => setManualExpense((current) => ({ ...current, justificativaOutros: event.target.value }))}
-                      />
-                    </label>
-                  )}
                 </div>
 
                 <div className="modal-table-frame">
@@ -904,6 +931,14 @@ export default function CustoObras() {
                             <td>
                               <button
                                 type="button"
+                                className="table-icon-button"
+                                onClick={() => openEditManualExpense(despesa)}
+                                title="Editar"
+                              >
+                                <Pencil size={15} />
+                              </button>
+                              <button
+                                type="button"
                                 className="table-icon-button danger"
                                 onClick={() => deleteDespesa.mutate({ id: despesa.id, pedidoObraId: modalPedido.id })}
                                 title={despesa.origem === "vinculada" ? "Desvincular" : "Excluir"}
@@ -927,6 +962,139 @@ export default function CustoObras() {
               </>
             )}
           </section>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={manualExpenseModalOpen} onOpenChange={(open) => {
+        setManualExpenseModalOpen(open);
+        if (!open) resetManualExpenseForm();
+      }}>
+        <DialogContent className="manual-expense-dialog">
+          <DialogHeader>
+            <DialogTitle>{manualExpense.id ? "Editar despesa" : "Cadastrar despesa"}</DialogTitle>
+            <DialogDescription>Pedido {modalPedido?.pedido}</DialogDescription>
+          </DialogHeader>
+
+          <section className="manual-expense-form">
+            <label>
+              <span>Centro de custo</span>
+              <Select
+                value={manualExpense.categoria}
+                onValueChange={(value) => setManualExpense((current) => ({ ...current, categoria: value as CostCategory }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {categoryOptions.map((option) => (
+                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+            <label>
+              <span>Codigo Forn./Cliente</span>
+              <Input
+                value={manualExpense.codigoFornecedorCliente}
+                onChange={(event) => setManualExpense((current) => ({ ...current, codigoFornecedorCliente: event.target.value }))}
+              />
+            </label>
+            <label className="span-2">
+              <span>Fornecedor/Cliente</span>
+              <Input
+                value={manualExpense.fornecedorCliente}
+                onChange={(event) => setManualExpense((current) => ({ ...current, fornecedorCliente: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>Numero Documento</span>
+              <Input
+                value={manualExpense.numeroDocumento}
+                onChange={(event) => setManualExpense((current) => ({ ...current, numeroDocumento: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>Tipo Conta</span>
+              <Input
+                value={manualExpense.tipoConta}
+                onChange={(event) => setManualExpense((current) => ({ ...current, tipoConta: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>Tipo Documento</span>
+              <Input
+                value={manualExpense.tipoDocumento}
+                onChange={(event) => setManualExpense((current) => ({ ...current, tipoDocumento: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>Data Emissao</span>
+              <Input
+                value={manualExpense.dataEmissao}
+                onChange={(event) => setManualExpense((current) => ({ ...current, dataEmissao: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>Data Vencimento</span>
+              <Input
+                value={manualExpense.dataVencimento}
+                onChange={(event) => setManualExpense((current) => ({ ...current, dataVencimento: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>Valor Total</span>
+              <div className="money-input-wrap">
+                <span>R$</span>
+                <Input
+                  value={manualExpense.valorTotalDocumento}
+                  onChange={(event) => setManualExpense((current) => ({ ...current, valorTotalDocumento: event.target.value }))}
+                />
+              </div>
+            </label>
+            <label className="span-2">
+              <span>Complemento</span>
+              <Input
+                value={manualExpense.complemento}
+                onChange={(event) => setManualExpense((current) => ({ ...current, complemento: event.target.value }))}
+              />
+            </label>
+            <label className="span-2">
+              <span>Observacoes (Aprovacao)</span>
+              <Input
+                value={manualExpense.observacoesAprovacao}
+                onChange={(event) => setManualExpense((current) => ({ ...current, observacoesAprovacao: event.target.value }))}
+              />
+            </label>
+            {manualExpense.categoria === "Outros" && (
+              <label className="span-2">
+                <span>Justificativa Outros</span>
+                <Input
+                  value={manualExpense.justificativaOutros}
+                  onChange={(event) => setManualExpense((current) => ({ ...current, justificativaOutros: event.target.value }))}
+                />
+              </label>
+            )}
+          </section>
+
+          <footer className="manual-expense-actions">
+            <button type="button" onClick={() => setManualExpenseModalOpen(false)}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (manualExpense.categoria === "Outros" && !manualExpense.justificativaOutros.trim()) {
+                  toast.error("Informe a justificativa para Outros.");
+                  return;
+                }
+                handleCreateDespesaManual();
+              }}
+              disabled={createDespesaManual.isPending || updateDespesa.isPending}
+            >
+              <Save size={14} />
+              {createDespesaManual.isPending || updateDespesa.isPending ? "Salvando..." : "Salvar"}
+            </button>
+          </footer>
         </DialogContent>
       </Dialog>
 
