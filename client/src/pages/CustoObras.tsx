@@ -1,4 +1,5 @@
 import { trpc } from "@/lib/trpc";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -101,6 +102,7 @@ export default function CustoObras() {
   const [statusFilter, setStatusFilter] = useState("TODOS");
   const [prioridadeFilter, setPrioridadeFilter] = useState("TODOS");
   const [selectedPedido, setSelectedPedido] = useState<any>(null);
+  const [modalPedido, setModalPedido] = useState<any>(null);
   const [sortColumn, setSortColumn] = useState<SortColumn>("pedido");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
@@ -124,13 +126,6 @@ export default function CustoObras() {
       refetch();
       void utils.crti.ultimaAtualizacaoObras.invalidate();
     },
-  });
-
-  const { mutate: salvarObservacoes } = trpc.pedidosObras.updateObservacoes.useMutation({
-    onSuccess: () => {
-      void utils.pedidosObras.list.invalidate();
-    },
-    onError: (saveError) => toast.error(`Erro ao salvar observacao: ${saveError.message}`),
   });
 
   const visiblePedidos = useMemo(() => {
@@ -177,18 +172,6 @@ export default function CustoObras() {
     const index = Array.from(header.parentElement.children).indexOf(header);
     const column = tableColumns[index]?.key;
     if (column) toggleSort(column);
-  };
-
-  const handleObservationBlur = (
-    pedido: any,
-    field: "observacoesPagamento" | "observacoes" | "observacoesOperador",
-    value: string,
-  ) => {
-    if (String(pedido[field] || "") === value) return;
-    salvarObservacoes({
-      id: pedido.id,
-      data: { [field]: value },
-    });
   };
 
   return (
@@ -286,25 +269,22 @@ export default function CustoObras() {
                     <th>A Granel</th>
                     <th>Total (R$)</th>
                     <th>Saldo (R$)</th>
-                    <th>Observacoes de Pagamento</th>
-                    <th>Observacoes</th>
-                    <th>Observacoes para o Operador</th>
                   </tr>
                 </thead>
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td colSpan={13} className="desktop-empty">Carregando pedidos de obras...</td>
+                      <td colSpan={10} className="desktop-empty">Carregando pedidos de obras...</td>
                     </tr>
                   ) : error ? (
                     <tr>
-                      <td colSpan={13} className="desktop-empty">
+                      <td colSpan={10} className="desktop-empty">
                         Erro ao carregar pedidos de obras: {error.message}
                       </td>
                     </tr>
                   ) : visiblePedidos.length === 0 ? (
                     <tr>
-                      <td colSpan={13} className="desktop-empty">Nenhum pedido de obras encontrado</td>
+                      <td colSpan={10} className="desktop-empty">Nenhum pedido de obras encontrado</td>
                     </tr>
                   ) : (
                     visiblePedidos.map((pedido) => {
@@ -314,6 +294,10 @@ export default function CustoObras() {
                           key={pedido.id}
                           className={selected ? "selected" : ""}
                           onClick={() => setSelectedPedido(pedido)}
+                          onDoubleClick={() => {
+                            setSelectedPedido(pedido);
+                            setModalPedido(pedido);
+                          }}
                         >
                           <td>{pedido.pedido}</td>
                           <td>{pedido.dataPedido}</td>
@@ -325,27 +309,6 @@ export default function CustoObras() {
                           <td className="num">{formatDecimal(pedido.qtdeGranel, 3)}</td>
                           <td className="num">{formatCurrency(pedido.totalPedido)}</td>
                           <td className="num">{formatCurrency(pedido.saldo)}</td>
-                          <td>
-                            <textarea
-                              className="cost-observation-input"
-                              defaultValue={pedido.observacoesPagamento || ""}
-                              onBlur={(event) => handleObservationBlur(pedido, "observacoesPagamento", event.target.value)}
-                            />
-                          </td>
-                          <td>
-                            <textarea
-                              className="cost-observation-input"
-                              defaultValue={pedido.observacoes || ""}
-                              onBlur={(event) => handleObservationBlur(pedido, "observacoes", event.target.value)}
-                            />
-                          </td>
-                          <td>
-                            <textarea
-                              className="cost-observation-input"
-                              defaultValue={pedido.observacoesOperador || ""}
-                              onBlur={(event) => handleObservationBlur(pedido, "observacoesOperador", event.target.value)}
-                            />
-                          </td>
                         </tr>
                       );
                     })
@@ -377,6 +340,16 @@ export default function CustoObras() {
           <p>Modulo criado para integracao posterior.</p>
         </section>
       )}
+
+      <Dialog open={Boolean(modalPedido)} onOpenChange={(open) => !open && setModalPedido(null)}>
+        <DialogContent className="cost-detail-dialog">
+          <DialogHeader>
+            <DialogTitle>Pedido {modalPedido?.pedido}</DialogTitle>
+            <DialogDescription>{modalPedido?.cliente}</DialogDescription>
+          </DialogHeader>
+          <section className="cost-detail-empty" aria-label="Area de trabalho do pedido" />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
