@@ -4,6 +4,23 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --sap-shell: #dfe6ef;
+  --sap-panel: #f6f8fb;
+  --sap-panel-strong: #eef3f8;
+  --sap-bar: #d4deea;
+  --sap-bar-dark: #2f4057;
+  --sap-line: #9fb0c2;
+  --sap-line-soft: #c5d0dc;
+  --sap-cell: #f8fafc;
+  --sap-cell-alt: #edf3f8;
+  --sap-hover: #dbeaf7;
+  --sap-selected: #627f93;
+  --sap-text: #001b34;
+  --sap-muted: #40566d;
+  --sap-yellow: #f5a623;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -282,27 +299,30 @@
 /* Desktop original style */
 .desktop-shell {
   min-height: 100vh;
-  background: #ffffff;
-  color: #000;
+  background: var(--sap-shell);
+  color: #111827;
   font-family: "Segoe UI", Arial, sans-serif;
   font-size: 12px;
   overflow: hidden;
+  border: 1px solid #aebdcc;
 }
 
 .desktop-titlebar {
-  height: 78px;
+  height: 68px;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 14px 4px;
-  background: #fff;
+  padding: 7px 14px;
+  background: linear-gradient(#f8fafc, #e5edf6);
+  border-bottom: 1px solid var(--sap-line);
+  box-shadow: inset 0 1px 0 #ffffff;
 }
 
 .desktop-brand-logo {
-  width: 64px;
-  height: 64px;
+  width: 50px;
+  height: 50px;
   object-fit: contain;
-  flex: 0 0 64px;
+  flex: 0 0 50px;
 }
 
 .desktop-heading {
@@ -313,14 +333,16 @@
 }
 
 .desktop-heading h1 {
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1;
   font-weight: 800;
-  color: #00142a;
+  color: var(--sap-text);
+  letter-spacing: 0;
 }
 
 .desktop-heading strong {
-  font-size: 13px;
+  color: #0f2747;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -329,9 +351,9 @@
   height: 31px;
   min-width: 82px;
   padding: 0 12px;
-  border: 1px solid #cbd2d8;
-  background: #edf2f3;
-  color: #2c3e50;
+  border: 1px solid #9eafc1;
+  background: linear-gradient(#ffffff, #dce6f0);
+  color: var(--sap-text);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -341,7 +363,8 @@
 }
 
 .desktop-logout:hover {
-  background: #dde6ea;
+  background: linear-gradient(#fffaf0, #f3dfac);
+  border-color: #b98a1c;
 }
 
 .desktop-logout:disabled {
@@ -352,21 +375,25 @@
 .desktop-toolbar {
   display: grid;
   grid-template-columns: repeat(6, minmax(110px, 1fr));
-  gap: 4px;
-  min-height: 36px;
-  margin: 0 6px 8px;
+  gap: 3px;
+  min-height: 34px;
+  margin: 0;
+  padding: 7px 12px;
+  background: linear-gradient(#edf3f8, #d7e1ec);
+  border-bottom: 1px solid var(--sap-line);
 }
 
 .desk-action {
-  height: 31px;
+  height: 28px;
   min-width: 0;
-  border: 0;
-  color: #fff;
+  border: 1px solid #768ba3;
+  color: #ffffff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   font-size: 12px;
+  font-weight: 700;
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
@@ -377,25 +404,33 @@
   cursor: default;
 }
 
-.action-new { background: #1abc9c; }
-.action-edit { background: #2c3e50; }
-.action-contact { background: #3498db; }
-.action-history { background: #95a5a6; }
-.action-delete { background: #e74c3c; }
-.action-stock { background: #7c3aed; }
+.desk-action:hover {
+  filter: brightness(1.05);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28);
+}
+
+.action-new { background: linear-gradient(#2fc6aa, #168d78); }
+.action-edit { background: linear-gradient(#42566d, #26394f); }
+.action-contact { background: linear-gradient(#4aa7df, #1d75ad); }
+.action-history { background: linear-gradient(#a8b7bb, #74878d); }
+.action-delete { background: linear-gradient(#f15a4e, #c8352c); }
+.action-stock { background: linear-gradient(#9058ee, #6b2bc7); }
 
 .desktop-filters {
-  min-height: 38px;
+  min-height: 35px;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 7px;
-  padding: 0 12px 8px;
+  gap: 6px;
+  padding: 6px 12px;
+  background: linear-gradient(#f6f8fb, #e5edf5);
+  border-bottom: 1px solid var(--sap-line-soft);
   position: relative;
   z-index: 2;
 }
 
 .desktop-filters label {
+  color: var(--sap-text);
   font-weight: 700;
 }
 
@@ -408,26 +443,27 @@
 .desktop-select {
   width: 100px;
   flex: 0 0 100px;
-  height: 29px;
+  height: 27px;
 }
 
 .desktop-search {
   width: min(484px, 38vw);
   min-width: 220px;
   flex: 1 1 260px;
-  height: 29px;
+  height: 27px;
   border-radius: 0;
-  border-color: #cbd2d8;
+  border-color: #9fb0c2;
+  background: #ffffff;
 }
 
 .desktop-refresh {
   margin-left: auto;
-  height: 31px;
+  height: 28px;
   min-width: 104px;
   padding: 0 14px;
-  border: 0;
-  background: #edf2f3;
-  color: #607078;
+  border: 1px solid #9eafc1;
+  background: linear-gradient(#ffffff, #dce6f0);
+  color: var(--sap-muted);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -442,15 +478,18 @@
 }
 
 .desktop-grid-frame {
-  height: calc(100vh - 166px);
-  padding: 0 6px;
+  height: calc(100vh - 165px);
+  padding: 0 8px;
+  background: var(--sap-panel);
 }
 
 .desktop-table-scroll {
   height: 100%;
   overflow: auto;
-  border: 1px solid #cbd2d8;
+  border: 1px solid var(--sap-line);
   border-bottom: 0;
+  background: #ffffff;
+  box-shadow: inset 1px 1px 0 #ffffff;
 }
 
 .desktop-table {
@@ -465,39 +504,49 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #fff;
-  height: 29px;
-  color: #00142a;
-  font-weight: 400;
-  border-bottom: 1px solid #cbd2d8;
+  background: linear-gradient(#f9fbfd, #d8e3ef);
+  height: 27px;
+  color: var(--sap-text);
+  font-weight: 700;
+  border-right: 1px solid #c9d4df;
+  border-bottom: 1px solid var(--sap-line);
   cursor: pointer;
   user-select: none;
 }
 
 .desktop-table th:hover {
-  background: #e8eef3;
+  background: linear-gradient(#fff8e8, #ead28d);
 }
 
 .desktop-table td {
-  height: 15px;
-  padding: 0 8px;
-  line-height: 15px;
+  height: 18px;
+  padding: 0 7px;
+  line-height: 18px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: clip;
+  border-right: 1px solid #d7e0ea;
+}
+
+.desktop-table tbody tr:nth-child(odd) {
+  background: var(--sap-cell);
+}
+
+.desktop-table tbody tr:nth-child(even) {
+  background: var(--sap-cell-alt);
 }
 
 .desktop-table tr:nth-child(-n + 3) {
-  background: #fff2c7;
+  background: #fff1bd;
 }
 
 .desktop-table tr.selected {
-  background: #94a5a2 !important;
+  background: var(--sap-selected) !important;
   color: #fff;
 }
 
 .desktop-table tr:hover {
-  background: #dce9ee;
+  background: var(--sap-hover);
 }
 
 .desktop-table th:nth-child(1), .desktop-table td:nth-child(1) { width: 72px; text-align: center; }
@@ -537,12 +586,14 @@
 }
 
 .desktop-footer {
-  height: 58px;
+  height: 56px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 7px 6px 4px;
-  border-top: 1px solid #d7dee3;
+  padding: 7px 10px 4px;
+  border-top: 1px solid var(--sap-line);
+  background: linear-gradient(#edf3f8, #d7e1ec);
+  box-shadow: inset 0 1px 0 #ffffff;
 }
 
 .desktop-subtotals {
@@ -1385,23 +1436,25 @@
 }
 
 .costs-shell {
-  background: #f6f8fb;
+  background: var(--sap-shell);
 }
 
 .cost-tabs {
   display: flex;
-  gap: 2px;
-  padding: 12px 16px 0;
-  background: #ffffff;
+  gap: 1px;
+  padding: 8px 12px 0;
+  background: linear-gradient(#f6f8fb, #e4edf6);
+  border-bottom: 1px solid var(--sap-line);
 }
 
 .cost-tabs button {
-  height: 32px;
+  height: 29px;
   min-width: 220px;
-  border: 3px solid #0f2747;
-  border-radius: 7px 7px 4px 4px;
-  background: #ffffff;
-  color: #001b34;
+  border: 1px solid #8fa2b7;
+  border-bottom: 0;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(#ffffff, #dce6f0);
+  color: var(--sap-text);
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -1409,8 +1462,9 @@
 }
 
 .cost-tabs button.active {
-  background: #eef4fb;
-  box-shadow: inset 0 -2px 0 #f5a623;
+  background: linear-gradient(#fffaf0, #f4dfa8);
+  border-color: #9f7b22;
+  box-shadow: inset 0 3px 0 var(--sap-yellow);
 }
 
 .costs-grid-frame {
@@ -1489,7 +1543,7 @@
   grid-template-rows: auto auto;
   align-items: center;
   gap: 6px 12px;
-  padding: 8px 10px;
+  padding: 7px 10px;
 }
 
 .costs-shell .desktop-subtotals {
@@ -1534,14 +1588,14 @@
 }
 
 .cost-pagination button {
-  width: 30px;
-  height: 28px;
+  width: 28px;
+  height: 26px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #b9c5d0;
-  border-radius: 3px;
-  background: #ffffff;
+  border: 1px solid #9eafc1;
+  border-radius: 2px;
+  background: linear-gradient(#ffffff, #dce6f0);
   color: #0f2747;
   cursor: pointer;
 }
@@ -1554,8 +1608,8 @@
 
 .cost-page-size {
   width: 76px;
-  height: 28px;
-  border-radius: 3px;
+  height: 26px;
+  border-radius: 2px;
   background: #ffffff;
 }
 
@@ -1584,16 +1638,17 @@
   gap: 0;
   padding: 0;
   overflow: hidden;
-  border: 1px solid #9fb0c2;
-  border-radius: 4px;
-  background: #ffffff;
+  border: 1px solid #8198b0;
+  border-radius: 3px;
+  background: var(--sap-panel);
+  box-shadow: 0 16px 46px rgba(20, 37, 56, .35);
 }
 
 .cost-detail-dialog [data-slot="dialog-header"] {
-  min-height: 58px;
-  padding: 14px 56px 10px 18px;
-  border-bottom: 1px solid #c9d4df;
-  background: #f7f9fb;
+  min-height: 54px;
+  padding: 12px 56px 9px 18px;
+  border-bottom: 1px solid var(--sap-line);
+  background: linear-gradient(#f9fbfd, #d8e3ef);
 }
 
 .cost-detail-dialog [data-slot="dialog-title"] {
@@ -1640,9 +1695,9 @@
   min-height: 0;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
-  gap: 10px;
-  padding: 12px 16px;
-  background: #f3f6f9;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--sap-panel);
 }
 
 .cost-detail-loading {
@@ -1680,8 +1735,8 @@
 .money-input-wrap input,
 .link-justification {
   height: 30px;
-  border: 1px solid #b7c4d2;
-  border-radius: 2px;
+  border: 1px solid #9fb0c2;
+  border-radius: 0;
   background: #ffffff;
   color: #001b34;
   font-size: 12px;
@@ -1692,7 +1747,7 @@
   grid-template-columns: 34px minmax(0, 1fr);
   align-items: center;
   height: 30px;
-  border: 1px solid #b7c4d2;
+  border: 1px solid #9fb0c2;
   background: #ffffff;
 }
 
@@ -1702,7 +1757,7 @@
   align-items: center;
   justify-content: center;
   border-right: 1px solid #d5dde6;
-  background: #eef4fb;
+  background: linear-gradient(#f8fafc, #d8e3ef);
   color: #001b34;
   font-size: 12px;
   font-weight: 800;
@@ -1718,8 +1773,8 @@
   justify-content: space-between;
   min-height: 54px;
   padding: 7px 9px;
-  border: 1px solid #b7c4d2;
-  background: #ffffff;
+  border: 1px solid #9fb0c2;
+  background: linear-gradient(#ffffff, #f3f7fb);
 }
 
 .cost-modal-cards .readonly strong {
@@ -1741,9 +1796,9 @@
   justify-content: center;
   gap: 7px;
   min-height: 30px;
-  border: 1px solid #0b294d;
+  border: 1px solid #8fa2b7;
   border-radius: 2px;
-  background: #ffffff;
+  background: linear-gradient(#ffffff, #dce6f0);
   color: #001b34;
   font-size: 12px;
   font-weight: 800;
@@ -1755,7 +1810,8 @@
 
 .cost-modal-actions button:hover,
 .table-icon-button:hover {
-  background: #eef4fb;
+  background: linear-gradient(#fffaf0, #f4dfa8);
+  border-color: #a47d1d;
 }
 
 .cost-modal-actions button:disabled,
@@ -1799,8 +1855,8 @@
 .modal-table-frame {
   min-height: 0;
   overflow: auto;
-  border: 1px solid #c6d3df;
-  background: #eef2f6;
+  border: 1px solid var(--sap-line);
+  background: #ffffff;
 }
 
 .modal-expenses-table {
@@ -1831,11 +1887,12 @@
   align-items: center;
   justify-content: flex-end;
   gap: 22px;
-  min-height: 34px;
+  min-height: 32px;
   padding: 0 8px;
-  border-top: 1px solid #c6d3df;
+  border-top: 1px solid var(--sap-line);
   color: #001b34;
   font-size: 12px;
+  background: linear-gradient(#edf3f8, #d7e1ec);
 }
 
 .cost-modal-summary strong {
@@ -1857,9 +1914,10 @@
   gap: 8px;
   padding: 14px;
   overflow: hidden;
-  border: 1px solid #9fb0c2;
-  border-radius: 4px;
-  background: #f3f6f9;
+  border: 1px solid #8198b0;
+  border-radius: 3px;
+  background: var(--sap-panel);
+  box-shadow: 0 16px 46px rgba(20, 37, 56, .35);
 }
 
 [data-slot="dialog-content"].manual-expense-dialog {
@@ -1871,9 +1929,10 @@
   gap: 12px;
   padding: 16px;
   overflow: hidden;
-  border: 1px solid #9fb0c2;
-  border-radius: 4px;
-  background: #f3f6f9;
+  border: 1px solid #8198b0;
+  border-radius: 3px;
+  background: var(--sap-panel);
+  box-shadow: 0 16px 46px rgba(20, 37, 56, .35);
 }
 
 .manual-expense-dialog [data-slot="dialog-title"] {
