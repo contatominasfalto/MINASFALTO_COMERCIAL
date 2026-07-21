@@ -1842,6 +1842,11 @@
   font-size: 14px;
 }
 
+.negative-amount {
+  color: #c51616 !important;
+  font-weight: 800 !important;
+}
+
 [data-slot="dialog-content"].expense-link-dialog {
   width: calc(100vw - 96px);
   max-width: none;

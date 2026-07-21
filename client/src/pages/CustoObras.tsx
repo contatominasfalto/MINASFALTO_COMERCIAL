@@ -54,6 +54,7 @@ const formatCurrencyOrBlank = (value: unknown) => {
   if (value === null || value === undefined || value === "") return "";
   return formatCurrency(value);
 };
+const isNegativeAmount = (value: unknown) => value !== null && value !== undefined && value !== "" && numberValue(value) < 0;
 
 const formatDecimal = (value: unknown, digits = 0) =>
   new Intl.NumberFormat("pt-BR", {
@@ -685,7 +686,9 @@ export default function CustoObras() {
                           <td className="num">{formatDecimal(pedido.qtdeTapFacil)}</td>
                           <td className="num">{formatDecimal(pedido.qtdeGranel, 3)}</td>
                           <td className="num">{formatCurrencyOrBlank(pedido.totalPedido)}</td>
-                          <td className="num">{formatCurrencyOrBlank(pedido.saldo)}</td>
+                          <td className={`num ${isNegativeAmount(pedido.saldo) ? "negative-amount" : ""}`}>
+                            {formatCurrencyOrBlank(pedido.saldo)}
+                          </td>
                         </tr>
                       );
                     })
@@ -970,7 +973,9 @@ export default function CustoObras() {
                   <span>Receita: <b>{formatCurrency(modalCalculations.receita)}</b></span>
                   <span>Imposto: <b>{formatCurrency(modalCalculations.valorPorcentagemImposto)}</b></span>
                   <span>Despesas: <b>{formatCurrency(modalCalculations.totalDespesas)}</b></span>
-                  <strong>Saldo: {formatCurrency(modalCalculations.saldo)}</strong>
+                  <strong className={modalCalculations.saldo < 0 ? "negative-amount" : ""}>
+                    Saldo: {formatCurrency(modalCalculations.saldo)}
+                  </strong>
                 </footer>
               </>
             )}
