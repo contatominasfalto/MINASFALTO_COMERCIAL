@@ -989,25 +989,47 @@ export async function createPedidoObraDespesaManual(data: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  if (!_pool) throw new Error("Database pool not available");
 
-  return db.insert(pedidoObraDespesas).values({
-    pedidoObraId: data.pedidoObraId,
-    pedidoNum: data.pedidoNum,
-    origem: "manual",
-    categoria: data.categoria,
-    justificativaOutros: data.justificativaOutros || "",
-    codigoFornecedorCliente: data.codigoFornecedorCliente || "",
-    fornecedorCliente: data.fornecedorCliente || "",
-    numeroDocumento: data.numeroDocumento || "",
-    tipoConta: data.tipoConta || "",
-    tipoDocumento: data.tipoDocumento || "",
-    dataEmissao: data.dataEmissao || "",
-    dataVencimento: data.dataVencimento || "",
-    valorTotalDocumento: String(data.valorTotalDocumento),
-    complemento: data.complemento || "",
-    observacoesAprovacao: data.observacoesAprovacao || "",
-    criadoPor: data.criadoPor || "Sistema",
-  });
+  return _pool.query(
+    `
+      INSERT INTO pedido_obra_despesas (
+        pedidoObraId,
+        pedidoNum,
+        origem,
+        categoria,
+        justificativaOutros,
+        codigoFornecedorCliente,
+        fornecedorCliente,
+        numeroDocumento,
+        tipoConta,
+        tipoDocumento,
+        dataEmissao,
+        dataVencimento,
+        valorTotalDocumento,
+        complemento,
+        observacoesAprovacao,
+        criadoPor
+      ) VALUES (?, ?, 'manual', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      data.pedidoObraId,
+      data.pedidoNum,
+      data.categoria,
+      data.justificativaOutros || "",
+      data.codigoFornecedorCliente || "",
+      data.fornecedorCliente || "",
+      data.numeroDocumento || "",
+      data.tipoConta || "",
+      data.tipoDocumento || "",
+      data.dataEmissao || "",
+      data.dataVencimento || "",
+      data.valorTotalDocumento,
+      data.complemento || "",
+      data.observacoesAprovacao || "",
+      data.criadoPor || "Sistema",
+    ],
+  );
 }
 
 export async function updatePedidoObraDespesa(data: {
@@ -1028,36 +1050,44 @@ export async function updatePedidoObraDespesa(data: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  if (!_pool) throw new Error("Database pool not available");
 
-  const values: Record<string, unknown> = {
-    categoria: data.categoria,
-    justificativaOutros: data.justificativaOutros || "",
-    atualizadoEm: new Date(),
-  };
-
-  const textFields = [
-    "codigoFornecedorCliente",
-    "fornecedorCliente",
-    "numeroDocumento",
-    "tipoConta",
-    "tipoDocumento",
-    "dataEmissao",
-    "dataVencimento",
-    "complemento",
-    "observacoesAprovacao",
-  ] as const;
-
-  for (const field of textFields) {
-    if (data[field] !== undefined) values[field] = data[field] || "";
-  }
-
-  if (data.valorTotalDocumento !== undefined) {
-    values.valorTotalDocumento = String(data.valorTotalDocumento);
-  }
-
-  return db.update(pedidoObraDespesas)
-    .set(values)
-    .where(and(eq(pedidoObraDespesas.id, data.id), eq(pedidoObraDespesas.pedidoObraId, data.pedidoObraId)));
+  return _pool.query(
+    `
+      UPDATE pedido_obra_despesas
+      SET
+        categoria = ?,
+        justificativaOutros = ?,
+        codigoFornecedorCliente = ?,
+        fornecedorCliente = ?,
+        numeroDocumento = ?,
+        tipoConta = ?,
+        tipoDocumento = ?,
+        dataEmissao = ?,
+        dataVencimento = ?,
+        valorTotalDocumento = ?,
+        complemento = ?,
+        observacoesAprovacao = ?,
+        atualizadoEm = CURRENT_TIMESTAMP
+      WHERE id = ? AND pedidoObraId = ?
+    `,
+    [
+      data.categoria,
+      data.justificativaOutros || "",
+      data.codigoFornecedorCliente || "",
+      data.fornecedorCliente || "",
+      data.numeroDocumento || "",
+      data.tipoConta || "",
+      data.tipoDocumento || "",
+      data.dataEmissao || "",
+      data.dataVencimento || "",
+      data.valorTotalDocumento ?? 0,
+      data.complemento || "",
+      data.observacoesAprovacao || "",
+      data.id,
+      data.pedidoObraId,
+    ],
+  );
 }
 
 export async function deletePedidoObraDespesa(id: number, pedidoObraId: number) {
