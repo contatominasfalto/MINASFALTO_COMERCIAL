@@ -100,6 +100,54 @@ try {
     )
   `);
 
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS pedido_obra_financeiro (
+      id int AUTO_INCREMENT NOT NULL,
+      pedidoObraId int NOT NULL,
+      pedidoNum varchar(50) NOT NULL,
+      nfes decimal(18,2) DEFAULT '0',
+      faturamentoDireto decimal(18,2) DEFAULT '0',
+      valorTotalImposto decimal(18,2) DEFAULT '0',
+      porcentagemImposto decimal(5,2) DEFAULT '17.00',
+      criadoEm timestamp DEFAULT CURRENT_TIMESTAMP,
+      atualizadoEm timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY pedido_obra_financeiro_pedidoObraId_unique (pedidoObraId),
+      INDEX pedido_obra_financeiro_pedidoObraId_idx (pedidoObraId),
+      INDEX pedido_obra_financeiro_pedidoNum_idx (pedidoNum)
+    )
+  `);
+
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS pedido_obra_despesas (
+      id int AUTO_INCREMENT NOT NULL,
+      pedidoObraId int NOT NULL,
+      pedidoNum varchar(50) NOT NULL,
+      despesaTabelaGeralId int NULL,
+      origem enum('manual','vinculada') NOT NULL DEFAULT 'manual',
+      categoria enum('Custo','Despesa','Outros') NOT NULL DEFAULT 'Despesa',
+      justificativaOutros text DEFAULT (''),
+      codigoFornecedorCliente varchar(50) NULL,
+      fornecedorCliente varchar(255) NULL,
+      numeroDocumento varchar(80) NULL,
+      tipoConta varchar(50) NULL,
+      tipoDocumento varchar(100) NULL,
+      dataEmissao varchar(10) NULL,
+      dataVencimento varchar(10) NULL,
+      valorTotalDocumento decimal(18,2) DEFAULT '0',
+      complemento text DEFAULT (''),
+      observacoesAprovacao text DEFAULT (''),
+      criadoPor varchar(100) DEFAULT 'Sistema',
+      criadoEm timestamp DEFAULT CURRENT_TIMESTAMP,
+      atualizadoEm timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY pedido_obra_despesas_despesaTabelaGeralId_unique (despesaTabelaGeralId),
+      INDEX pedido_obra_despesas_pedidoObraId_idx (pedidoObraId),
+      INDEX pedido_obra_despesas_pedidoNum_idx (pedidoNum),
+      INDEX pedido_obra_despesas_despesaTabelaGeralId_idx (despesaTabelaGeralId)
+    )
+  `);
+
   const [userProfileColumns] = await connection.query("SHOW COLUMNS FROM users LIKE 'profile'");
   if (userProfileColumns.length === 0) {
     await connection.query(

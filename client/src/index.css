@@ -1634,3 +1634,216 @@
   flex: 1;
   background: #ffffff;
 }
+
+.cost-detail-workspace {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #f3f6f9;
+}
+
+.cost-detail-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #415265;
+  font-size: 13px;
+}
+
+.cost-modal-cards {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.cost-modal-cards label,
+.manual-expense-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.cost-modal-cards span,
+.manual-expense-panel span {
+  color: #001b34;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.cost-modal-cards input,
+.manual-expense-panel input,
+.link-justification {
+  height: 30px;
+  border: 1px solid #b7c4d2;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #001b34;
+  font-size: 12px;
+}
+
+.cost-modal-cards .readonly {
+  justify-content: space-between;
+  min-height: 54px;
+  padding: 7px 9px;
+  border: 1px solid #b7c4d2;
+  background: #ffffff;
+}
+
+.cost-modal-cards .readonly strong {
+  color: #001b34;
+  font-size: 15px;
+}
+
+.cost-modal-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.cost-modal-actions button,
+.table-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 30px;
+  border: 1px solid #0b294d;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #001b34;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cost-modal-actions button {
+  padding: 0 14px;
+}
+
+.cost-modal-actions button:hover,
+.table-icon-button:hover {
+  background: #eef4fb;
+}
+
+.cost-modal-actions button:disabled,
+.table-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.table-icon-button {
+  width: 28px;
+  height: 28px;
+}
+
+.table-icon-button.danger {
+  border-color: #a9342f;
+  color: #a9342f;
+}
+
+.manual-expense-panel {
+  display: grid;
+  grid-template-columns: 140px 140px minmax(240px, 1fr) minmax(240px, 1fr);
+  gap: 8px;
+  align-items: end;
+  padding: 8px;
+  border: 1px solid #c9d4df;
+  background: #ffffff;
+}
+
+.manual-expense-panel .wide {
+  min-width: 220px;
+}
+
+.modal-table-frame {
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid #c6d3df;
+  background: #eef2f6;
+}
+
+.modal-expenses-table {
+  min-width: 1480px;
+}
+
+.modal-expenses-table th,
+.modal-expenses-table td {
+  height: 25px;
+  font-size: 11px;
+}
+
+.modal-expenses-table th:nth-child(1), .modal-expenses-table td:nth-child(1) { width: 130px; text-align: center; }
+.modal-expenses-table th:nth-child(2), .modal-expenses-table td:nth-child(2) { width: 250px; }
+.modal-expenses-table th:nth-child(3), .modal-expenses-table td:nth-child(3) { width: 130px; text-align: center; }
+.modal-expenses-table th:nth-child(4), .modal-expenses-table td:nth-child(4) { width: 90px; text-align: center; }
+.modal-expenses-table th:nth-child(5), .modal-expenses-table td:nth-child(5) { width: 120px; text-align: center; }
+.modal-expenses-table th:nth-child(6), .modal-expenses-table td:nth-child(6) { width: 110px; text-align: center; }
+.modal-expenses-table th:nth-child(7), .modal-expenses-table td:nth-child(7) { width: 118px; text-align: center; }
+.modal-expenses-table th:nth-child(8), .modal-expenses-table td:nth-child(8) { width: 120px; text-align: right; }
+.modal-expenses-table th:nth-child(9), .modal-expenses-table td:nth-child(9) { width: 290px; }
+.modal-expenses-table th:nth-child(10), .modal-expenses-table td:nth-child(10) { width: 190px; }
+.modal-expenses-table th:nth-child(11), .modal-expenses-table td:nth-child(11) { width: 78px; text-align: center; }
+.modal-expenses-table th:nth-child(12), .modal-expenses-table td:nth-child(12) { width: 58px; text-align: center; }
+
+.cost-modal-summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 22px;
+  min-height: 34px;
+  padding: 0 8px;
+  border-top: 1px solid #c6d3df;
+  color: #001b34;
+  font-size: 12px;
+}
+
+.cost-modal-summary strong {
+  font-size: 14px;
+}
+
+[data-slot="dialog-content"].expense-link-dialog {
+  width: calc(100vw - 96px);
+  max-width: none;
+  height: calc(100vh - 96px);
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  overflow: hidden;
+  border: 1px solid #9fb0c2;
+  border-radius: 4px;
+  background: #f3f6f9;
+}
+
+.expense-link-dialog [data-slot="dialog-header"] {
+  padding-right: 44px;
+}
+
+.expense-link-dialog [data-slot="dialog-title"] {
+  color: #001b34;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.expense-link-dialog [data-slot="dialog-description"] {
+  color: #415265;
+  font-size: 12px;
+}
+
+.link-filters {
+  margin: 0;
+}
+
+.link-justification {
+  flex: 0 0 auto;
+}
+
+.link-table-frame {
+  flex: 1;
+}

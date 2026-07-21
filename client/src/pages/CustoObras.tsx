@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCw, Search } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Link2, Plus, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ type SortColumn =
   | "saldo";
 
 type ActiveTab = "pedidos" | "tabela";
+type CostCategory = "Custo" | "Despesa" | "Outros";
 
 type PaginationState = {
   page: number;
@@ -31,6 +32,9 @@ type PaginationState = {
 };
 
 const numberValue = (value: unknown) => Number(value) || 0;
+const parseMoneyInput = (value: unknown) => Number(String(value || "0").replace(/\./g, "").replace(",", ".")) || 0;
+const moneyInputValue = (value: unknown) => String(value ?? "0");
+const categoryOptions: CostCategory[] = ["Custo", "Despesa", "Outros"];
 
 const formatCurrency = (value: unknown) =>
   new Intl.NumberFormat("pt-BR", {
@@ -159,6 +163,26 @@ export default function CustoObras() {
   const [tabelaPageSize, setTabelaPageSize] = useState(50);
   const [sortColumn, setSortColumn] = useState<SortColumn>("pedido");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [financeForm, setFinanceForm] = useState({
+    nfes: "0",
+    faturamentoDireto: "0",
+    valorTotalImposto: "0",
+    porcentagemImposto: "17",
+  });
+  const [manualExpense, setManualExpense] = useState({
+    categoria: "Despesa" as CostCategory,
+    justificativaOutros: "",
+    valorTotalDocumento: "",
+    complemento: "",
+    observacoesAprovacao: "",
+  });
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [linkSearchTerm, setLinkSearchTerm] = useState("");
+  const [linkTipoContaFilter, setLinkTipoContaFilter] = useState("TODOS");
+  const [linkPage, setLinkPage] = useState(1);
+  const [linkPageSize, setLinkPageSize] = useState(25);
+  const [linkCategory, setLinkCategory] = useState<CostCategory>("Despesa");
+  const [linkJustificativa, setLinkJustificativa] = useState("");
 
   const { data: pedidosResult, error, isLoading, refetch } = trpc.pedidosObras.list.useQuery({
     status: statusFilter,
@@ -183,6 +207,25 @@ export default function CustoObras() {
   const despesasTotal = despesasResult?.total ?? 0;
   const despesasTotalPages = despesasResult?.totalPages ?? 1;
   const { data: ultimaAtualizacao } = trpc.crti.ultimaAtualizacaoObras.useQuery();
+  const modalPedidoId = Number(modalPedido?.id || 0);
+  const { data: modalData, isLoading: isLoadingModal } = trpc.pedidosObras.modal.useQuery(
+    { pedidoObraId: modalPedidoId },
+    { enabled: Boolean(modalPedidoId) },
+  );
+  const modalDespesas = modalData?.despesas ?? [];
+  const { data: availableExpensesResult, isLoading: isLoadingAvailableExpenses } = trpc.pedidosObras.despesasDisponiveis.useQuery(
+    {
+      pedidoObraId: modalPedidoId || 1,
+      tipoConta: linkTipoContaFilter,
+      search: linkSearchTerm,
+      page: linkPage,
+      pageSize: linkPageSize,
+    },
+    { enabled: Boolean(modalPedidoId && linkModalOpen) },
+  );
+  const availableExpenses = availableExpensesResult?.items ?? [];
+  const availableExpensesTotal = availableExpensesResult?.total ?? 0;
+  const availableExpensesTotalPages = availableExpensesResult?.totalPages ?? 1;
 
   const { mutate: sincronizarCustos, isPending: isSyncing } = trpc.crti.sincronizacaoCustosObras.useMutation({
     onSuccess: (data) => {
@@ -201,6 +244,64 @@ export default function CustoObras() {
       void utils.despesasTabelaGeral.list.invalidate();
       void utils.crti.ultimaAtualizacaoObras.invalidate();
     },
+  });
+
+  const invalidateModal = () => {
+    if (modalPedidoId) {
+      void utils.pedidosObras.modal.invalidate({ pedidoObraId: modalPedidoId });
+      void utils.pedidosObras.despesasDisponiveis.invalidate();
+    }
+  };
+
+  const saveFinanceiro = trpc.pedidosObras.saveFinanceiro.useMutation({
+    onSuccess: () => {
+      toast.success("Dados financeiros salvos");
+      invalidateModal();
+    },
+    onError: (mutationError) => toast.error(`Erro ao salvar dados financeiros: ${mutationError.message}`),
+  });
+
+  const clearFinanceiro = trpc.pedidosObras.clearFinanceiro.useMutation({
+    onSuccess: () => {
+      toast.success("Dados financeiros limpos");
+      invalidateModal();
+    },
+    onError: (mutationError) => toast.error(`Erro ao limpar dados financeiros: ${mutationError.message}`),
+  });
+
+  const createDespesaManual = trpc.pedidosObras.createDespesaManual.useMutation({
+    onSuccess: () => {
+      toast.success("Despesa cadastrada");
+      setManualExpense({
+        categoria: "Despesa",
+        justificativaOutros: "",
+        valorTotalDocumento: "",
+        complemento: "",
+        observacoesAprovacao: "",
+      });
+      invalidateModal();
+    },
+    onError: (mutationError) => toast.error(`Erro ao cadastrar despesa: ${mutationError.message}`),
+  });
+
+  const deleteDespesa = trpc.pedidosObras.deleteDespesa.useMutation({
+    onSuccess: () => {
+      toast.success("Despesa removida do pedido");
+      invalidateModal();
+    },
+    onError: (mutationError) => toast.error(`Erro ao remover despesa: ${mutationError.message}`),
+  });
+
+  const vincularDespesa = trpc.pedidosObras.vincularDespesa.useMutation({
+    onSuccess: () => {
+      toast.success("Despesa vinculada ao pedido");
+      setLinkModalOpen(false);
+      setLinkSearchTerm("");
+      setLinkCategory("Despesa");
+      setLinkJustificativa("");
+      invalidateModal();
+    },
+    onError: (mutationError) => toast.error(`Erro ao vincular despesa: ${mutationError.message}`),
   });
 
   const visiblePedidos = useMemo(() => {
@@ -270,6 +371,36 @@ export default function CustoObras() {
     }
   }, [tabelaPage, despesasTotalPages]);
 
+  useEffect(() => {
+    const financeiro = modalData?.financeiro;
+    if (!financeiro) {
+      setFinanceForm({
+        nfes: "0",
+        faturamentoDireto: "0",
+        valorTotalImposto: "0",
+        porcentagemImposto: "17",
+      });
+      return;
+    }
+
+    setFinanceForm({
+      nfes: moneyInputValue(financeiro.nfes),
+      faturamentoDireto: moneyInputValue(financeiro.faturamentoDireto),
+      valorTotalImposto: moneyInputValue(financeiro.valorTotalImposto),
+      porcentagemImposto: moneyInputValue(financeiro.porcentagemImposto ?? "17"),
+    });
+  }, [modalData?.financeiro]);
+
+  useEffect(() => {
+    setLinkPage(1);
+  }, [linkSearchTerm, linkTipoContaFilter, linkPageSize]);
+
+  useEffect(() => {
+    if (linkPage > availableExpensesTotalPages) {
+      setLinkPage(availableExpensesTotalPages);
+    }
+  }, [linkPage, availableExpensesTotalPages]);
+
   const despesasTotals = useMemo(() => {
     return despesas.reduce(
       (acc: { valor: number }, despesa: any) => {
@@ -279,6 +410,73 @@ export default function CustoObras() {
       { valor: 0 }
     );
   }, [despesas]);
+
+  const modalCalculations = useMemo(() => {
+    const nfes = parseMoneyInput(financeForm.nfes);
+    const faturamentoDireto = parseMoneyInput(financeForm.faturamentoDireto);
+    const receita = nfes + faturamentoDireto;
+    const valorTotalImposto = parseMoneyInput(financeForm.valorTotalImposto);
+    const porcentagemImposto = parseMoneyInput(financeForm.porcentagemImposto);
+    const valorPorcentagemImposto = valorTotalImposto * (porcentagemImposto / 100);
+    const totalDespesas = modalDespesas.reduce((total: number, despesa: any) => {
+      return total + numberValue(despesa.valorTotalDocumento);
+    }, 0);
+
+    return {
+      receita,
+      valorPorcentagemImposto,
+      totalDespesas,
+      saldo: receita - valorPorcentagemImposto - totalDespesas,
+    };
+  }, [financeForm, modalDespesas]);
+
+  const updateFinanceField = (field: keyof typeof financeForm, value: string) => {
+    setFinanceForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleSaveFinanceiro = () => {
+    if (!modalPedido) return;
+    saveFinanceiro.mutate({
+      pedidoObraId: modalPedido.id,
+      pedidoNum: String(modalPedido.pedido),
+      nfes: parseMoneyInput(financeForm.nfes),
+      faturamentoDireto: parseMoneyInput(financeForm.faturamentoDireto),
+      valorTotalImposto: parseMoneyInput(financeForm.valorTotalImposto),
+      porcentagemImposto: parseMoneyInput(financeForm.porcentagemImposto),
+    });
+  };
+
+  const handleClearFinanceiro = () => {
+    if (!modalPedido) return;
+    clearFinanceiro.mutate({
+      pedidoObraId: modalPedido.id,
+      pedidoNum: String(modalPedido.pedido),
+    });
+  };
+
+  const handleCreateDespesaManual = () => {
+    if (!modalPedido) return;
+    createDespesaManual.mutate({
+      pedidoObraId: modalPedido.id,
+      pedidoNum: String(modalPedido.pedido),
+      categoria: manualExpense.categoria,
+      justificativaOutros: manualExpense.justificativaOutros,
+      valorTotalDocumento: parseMoneyInput(manualExpense.valorTotalDocumento),
+      complemento: manualExpense.complemento,
+      observacoesAprovacao: manualExpense.observacoesAprovacao,
+    });
+  };
+
+  const handleVincularDespesa = (despesa: any) => {
+    if (!modalPedido) return;
+    vincularDespesa.mutate({
+      pedidoObraId: modalPedido.id,
+      pedidoNum: String(modalPedido.pedido),
+      despesaTabelaGeralId: despesa.id,
+      categoria: linkCategory,
+      justificativaOutros: linkJustificativa,
+    });
+  };
 
   return (
     <div className="desktop-shell costs-shell">
@@ -544,7 +742,313 @@ export default function CustoObras() {
             <DialogTitle>Pedido {modalPedido?.pedido}</DialogTitle>
             <DialogDescription>{modalPedido?.cliente}</DialogDescription>
           </DialogHeader>
-          <section className="cost-detail-empty" aria-label="Area de trabalho do pedido" />
+          <section className="cost-detail-workspace" aria-label="Area de trabalho do pedido">
+            {isLoadingModal ? (
+              <div className="cost-detail-loading">Carregando dados do pedido...</div>
+            ) : (
+              <>
+                <div className="cost-modal-cards">
+                  <label>
+                    <span>NFes</span>
+                    <Input
+                      value={financeForm.nfes}
+                      onChange={(event) => updateFinanceField("nfes", event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>Faturamento Direto</span>
+                    <Input
+                      value={financeForm.faturamentoDireto}
+                      onChange={(event) => updateFinanceField("faturamentoDireto", event.target.value)}
+                    />
+                  </label>
+                  <label className="readonly">
+                    <span>Receita</span>
+                    <strong>{formatCurrency(modalCalculations.receita)}</strong>
+                  </label>
+                  <label>
+                    <span>Valor total Imposto</span>
+                    <Input
+                      value={financeForm.valorTotalImposto}
+                      onChange={(event) => updateFinanceField("valorTotalImposto", event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>Porcentagem %</span>
+                    <Input
+                      value={financeForm.porcentagemImposto}
+                      onChange={(event) => updateFinanceField("porcentagemImposto", event.target.value)}
+                    />
+                  </label>
+                  <label className="readonly">
+                    <span>Valor porcentagem do Imposto</span>
+                    <strong>{formatCurrency(modalCalculations.valorPorcentagemImposto)}</strong>
+                  </label>
+                </div>
+
+                <div className="cost-modal-actions">
+                  <button type="button" onClick={handleSaveFinanceiro} disabled={saveFinanceiro.isPending}>
+                    <Save size={14} />
+                    {saveFinanceiro.isPending ? "Salvando..." : "Salvar campos"}
+                  </button>
+                  <button type="button" onClick={handleClearFinanceiro} disabled={clearFinanceiro.isPending}>
+                    <X size={14} />
+                    Limpar campos
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (manualExpense.categoria === "Outros" && !manualExpense.justificativaOutros.trim()) {
+                        toast.error("Informe a justificativa para Outros.");
+                        return;
+                      }
+                      handleCreateDespesaManual();
+                    }}
+                    disabled={createDespesaManual.isPending}
+                  >
+                    <Plus size={14} />
+                    Cadastrar despesa
+                  </button>
+                  <button type="button" onClick={() => setLinkModalOpen(true)}>
+                    <Link2 size={14} />
+                    Vincular saida
+                  </button>
+                </div>
+
+                <div className="manual-expense-panel">
+                  <label>
+                    <span>Tipo</span>
+                    <Select
+                      value={manualExpense.categoria}
+                      onValueChange={(value) => setManualExpense((current) => ({ ...current, categoria: value as CostCategory }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categoryOptions.map((option) => (
+                          <SelectItem key={option} value={option}>{option}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </label>
+                  <label>
+                    <span>Valor</span>
+                    <Input
+                      value={manualExpense.valorTotalDocumento}
+                      onChange={(event) => setManualExpense((current) => ({ ...current, valorTotalDocumento: event.target.value }))}
+                    />
+                  </label>
+                  <label className="wide">
+                    <span>Complemento</span>
+                    <Input
+                      value={manualExpense.complemento}
+                      onChange={(event) => setManualExpense((current) => ({ ...current, complemento: event.target.value }))}
+                    />
+                  </label>
+                  <label className="wide">
+                    <span>Observacoes (Aprovacao)</span>
+                    <Input
+                      value={manualExpense.observacoesAprovacao}
+                      onChange={(event) => setManualExpense((current) => ({ ...current, observacoesAprovacao: event.target.value }))}
+                    />
+                  </label>
+                  {manualExpense.categoria === "Outros" && (
+                    <label className="wide">
+                      <span>Justificativa Outros</span>
+                      <Input
+                        value={manualExpense.justificativaOutros}
+                        onChange={(event) => setManualExpense((current) => ({ ...current, justificativaOutros: event.target.value }))}
+                      />
+                    </label>
+                  )}
+                </div>
+
+                <div className="modal-table-frame">
+                  <table className="desktop-table modal-expenses-table">
+                    <thead>
+                      <tr>
+                        <th>Codigo Forn./Cliente</th>
+                        <th>Fornecedor/Cliente</th>
+                        <th>Numero Documento</th>
+                        <th>Tipo Conta</th>
+                        <th>Tipo Documento</th>
+                        <th>Data Emissao</th>
+                        <th>Data Vencimento</th>
+                        <th>Valor Total</th>
+                        <th>Complemento</th>
+                        <th>Observacoes (Aprovacao)</th>
+                        <th>Tipo</th>
+                        <th>Acoes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {modalDespesas.length === 0 ? (
+                        <tr>
+                          <td colSpan={12} className="desktop-empty">Nenhuma despesa vinculada ou cadastrada</td>
+                        </tr>
+                      ) : (
+                        modalDespesas.map((despesa: any) => (
+                          <tr key={despesa.id}>
+                            <td>{despesa.codigoFornecedorCliente}</td>
+                            <td className="desktop-client">{despesa.fornecedorCliente}</td>
+                            <td>{despesa.numeroDocumento}</td>
+                            <td>{despesa.tipoConta}</td>
+                            <td>{despesa.tipoDocumento}</td>
+                            <td>{despesa.dataEmissao}</td>
+                            <td>{despesa.dataVencimento}</td>
+                            <td className="num">{formatCurrency(despesa.valorTotalDocumento)}</td>
+                            <td className="expense-complement" title={despesa.complemento || ""}>{despesa.complemento}</td>
+                            <td>{despesa.observacoesAprovacao}</td>
+                            <td>{despesa.categoria}</td>
+                            <td>
+                              <button
+                                type="button"
+                                className="table-icon-button danger"
+                                onClick={() => deleteDespesa.mutate({ id: despesa.id, pedidoObraId: modalPedido.id })}
+                                title={despesa.origem === "vinculada" ? "Desvincular" : "Excluir"}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <footer className="cost-modal-summary">
+                  <span>Receita: <b>{formatCurrency(modalCalculations.receita)}</b></span>
+                  <span>Imposto: <b>{formatCurrency(modalCalculations.valorPorcentagemImposto)}</b></span>
+                  <span>Despesas: <b>{formatCurrency(modalCalculations.totalDespesas)}</b></span>
+                  <strong>Saldo: {formatCurrency(modalCalculations.saldo)}</strong>
+                </footer>
+              </>
+            )}
+          </section>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={linkModalOpen} onOpenChange={setLinkModalOpen}>
+        <DialogContent className="expense-link-dialog">
+          <DialogHeader>
+            <DialogTitle>Vincular saida ao Pedido {modalPedido?.pedido}</DialogTitle>
+            <DialogDescription>Selecione uma despesa disponivel da tabela geral.</DialogDescription>
+          </DialogHeader>
+
+          <section className="desktop-filters link-filters">
+            <label>Tipo Conta:</label>
+            <Select value={linkTipoContaFilter} onValueChange={setLinkTipoContaFilter}>
+              <SelectTrigger className="desktop-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TODOS">TODOS</SelectItem>
+                <SelectItem value="Pagar">Pagar</SelectItem>
+                <SelectItem value="Receber">Receber</SelectItem>
+              </SelectContent>
+            </Select>
+            <label>Tipo:</label>
+            <Select value={linkCategory} onValueChange={(value) => setLinkCategory(value as CostCategory)}>
+              <SelectTrigger className="desktop-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {categoryOptions.map((option) => (
+                  <SelectItem key={option} value={option}>{option}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <label className="desktop-search-label">
+              <Search size={13} /> Buscar:
+            </label>
+            <Input
+              value={linkSearchTerm}
+              onChange={(event) => setLinkSearchTerm(event.target.value)}
+              className="desktop-search"
+            />
+          </section>
+          {linkCategory === "Outros" && (
+            <Input
+              value={linkJustificativa}
+              onChange={(event) => setLinkJustificativa(event.target.value)}
+              className="link-justification"
+              placeholder="Justificativa obrigatoria para Outros"
+            />
+          )}
+
+          <div className="modal-table-frame link-table-frame">
+            <table className="desktop-table modal-expenses-table">
+              <thead>
+                <tr>
+                  <th>Codigo Forn./Cliente</th>
+                  <th>Fornecedor/Cliente</th>
+                  <th>Numero Documento</th>
+                  <th>Tipo Conta</th>
+                  <th>Tipo Documento</th>
+                  <th>Data Emissao</th>
+                  <th>Data Vencimento</th>
+                  <th>Valor Total</th>
+                  <th>Complemento</th>
+                  <th>Observacoes (Aprovacao)</th>
+                  <th>Acoes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoadingAvailableExpenses ? (
+                  <tr>
+                    <td colSpan={11} className="desktop-empty">Carregando despesas disponiveis...</td>
+                  </tr>
+                ) : availableExpenses.length === 0 ? (
+                  <tr>
+                    <td colSpan={11} className="desktop-empty">Nenhuma despesa disponivel</td>
+                  </tr>
+                ) : (
+                  availableExpenses.map((despesa: any) => (
+                    <tr key={despesa.id}>
+                      <td>{despesa.codigoFornecedorCliente}</td>
+                      <td className="desktop-client">{despesa.fornecedorCliente}</td>
+                      <td>{despesa.numeroDocumento}</td>
+                      <td>{despesa.tipoConta}</td>
+                      <td>{despesa.tipoDocumento}</td>
+                      <td>{despesa.dataEmissao}</td>
+                      <td>{despesa.dataVencimento}</td>
+                      <td className="num">{formatCurrency(despesa.valorTotalDocumento)}</td>
+                      <td className="expense-complement" title={despesa.complemento || ""}>{despesa.complemento}</td>
+                      <td>{despesa.observacoesAprovacao}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="table-icon-button"
+                          onClick={() => {
+                            if (linkCategory === "Outros" && !linkJustificativa.trim()) {
+                              toast.error("Informe a justificativa para Outros.");
+                              return;
+                            }
+                            handleVincularDespesa(despesa);
+                          }}
+                          disabled={vincularDespesa.isPending}
+                          title="Vincular"
+                        >
+                          <Link2 size={15} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <PaginationControls
+            page={linkPage}
+            pageSize={linkPageSize}
+            total={availableExpensesTotal}
+            totalPages={availableExpensesTotalPages}
+            onPageChange={setLinkPage}
+            onPageSizeChange={setLinkPageSize}
+          />
         </DialogContent>
       </Dialog>
     </div>

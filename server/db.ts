@@ -11,6 +11,8 @@ import {
   sincronizacaoCrti,
   sincronizacaoCrtiObras,
   estoqueMovimentacoes,
+  pedidoObraFinanceiro,
+  pedidoObraDespesas,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -858,6 +860,336 @@ export async function upsertDespesasTabelaGeralFromCrti(items: Array<{
     `,
     values,
   );
+}
+
+export async function getPedidoObraModalData(pedidoObraId: number) {
+  const db = await getDb();
+  if (!db || !_pool) {
+    return {
+      financeiro: {
+        pedidoObraId,
+        nfes: "0",
+        faturamentoDireto: "0",
+        valorTotalImposto: "0",
+        porcentagemImposto: "17.00",
+      },
+      despesas: [],
+    };
+  }
+
+  const [financeiroRows] = await _pool.query<mysql.RowDataPacket[]>(
+    `
+      SELECT id, pedidoObraId, pedidoNum, nfes, faturamentoDireto, valorTotalImposto, porcentagemImposto, criadoEm, atualizadoEm
+      FROM pedido_obra_financeiro
+      WHERE pedidoObraId = ?
+      LIMIT 1
+    `,
+    [pedidoObraId],
+  );
+
+  const [despesas] = await _pool.query<mysql.RowDataPacket[]>(
+    `
+      SELECT
+        id,
+        pedidoObraId,
+        pedidoNum,
+        despesaTabelaGeralId,
+        origem,
+        categoria,
+        justificativaOutros,
+        codigoFornecedorCliente,
+        fornecedorCliente,
+        numeroDocumento,
+        tipoConta,
+        tipoDocumento,
+        dataEmissao,
+        dataVencimento,
+        valorTotalDocumento,
+        complemento,
+        observacoesAprovacao,
+        criadoPor,
+        criadoEm,
+        atualizadoEm
+      FROM pedido_obra_despesas
+      WHERE pedidoObraId = ?
+      ORDER BY id DESC
+    `,
+    [pedidoObraId],
+  );
+
+  return {
+    financeiro: financeiroRows[0] ?? {
+      pedidoObraId,
+      nfes: "0",
+      faturamentoDireto: "0",
+      valorTotalImposto: "0",
+      porcentagemImposto: "17.00",
+    },
+    despesas,
+  };
+}
+
+export async function savePedidoObraFinanceiro(data: {
+  pedidoObraId: number;
+  pedidoNum: string;
+  nfes: number;
+  faturamentoDireto: number;
+  valorTotalImposto: number;
+  porcentagemImposto: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.insert(pedidoObraFinanceiro).values({
+    pedidoObraId: data.pedidoObraId,
+    pedidoNum: data.pedidoNum,
+    nfes: String(data.nfes),
+    faturamentoDireto: String(data.faturamentoDireto),
+    valorTotalImposto: String(data.valorTotalImposto),
+    porcentagemImposto: String(data.porcentagemImposto),
+  }).onDuplicateKeyUpdate({
+    set: {
+      pedidoNum: data.pedidoNum,
+      nfes: String(data.nfes),
+      faturamentoDireto: String(data.faturamentoDireto),
+      valorTotalImposto: String(data.valorTotalImposto),
+      porcentagemImposto: String(data.porcentagemImposto),
+      atualizadoEm: new Date(),
+    },
+  });
+}
+
+export async function clearPedidoObraFinanceiro(pedidoObraId: number, pedidoNum: string) {
+  return savePedidoObraFinanceiro({
+    pedidoObraId,
+    pedidoNum,
+    nfes: 0,
+    faturamentoDireto: 0,
+    valorTotalImposto: 0,
+    porcentagemImposto: 17,
+  });
+}
+
+export async function createPedidoObraDespesaManual(data: {
+  pedidoObraId: number;
+  pedidoNum: string;
+  categoria: "Custo" | "Despesa" | "Outros";
+  justificativaOutros?: string;
+  valorTotalDocumento: number;
+  complemento?: string;
+  observacoesAprovacao?: string;
+  criadoPor?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.insert(pedidoObraDespesas).values({
+    pedidoObraId: data.pedidoObraId,
+    pedidoNum: data.pedidoNum,
+    origem: "manual",
+    categoria: data.categoria,
+    justificativaOutros: data.justificativaOutros || "",
+    valorTotalDocumento: String(data.valorTotalDocumento),
+    complemento: data.complemento || "",
+    observacoesAprovacao: data.observacoesAprovacao || "",
+    criadoPor: data.criadoPor || "Sistema",
+  });
+}
+
+export async function updatePedidoObraDespesa(data: {
+  id: number;
+  pedidoObraId: number;
+  categoria: "Custo" | "Despesa" | "Outros";
+  justificativaOutros?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.update(pedidoObraDespesas)
+    .set({
+      categoria: data.categoria,
+      justificativaOutros: data.justificativaOutros || "",
+      atualizadoEm: new Date(),
+    })
+    .where(and(eq(pedidoObraDespesas.id, data.id), eq(pedidoObraDespesas.pedidoObraId, data.pedidoObraId)));
+}
+
+export async function deletePedidoObraDespesa(id: number, pedidoObraId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.delete(pedidoObraDespesas)
+    .where(and(eq(pedidoObraDespesas.id, id), eq(pedidoObraDespesas.pedidoObraId, pedidoObraId)));
+}
+
+export async function listDespesasTabelaGeralDisponiveis(filters?: {
+  pedidoObraId?: number;
+  tipoConta?: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}) {
+  const page = Math.max(1, Math.trunc(filters?.page || 1));
+  const pageSize = Math.min(100, Math.max(10, Math.trunc(filters?.pageSize || 25)));
+  const offset = (page - 1) * pageSize;
+
+  const db = await getDb();
+  if (!db || !_pool) {
+    return { items: [], total: 0, page, pageSize, totalPages: 1 };
+  }
+
+  const whereSql = ["NOT EXISTS (SELECT 1 FROM pedido_obra_despesas pod WHERE pod.despesaTabelaGeralId = dtg.id)"];
+  const params: Array<string | number> = [];
+
+  if (filters?.tipoConta && filters.tipoConta !== "TODOS") {
+    whereSql.push("dtg.tipoConta = ?");
+    params.push(filters.tipoConta);
+  }
+
+  if (filters?.search) {
+    whereSql.push("(dtg.codigoFornecedorCliente LIKE ? OR dtg.fornecedorCliente LIKE ? OR dtg.numeroDocumento LIKE ? OR dtg.complemento LIKE ?)");
+    const search = `%${filters.search}%`;
+    params.push(search, search, search, search);
+  }
+
+  const whereClause = `WHERE ${whereSql.join(" AND ")}`;
+  const [countRows] = await _pool.query<mysql.RowDataPacket[]>(
+    `SELECT COUNT(*) AS total FROM despesas_tabela_geral dtg ${whereClause}`,
+    params,
+  );
+
+  const total = Number(countRows[0]?.total) || 0;
+  const [items] = await _pool.query<mysql.RowDataPacket[]>(
+    `
+      SELECT
+        dtg.id,
+        dtg.codigoFornecedorCliente,
+        dtg.fornecedorCliente,
+        dtg.numeroDocumento,
+        dtg.tipoConta,
+        dtg.tipoDocumento,
+        dtg.dataEmissao,
+        dtg.dataVencimento,
+        dtg.valorTotalDocumento,
+        dtg.complemento,
+        dtg.observacoesAprovacao,
+        dtg.situacao
+      FROM despesas_tabela_geral dtg
+      ${whereClause}
+      ORDER BY dtg.id DESC
+      LIMIT ? OFFSET ?
+    `,
+    [...params, pageSize, offset],
+  );
+
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
+}
+
+export async function vincularDespesaTabelaGeralAoPedidoObra(data: {
+  pedidoObraId: number;
+  pedidoNum: string;
+  despesaTabelaGeralId: number;
+  categoria: "Custo" | "Despesa" | "Outros";
+  justificativaOutros?: string;
+  criadoPor?: string;
+}) {
+  const db = await getDb();
+  if (!db || !_pool) throw new Error("Database not available");
+
+  const connection = await _pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [existingLinks] = await connection.query<mysql.RowDataPacket[]>(
+      "SELECT id, pedidoObraId FROM pedido_obra_despesas WHERE despesaTabelaGeralId = ? LIMIT 1 FOR UPDATE",
+      [data.despesaTabelaGeralId],
+    );
+
+    if (existingLinks.length > 0) {
+      throw new Error("Esta despesa ja esta vinculada a uma obra.");
+    }
+
+    const [despesas] = await connection.query<mysql.RowDataPacket[]>(
+      `
+        SELECT
+          codigoFornecedorCliente,
+          fornecedorCliente,
+          numeroDocumento,
+          tipoConta,
+          tipoDocumento,
+          dataEmissao,
+          dataVencimento,
+          valorTotalDocumento,
+          complemento,
+          observacoesAprovacao
+        FROM despesas_tabela_geral
+        WHERE id = ?
+        LIMIT 1
+      `,
+      [data.despesaTabelaGeralId],
+    );
+
+    const despesa = despesas[0];
+    if (!despesa) {
+      throw new Error("Despesa da tabela geral nao encontrada.");
+    }
+
+    await connection.query(
+      `
+        INSERT INTO pedido_obra_despesas (
+          pedidoObraId,
+          pedidoNum,
+          despesaTabelaGeralId,
+          origem,
+          categoria,
+          justificativaOutros,
+          codigoFornecedorCliente,
+          fornecedorCliente,
+          numeroDocumento,
+          tipoConta,
+          tipoDocumento,
+          dataEmissao,
+          dataVencimento,
+          valorTotalDocumento,
+          complemento,
+          observacoesAprovacao,
+          criadoPor
+        ) VALUES (?, ?, ?, 'vinculada', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        data.pedidoObraId,
+        data.pedidoNum,
+        data.despesaTabelaGeralId,
+        data.categoria,
+        data.justificativaOutros || "",
+        despesa.codigoFornecedorCliente,
+        despesa.fornecedorCliente,
+        despesa.numeroDocumento,
+        despesa.tipoConta,
+        despesa.tipoDocumento,
+        despesa.dataEmissao,
+        despesa.dataVencimento,
+        despesa.valorTotalDocumento,
+        despesa.complemento,
+        despesa.observacoesAprovacao,
+        data.criadoPor || "Sistema",
+      ],
+    );
+
+    await connection.commit();
+    return { success: true };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 export async function listContatosByPedido(pedidoId: number) {

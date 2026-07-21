@@ -90,6 +90,32 @@ const pedidoObraObservacoesSchema = z.object({
   observacoesOperador: z.string().max(5000).optional(),
 });
 
+const pedidoObraCategoriaSchema = z.enum(["Custo", "Despesa", "Outros"]);
+
+const pedidoObraFinanceiroSchema = z.object({
+  pedidoObraId: z.number().int().positive(),
+  pedidoNum: z.string().min(1),
+  nfes: z.coerce.number().nonnegative(),
+  faturamentoDireto: z.coerce.number().nonnegative(),
+  valorTotalImposto: z.coerce.number().nonnegative(),
+  porcentagemImposto: z.coerce.number().min(0).max(100),
+});
+
+const pedidoObraDespesaBaseSchema = z.object({
+  pedidoObraId: z.number().int().positive(),
+  pedidoNum: z.string().min(1),
+  categoria: pedidoObraCategoriaSchema,
+  justificativaOutros: z.string().max(1000).optional(),
+}).superRefine((data, ctx) => {
+  if (data.categoria === "Outros" && !data.justificativaOutros?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["justificativaOutros"],
+      message: "Justificativa obrigatoria para Outros",
+    });
+  }
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -286,6 +312,64 @@ export const appRouter = router({
         data: pedidoObraObservacoesSchema,
       }))
       .mutation(({ input }) => db.updatePedidoObraObservacoes(input.id, input.data)),
+
+    modal: protectedProcedure
+      .input(z.object({ pedidoObraId: z.number().int().positive() }))
+      .query(({ input }) => db.getPedidoObraModalData(input.pedidoObraId)),
+
+    saveFinanceiro: protectedProcedure
+      .input(pedidoObraFinanceiroSchema)
+      .mutation(({ input }) => db.savePedidoObraFinanceiro(input)),
+
+    clearFinanceiro: protectedProcedure
+      .input(z.object({
+        pedidoObraId: z.number().int().positive(),
+        pedidoNum: z.string().min(1),
+      }))
+      .mutation(({ input }) => db.clearPedidoObraFinanceiro(input.pedidoObraId, input.pedidoNum)),
+
+    createDespesaManual: protectedProcedure
+      .input(pedidoObraDespesaBaseSchema.and(z.object({
+        valorTotalDocumento: z.coerce.number().nonnegative(),
+        complemento: z.string().max(5000).optional(),
+        observacoesAprovacao: z.string().max(5000).optional(),
+      })))
+      .mutation(({ input, ctx }) => db.createPedidoObraDespesaManual({
+        ...input,
+        criadoPor: ctx.user?.name || "Sistema",
+      })),
+
+    updateDespesa: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+      }).and(pedidoObraDespesaBaseSchema.omit({ pedidoNum: true })))
+      .mutation(({ input }) => db.updatePedidoObraDespesa(input)),
+
+    deleteDespesa: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        pedidoObraId: z.number().int().positive(),
+      }))
+      .mutation(({ input }) => db.deletePedidoObraDespesa(input.id, input.pedidoObraId)),
+
+    despesasDisponiveis: protectedProcedure
+      .input(z.object({
+        pedidoObraId: z.number().int().positive(),
+        tipoConta: z.string().optional(),
+        search: z.string().optional(),
+        page: z.number().int().positive().optional(),
+        pageSize: z.number().int().min(10).max(100).optional(),
+      }))
+      .query(({ input }) => db.listDespesasTabelaGeralDisponiveis(input)),
+
+    vincularDespesa: protectedProcedure
+      .input(pedidoObraDespesaBaseSchema.and(z.object({
+        despesaTabelaGeralId: z.number().int().positive(),
+      })))
+      .mutation(({ input, ctx }) => db.vincularDespesaTabelaGeralAoPedidoObra({
+        ...input,
+        criadoPor: ctx.user?.name || "Sistema",
+      })),
   }),
 
   despesasTabelaGeral: router({

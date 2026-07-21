@@ -124,6 +124,54 @@ export const despesasTabelaGeral = mysqlTable("despesas_tabela_geral", {
 export type DespesaTabelaGeral = typeof despesasTabelaGeral.$inferSelect;
 export type InsertDespesaTabelaGeral = typeof despesasTabelaGeral.$inferInsert;
 
+export const pedidoObraFinanceiro = mysqlTable("pedido_obra_financeiro", {
+  id: int("id").autoincrement().primaryKey(),
+  pedidoObraId: int("pedidoObraId").notNull().unique(),
+  pedidoNum: varchar("pedidoNum", { length: 50 }).notNull(),
+  nfes: decimal("nfes", { precision: 18, scale: 2 }).default("0"),
+  faturamentoDireto: decimal("faturamentoDireto", { precision: 18, scale: 2 }).default("0"),
+  valorTotalImposto: decimal("valorTotalImposto", { precision: 18, scale: 2 }).default("0"),
+  porcentagemImposto: decimal("porcentagemImposto", { precision: 5, scale: 2 }).default("17.00"),
+  criadoEm: timestamp("criadoEm").defaultNow(),
+  atualizadoEm: timestamp("atualizadoEm").defaultNow().onUpdateNow(),
+}, (table) => ({
+  pedidoObraIdIdx: index("pedido_obra_financeiro_pedidoObraId_idx").on(table.pedidoObraId),
+  pedidoNumIdx: index("pedido_obra_financeiro_pedidoNum_idx").on(table.pedidoNum),
+}));
+
+export type PedidoObraFinanceiro = typeof pedidoObraFinanceiro.$inferSelect;
+export type InsertPedidoObraFinanceiro = typeof pedidoObraFinanceiro.$inferInsert;
+
+export const pedidoObraDespesas = mysqlTable("pedido_obra_despesas", {
+  id: int("id").autoincrement().primaryKey(),
+  pedidoObraId: int("pedidoObraId").notNull(),
+  pedidoNum: varchar("pedidoNum", { length: 50 }).notNull(),
+  despesaTabelaGeralId: int("despesaTabelaGeralId").unique(),
+  origem: mysqlEnum("origem", ["manual", "vinculada"]).default("manual").notNull(),
+  categoria: mysqlEnum("categoria", ["Custo", "Despesa", "Outros"]).default("Despesa").notNull(),
+  justificativaOutros: text("justificativaOutros").default(""),
+  codigoFornecedorCliente: varchar("codigoFornecedorCliente", { length: 50 }),
+  fornecedorCliente: varchar("fornecedorCliente", { length: 255 }),
+  numeroDocumento: varchar("numeroDocumento", { length: 80 }),
+  tipoConta: varchar("tipoConta", { length: 50 }),
+  tipoDocumento: varchar("tipoDocumento", { length: 100 }),
+  dataEmissao: varchar("dataEmissao", { length: 10 }),
+  dataVencimento: varchar("dataVencimento", { length: 10 }),
+  valorTotalDocumento: decimal("valorTotalDocumento", { precision: 18, scale: 2 }).default("0"),
+  complemento: text("complemento").default(""),
+  observacoesAprovacao: text("observacoesAprovacao").default(""),
+  criadoPor: varchar("criadoPor", { length: 100 }).default("Sistema"),
+  criadoEm: timestamp("criadoEm").defaultNow(),
+  atualizadoEm: timestamp("atualizadoEm").defaultNow().onUpdateNow(),
+}, (table) => ({
+  pedidoObraIdIdx: index("pedido_obra_despesas_pedidoObraId_idx").on(table.pedidoObraId),
+  pedidoNumIdx: index("pedido_obra_despesas_pedidoNum_idx").on(table.pedidoNum),
+  despesaTabelaGeralIdIdx: index("pedido_obra_despesas_despesaTabelaGeralId_idx").on(table.despesaTabelaGeralId),
+}));
+
+export type PedidoObraDespesa = typeof pedidoObraDespesas.$inferSelect;
+export type InsertPedidoObraDespesa = typeof pedidoObraDespesas.$inferInsert;
+
 /**
  * Tabela de histórico de alterações
  */
