@@ -1283,6 +1283,140 @@ export async function vincularDespesaTabelaGeralAoPedidoObra(data: {
   }
 }
 
+export async function vincularSaidasAutomaticasObras(criadoPor = "Sistema") {
+  const db = await getDb();
+  if (!db || !_pool) throw new Error("Database not available");
+
+  const [pedidoRows] = await _pool.query<mysql.RowDataPacket[]>(
+    "SELECT id, pedido FROM pedidos_obras",
+  );
+  const pedidosPorNumero = new Map<string, { id: number; pedido: string }>();
+  for (const pedido of pedidoRows) {
+    const numero = String(pedido.pedido || "").trim();
+    if (numero) pedidosPorNumero.set(numero, { id: Number(pedido.id), pedido: numero });
+  }
+
+  const [despesas] = await _pool.query<mysql.RowDataPacket[]>(
+    `
+      SELECT
+        dtg.id,
+        dtg.codigoFornecedorCliente,
+        dtg.fornecedorCliente,
+        dtg.numeroDocumento,
+        dtg.tipoConta,
+        dtg.tipoDocumento,
+        dtg.dataEmissao,
+        dtg.dataVencimento,
+        dtg.valorTotalDocumento,
+        dtg.complemento,
+        dtg.observacoesAprovacao
+      FROM despesas_tabela_geral dtg
+      LEFT JOIN pedido_obra_despesas pod ON pod.despesaTabelaGeralId = dtg.id
+      WHERE pod.id IS NULL
+        AND (
+          COALESCE(dtg.complemento, '') REGEXP '[oO][[:space:]]*[0-9]+'
+          OR COALESCE(dtg.observacoesAprovacao, '') REGEXP '[oO][[:space:]]*[0-9]+'
+        )
+      ORDER BY dtg.id DESC
+    `,
+  );
+
+  const connection = await _pool.getConnection();
+  let vinculadas = 0;
+  let semPedido = 0;
+  let jaVinculadas = 0;
+  const despesasProcessadas = despesas.length;
+  const linkedExpenseIds = new Set<number>();
+
+  try {
+    await connection.beginTransaction();
+
+    for (const despesa of despesas) {
+      const despesaId = Number(despesa.id);
+      if (linkedExpenseIds.has(despesaId)) continue;
+
+      const texto = `${despesa.complemento || ""} ${despesa.observacoesAprovacao || ""}`;
+      const matches = Array.from(texto.matchAll(/o\s*(\d+)/gi));
+      const pedidoEncontrado = matches
+        .map((match) => pedidosPorNumero.get(match[1]))
+        .find(Boolean);
+
+      if (!pedidoEncontrado) {
+        semPedido += 1;
+        continue;
+      }
+
+      const [existingLinks] = await connection.query<mysql.RowDataPacket[]>(
+        "SELECT id FROM pedido_obra_despesas WHERE despesaTabelaGeralId = ? LIMIT 1 FOR UPDATE",
+        [despesaId],
+      );
+
+      if (existingLinks.length > 0) {
+        jaVinculadas += 1;
+        continue;
+      }
+
+      await connection.query(
+        `
+          INSERT INTO pedido_obra_despesas (
+            pedidoObraId,
+            pedidoNum,
+            despesaTabelaGeralId,
+            origem,
+            categoria,
+            justificativaOutros,
+            codigoFornecedorCliente,
+            fornecedorCliente,
+            numeroDocumento,
+            tipoConta,
+            tipoDocumento,
+            dataEmissao,
+            dataVencimento,
+            valorTotalDocumento,
+            complemento,
+            observacoesAprovacao,
+            criadoPor
+          ) VALUES (?, ?, ?, 'vinculada', 'Despesa', '', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
+          pedidoEncontrado.id,
+          pedidoEncontrado.pedido,
+          despesaId,
+          despesa.codigoFornecedorCliente,
+          despesa.fornecedorCliente,
+          despesa.numeroDocumento,
+          despesa.tipoConta,
+          despesa.tipoDocumento,
+          despesa.dataEmissao,
+          despesa.dataVencimento,
+          despesa.valorTotalDocumento,
+          despesa.complemento,
+          despesa.observacoesAprovacao,
+          criadoPor,
+        ],
+      );
+
+      linkedExpenseIds.add(despesaId);
+      vinculadas += 1;
+    }
+
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+
+  return {
+    success: true,
+    despesasProcessadas,
+    vinculadas,
+    semPedido,
+    jaVinculadas,
+  };
+}
+
 export async function listContatosByPedido(pedidoId: number) {
   const db = await getDb();
   if (!db) return shouldUseDemoData() ? demoContatos.filter((contato) => contato.pedidoId === pedidoId) : [];

@@ -472,6 +472,10 @@
   cursor: pointer;
 }
 
+.desktop-refresh + .desktop-refresh {
+  margin-left: 0;
+}
+
 .desktop-refresh:disabled {
   opacity: .65;
   cursor: default;

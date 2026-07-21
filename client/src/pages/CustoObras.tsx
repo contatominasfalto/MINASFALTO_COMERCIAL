@@ -333,6 +333,19 @@ export default function CustoObras() {
     onError: (mutationError) => toast.error(`Erro ao vincular despesa: ${mutationError.message}`),
   });
 
+  const vincularSaidasAutomaticas = trpc.pedidosObras.vincularSaidasAutomaticas.useMutation({
+    onSuccess: (data) => {
+      toast.success(
+        `Vinculo automatico: ${data.vinculadas} vinculada(s), ${data.semPedido} sem pedido encontrado`
+      );
+      refetch();
+      void utils.pedidosObras.list.invalidate();
+      void utils.pedidosObras.modal.invalidate();
+      void utils.pedidosObras.despesasDisponiveis.invalidate();
+    },
+    onError: (mutationError) => toast.error(`Erro no vinculo automatico: ${mutationError.message}`),
+  });
+
   const visiblePedidos = useMemo(() => {
     const multiplier = sortDirection === "asc" ? 1 : -1;
     return [...(pedidos as any[])].sort((left, right) => {
@@ -744,6 +757,14 @@ export default function CustoObras() {
               onChange={(event) => setDespesasSearchTerm(event.target.value)}
               className="desktop-search"
             />
+
+            <button
+              className="desktop-refresh"
+              onClick={() => vincularSaidasAutomaticas.mutate()}
+              disabled={vincularSaidasAutomaticas.isPending}
+            >
+              <Link2 size={13} /> {vincularSaidasAutomaticas.isPending ? "Vinculando..." : "Vinculo automatico"}
+            </button>
 
             <button className="desktop-refresh" onClick={() => sincronizarCustos()} disabled={isSyncing}>
               <RefreshCw size={13} /> {isSyncing ? "Sincronizando..." : "Atualizar CRTI"}

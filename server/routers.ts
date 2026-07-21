@@ -392,6 +392,9 @@ export const appRouter = router({
         ...input,
         criadoPor: ctx.user?.name || "Sistema",
       })),
+
+    vincularSaidasAutomaticas: protectedProcedure
+      .mutation(({ ctx }) => db.vincularSaidasAutomaticasObras(ctx.user?.name || "Sistema")),
   }),
 
   despesasTabelaGeral: router({
