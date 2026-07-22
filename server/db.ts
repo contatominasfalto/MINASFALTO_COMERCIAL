@@ -570,6 +570,81 @@ export async function listPedidosObras(filters?: {
   };
 }
 
+export async function exportPedidosObras(filters?: {
+  status?: string;
+  prioridade?: string;
+  search?: string;
+}) {
+  const db = await getDb();
+  if (!db || !_pool) {
+    return [];
+  }
+
+  const whereSql: string[] = [];
+  const params: Array<string | number> = [];
+
+  if (filters?.status && filters.status !== "TODOS") {
+    const normalizedStatus = String(filters.status).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (normalizedStatus.toLowerCase() === "concluido") {
+      whereSql.push("status IN (?, ?)");
+      params.push("Concluido", "ConcluÃ­do");
+    } else {
+      whereSql.push("status = ?");
+      params.push(filters.status);
+    }
+  }
+
+  if (filters?.prioridade && filters.prioridade !== "TODOS") {
+    whereSql.push("prioridade = ?");
+    params.push(normalizePrioridade(filters.prioridade));
+  }
+
+  if (filters?.search) {
+    whereSql.push("(pedido LIKE ? OR cliente LIKE ?)");
+    params.push(`%${filters.search}%`, `%${filters.search}%`);
+  }
+
+  const whereClause = whereSql.length > 0 ? `WHERE ${whereSql.join(" AND ")}` : "";
+  const [items] = await _pool.query<mysql.RowDataPacket[]>(
+    `
+      SELECT
+        po.id,
+        po.dataPedido,
+        po.cliente,
+        po.pedido,
+        po.situacao,
+        po.qtde,
+        po.qtdeTapFacil,
+        po.qtdeGranel,
+        po.valorUnit,
+        (COALESCE(pof.nfes, 0) + COALESCE(pof.faturamentoDireto, 0)) AS totalPedido,
+        (
+          (COALESCE(pof.nfes, 0) + COALESCE(pof.faturamentoDireto, 0))
+          - (COALESCE(pof.valorTotalImposto, 0) * (COALESCE(pof.porcentagemImposto, 17) / 100))
+          - COALESCE(pod.totalDespesas, 0)
+        ) AS saldo,
+        po.prioridade,
+        po.status,
+        po.condicaoPagamento,
+        po.materiais,
+        po.criadoEm,
+        po.atualizadoEm
+      FROM pedidos_obras po
+      LEFT JOIN pedido_obra_financeiro pof ON pof.pedidoObraId = po.id
+      LEFT JOIN (
+        SELECT pedidoNum, SUM(COALESCE(valorTotalDocumento, 0)) AS totalDespesas
+        FROM pedido_obra_despesas
+        GROUP BY pedidoNum
+      ) pod ON pod.pedidoNum = po.pedido
+      ${whereClause}
+      ORDER BY po.id DESC
+    `,
+    params,
+  );
+
+  return items;
+}
+
 export async function getPedidoObraByNumber(pedidoNum: string) {
   const db = await getDb();
   if (!db) return shouldUseDemoData() ? demoPedidosObras.find((pedido) => pedido.pedido === pedidoNum) ?? null : null;

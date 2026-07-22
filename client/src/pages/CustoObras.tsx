@@ -59,6 +59,29 @@ const escapeExcelValue = (value: unknown) => String(value ?? "")
   .replace(/</g, "&lt;")
   .replace(/>/g, "&gt;")
   .replace(/"/g, "&quot;");
+const buildExcelSheet = (name: string, rows: unknown[][]) => `
+  <Worksheet ss:Name="${escapeExcelValue(name)}">
+    <Table>
+      ${rows.map((row) => `
+        <Row>
+          ${row.map((cell) => `
+            <Cell><Data ss:Type="String">${escapeExcelValue(cell)}</Data></Cell>
+          `).join("")}
+        </Row>
+      `).join("")}
+    </Table>
+  </Worksheet>
+`;
+const buildExcelWorkbook = (sheets: Array<{ name: string; rows: unknown[][] }>) => `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook
+  xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:o="urn:schemas-microsoft-com:office:office"
+  xmlns:x="urn:schemas-microsoft-com:office:excel"
+  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:html="http://www.w3.org/TR/REC-html40">
+  ${sheets.map((sheet) => buildExcelSheet(sheet.name, sheet.rows)).join("")}
+</Workbook>`;
 const isNegativeAmount = (value: unknown) => value !== null && value !== undefined && value !== "" && numberValue(value) < 0;
 
 const formatDecimal = (value: unknown, digits = 0) =>
@@ -359,13 +382,24 @@ export default function CustoObras() {
   });
 
   const exportarDespesasExcel = trpc.despesasTabelaGeral.exportExcel.useMutation({
-    onSuccess: (rows) => {
-      if (!rows.length) {
+    onSuccess: ({ despesas: despesasRows, pedidos: pedidosRows }) => {
+      if (!despesasRows.length && !pedidosRows.length) {
         toast.error("Nenhum lancamento para exportar.");
         return;
       }
 
-      const headers = [
+      const pedidosHeaders = [
+        "Pedido",
+        "Data Ped.",
+        "Cliente",
+        "Status",
+        "Qtde",
+        "Tap Facil",
+        "A Granel",
+        "Total (R$)",
+        "Saldo (R$)",
+      ];
+      const despesasHeaders = [
         "Codigo Forn./Cliente",
         "Fornecedor/Cliente",
         "Numero Documento",
@@ -378,9 +412,23 @@ export default function CustoObras() {
         "Observacoes (Aprovacao)",
         "Vinculado",
       ];
-      const tableRows = [
-        headers,
-        ...rows.map((despesa: any) => [
+      const pedidosSheetRows = [
+        pedidosHeaders,
+        ...pedidosRows.map((pedido: any) => [
+          pedido.pedido,
+          pedido.dataPedido,
+          pedido.cliente,
+          pedido.status,
+          formatDecimal(pedido.qtde),
+          formatDecimal(pedido.qtdeTapFacil),
+          formatDecimal(pedido.qtdeGranel, 3),
+          formatCurrency(pedido.totalPedido),
+          formatCurrency(pedido.saldo),
+        ]),
+      ];
+      const despesasSheetRows = [
+        despesasHeaders,
+        ...despesasRows.map((despesa: any) => [
           despesa.codigoFornecedorCliente,
           despesa.fornecedorCliente,
           despesa.numeroDocumento,
@@ -393,19 +441,11 @@ export default function CustoObras() {
           despesa.observacoesAprovacao,
           despesa.vinculado,
         ]),
-      ]
-        .map((row, index) =>
-          `<tr>${row
-            .map((cell) => index === 0 ? `<th>${escapeExcelValue(cell)}</th>` : `<td>${escapeExcelValue(cell)}</td>`)
-            .join("")}</tr>`,
-        )
-        .join("");
-      const excelContent = `
-        <html>
-          <head><meta charset="UTF-8" /></head>
-          <body><table border="1">${tableRows}</table></body>
-        </html>
-      `;
+      ];
+      const excelContent = buildExcelWorkbook([
+        { name: "Pedidos Obras", rows: pedidosSheetRows },
+        { name: "Despesas Tabela Geral", rows: despesasSheetRows },
+      ]);
       const blob = new Blob([excelContent], { type: "application/vnd.ms-excel;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -415,16 +455,22 @@ export default function CustoObras() {
       link.download = `despesas-tabela-geral-${today}.xls`;
       link.click();
       URL.revokeObjectURL(url);
-      toast.success(`${rows.length} lancamento(s) exportado(s).`);
+      toast.success(`${pedidosRows.length} pedido(s) e ${despesasRows.length} despesa(s) exportados.`);
     },
     onError: (mutationError) => toast.error(`Erro ao exportar Excel: ${mutationError.message}`),
   });
 
   const handleExportarDespesasExcel = () => {
     exportarDespesasExcel.mutate({
-      tipoConta: effectiveTipoContaFilter,
-      search: despesasSearchTerm,
-      somenteNaoVinculados: somentePagarNaoVinculados,
+      despesas: {
+        tipoConta: effectiveTipoContaFilter,
+        search: despesasSearchTerm,
+        somenteNaoVinculados: somentePagarNaoVinculados,
+      },
+      pedidos: {
+        status: statusFilter,
+        search: searchTerm,
+      },
     });
   };
 

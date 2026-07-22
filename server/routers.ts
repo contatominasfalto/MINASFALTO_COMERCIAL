@@ -410,11 +410,24 @@ export const appRouter = router({
 
     exportExcel: protectedProcedure
       .input(z.object({
-        tipoConta: z.string().optional(),
-        search: z.string().optional(),
-        somenteNaoVinculados: z.boolean().optional(),
+        despesas: z.object({
+          tipoConta: z.string().optional(),
+          search: z.string().optional(),
+          somenteNaoVinculados: z.boolean().optional(),
+        }).optional(),
+        pedidos: z.object({
+          status: z.string().optional(),
+          search: z.string().optional(),
+        }).optional(),
       }).optional())
-      .mutation(({ input }) => db.exportDespesasTabelaGeral(input)),
+      .mutation(async ({ input }) => {
+        const [despesas, pedidos] = await Promise.all([
+          db.exportDespesasTabelaGeral(input?.despesas),
+          db.exportPedidosObras(input?.pedidos),
+        ]);
+
+        return { despesas, pedidos };
+      }),
   }),
 
   // ─────────────────────────────────────────────
