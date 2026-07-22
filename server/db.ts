@@ -550,10 +550,10 @@ export async function listPedidosObras(filters?: {
       FROM pedidos_obras po
       LEFT JOIN pedido_obra_financeiro pof ON pof.pedidoObraId = po.id
       LEFT JOIN (
-        SELECT pedidoObraId, SUM(COALESCE(valorTotalDocumento, 0)) AS totalDespesas
+        SELECT pedidoNum, SUM(COALESCE(valorTotalDocumento, 0)) AS totalDespesas
         FROM pedido_obra_despesas
-        GROUP BY pedidoObraId
-      ) pod ON pod.pedidoObraId = po.id
+        GROUP BY pedidoNum
+      ) pod ON pod.pedidoNum = po.pedido
       ${whereClause}
       ORDER BY po.id DESC
       LIMIT ? OFFSET ?
