@@ -826,6 +826,69 @@ export async function listDespesasTabelaGeral(filters?: {
   };
 }
 
+export async function exportDespesasTabelaGeral(filters?: {
+  tipoConta?: string;
+  search?: string;
+  somenteNaoVinculados?: boolean;
+}) {
+  const db = await getDb();
+  if (!db || !_pool) {
+    return [];
+  }
+
+  const whereSql: string[] = [];
+  const params: Array<string | number> = [];
+
+  if (filters?.tipoConta && filters.tipoConta !== "TODOS") {
+    whereSql.push("tipoConta = ?");
+    params.push(filters.tipoConta);
+  }
+
+  if (filters?.search) {
+    whereSql.push("(codigoFornecedorCliente LIKE ? OR fornecedorCliente LIKE ? OR numeroDocumento LIKE ? OR complemento LIKE ?)");
+    const search = `%${filters.search}%`;
+    params.push(search, search, search, search);
+  }
+
+  if (filters?.somenteNaoVinculados) {
+    whereSql.push("NOT EXISTS (SELECT 1 FROM pedido_obra_despesas pod_filter WHERE pod_filter.despesaTabelaGeralId = despesas_tabela_geral.id)");
+  }
+
+  const whereClause = whereSql.length > 0 ? `WHERE ${whereSql.join(" AND ")}` : "";
+  const [items] = await _pool.query<mysql.RowDataPacket[]>(
+    `
+      SELECT
+        despesas_tabela_geral.id,
+        codigoFornecedorCliente,
+        fornecedorCliente,
+        numeroDocumento,
+        tipoConta,
+        tipoDocumento,
+        dataEmissao,
+        dataVencimento,
+        valorTotalDocumento,
+        complemento,
+        observacoesAprovacao,
+        CASE
+          WHEN pod.pedidoNum IS NULL THEN ''
+          ELSE CONCAT('VO', pod.pedidoNum)
+        END AS vinculado
+      FROM despesas_tabela_geral
+      LEFT JOIN (
+        SELECT despesaTabelaGeralId, MAX(pedidoNum) AS pedidoNum
+        FROM pedido_obra_despesas
+        WHERE despesaTabelaGeralId IS NOT NULL
+        GROUP BY despesaTabelaGeralId
+      ) pod ON pod.despesaTabelaGeralId = despesas_tabela_geral.id
+      ${whereClause}
+      ORDER BY despesas_tabela_geral.id DESC
+    `,
+    params,
+  );
+
+  return items;
+}
+
 export async function upsertDespesasTabelaGeralFromCrti(items: Array<{
   sourceKey: string;
   codigoFornecedorCliente: string;

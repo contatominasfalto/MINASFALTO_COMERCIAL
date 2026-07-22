@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Flag, Link2, Pencil, Plus, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileSpreadsheet, Flag, Link2, Pencil, Plus, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -54,6 +54,11 @@ const formatCurrencyOrBlank = (value: unknown) => {
   if (value === null || value === undefined || value === "") return "";
   return formatCurrency(value);
 };
+const escapeExcelValue = (value: unknown) => String(value ?? "")
+  .replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;");
 const isNegativeAmount = (value: unknown) => value !== null && value !== undefined && value !== "" && numberValue(value) < 0;
 
 const formatDecimal = (value: unknown, digits = 0) =>
@@ -353,6 +358,76 @@ export default function CustoObras() {
     onError: (mutationError) => toast.error(`Erro no vinculo automatico: ${mutationError.message}`),
   });
 
+  const exportarDespesasExcel = trpc.despesasTabelaGeral.exportExcel.useMutation({
+    onSuccess: (rows) => {
+      if (!rows.length) {
+        toast.error("Nenhum lancamento para exportar.");
+        return;
+      }
+
+      const headers = [
+        "Codigo Forn./Cliente",
+        "Fornecedor/Cliente",
+        "Numero Documento",
+        "Tipo Conta",
+        "Tipo Documento",
+        "Data Emissao",
+        "Data Vencimento",
+        "Valor Total",
+        "Complemento",
+        "Observacoes (Aprovacao)",
+        "Vinculado",
+      ];
+      const tableRows = [
+        headers,
+        ...rows.map((despesa: any) => [
+          despesa.codigoFornecedorCliente,
+          despesa.fornecedorCliente,
+          despesa.numeroDocumento,
+          despesa.tipoConta,
+          despesa.tipoDocumento,
+          despesa.dataEmissao,
+          despesa.dataVencimento,
+          formatCurrency(despesa.valorTotalDocumento),
+          despesa.complemento,
+          despesa.observacoesAprovacao,
+          despesa.vinculado,
+        ]),
+      ]
+        .map((row, index) =>
+          `<tr>${row
+            .map((cell) => index === 0 ? `<th>${escapeExcelValue(cell)}</th>` : `<td>${escapeExcelValue(cell)}</td>`)
+            .join("")}</tr>`,
+        )
+        .join("");
+      const excelContent = `
+        <html>
+          <head><meta charset="UTF-8" /></head>
+          <body><table border="1">${tableRows}</table></body>
+        </html>
+      `;
+      const blob = new Blob([excelContent], { type: "application/vnd.ms-excel;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const today = new Date().toISOString().slice(0, 10);
+
+      link.href = url;
+      link.download = `despesas-tabela-geral-${today}.xls`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${rows.length} lancamento(s) exportado(s).`);
+    },
+    onError: (mutationError) => toast.error(`Erro ao exportar Excel: ${mutationError.message}`),
+  });
+
+  const handleExportarDespesasExcel = () => {
+    exportarDespesasExcel.mutate({
+      tipoConta: effectiveTipoContaFilter,
+      search: despesasSearchTerm,
+      somenteNaoVinculados: somentePagarNaoVinculados,
+    });
+  };
+
   const visiblePedidos = useMemo(() => {
     const multiplier = sortDirection === "asc" ? 1 : -1;
     return [...(pedidos as any[])].sort((left, right) => {
@@ -624,6 +699,18 @@ export default function CustoObras() {
         >
           DESPESAS TABELA GERAL
         </button>
+        {activeTab === "tabela" ? (
+          <button
+            type="button"
+            className="cost-export-excel"
+            onClick={handleExportarDespesasExcel}
+            disabled={exportarDespesasExcel.isPending}
+            title="Exportar Excel respeitando o filtro atual"
+          >
+            <FileSpreadsheet size={13} />
+            {exportarDespesasExcel.isPending ? "EXPORTANDO..." : "EXPORTAR EXCEL"}
+          </button>
+        ) : null}
       </nav>
 
       {activeTab === "pedidos" ? (

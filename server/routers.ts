@@ -407,6 +407,14 @@ export const appRouter = router({
         pageSize: z.number().int().min(10).max(200).optional(),
       }).optional())
       .query(({ input }) => db.listDespesasTabelaGeral(input)),
+
+    exportExcel: protectedProcedure
+      .input(z.object({
+        tipoConta: z.string().optional(),
+        search: z.string().optional(),
+        somenteNaoVinculados: z.boolean().optional(),
+      }).optional())
+      .mutation(({ input }) => db.exportDespesasTabelaGeral(input)),
   }),
 
   // ─────────────────────────────────────────────

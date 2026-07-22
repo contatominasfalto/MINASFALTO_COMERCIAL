@@ -1555,6 +1555,28 @@
   box-shadow: inset 0 3px 0 var(--sap-yellow);
 }
 
+.cost-tabs .cost-export-excel {
+  min-width: 136px;
+  margin-left: 12px;
+  border-bottom: 1px solid #8fa2b7;
+  border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: linear-gradient(#ffffff, #dce6f0);
+}
+
+.cost-tabs .cost-export-excel:hover {
+  background: linear-gradient(#fffaf0, #f4dfa8);
+  border-color: #9f7b22;
+}
+
+.cost-tabs .cost-export-excel:disabled {
+  opacity: .65;
+  cursor: default;
+}
+
 .costs-grid-frame {
   margin-top: 0;
 }
