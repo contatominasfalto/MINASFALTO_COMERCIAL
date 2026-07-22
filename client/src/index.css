@@ -1810,8 +1810,8 @@
 .cost-detail-workspace {
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
   padding: 10px 12px;
   background: var(--sap-panel);
@@ -1826,13 +1826,6 @@
   font-size: 13px;
 }
 
-.cost-modal-cards {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(150px, 1fr));
-  gap: 8px;
-}
-
-.cost-modal-cards label,
 .manual-expense-panel label {
   display: flex;
   flex-direction: column;
@@ -1840,14 +1833,12 @@
   min-width: 0;
 }
 
-.cost-modal-cards span,
 .manual-expense-panel span {
   color: #001b34;
   font-size: 11px;
   font-weight: 800;
 }
 
-.cost-modal-cards input,
 .manual-expense-panel input,
 .money-input-wrap input,
 .link-justification {
@@ -1886,28 +1877,11 @@
   border-radius: 0;
 }
 
-.cost-modal-cards .readonly {
-  justify-content: space-between;
-  min-height: 54px;
-  padding: 7px 9px;
-  border: 1px solid #9fb0c2;
-  background: linear-gradient(#ffffff, #f3f7fb);
-}
-
-.cost-modal-cards .readonly strong {
-  color: #001b34;
-  font-size: 15px;
-}
-
 .cost-modal-actions {
   display: flex;
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
-}
-
-.cost-modal-finance-actions {
-  justify-content: flex-start;
 }
 
 .cost-modal-actions button,
@@ -1962,6 +1936,7 @@
 }
 
 .cost-expense-group {
+  flex: 1 1 0;
   min-height: 0;
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
@@ -1970,16 +1945,15 @@
 }
 
 .cost-expense-group.collapsed {
+  flex: 0 0 auto;
   align-self: start;
+  width: 100%;
   min-height: 42px;
 }
 
-.cost-revenue-group {
-  min-height: 150px;
-}
-
-.cost-tax-group {
-  min-height: 130px;
+.cost-expense-group.expanded {
+  flex: 1 1 260px;
+  min-height: 260px;
 }
 
 .cost-revenue-group.collapsed,

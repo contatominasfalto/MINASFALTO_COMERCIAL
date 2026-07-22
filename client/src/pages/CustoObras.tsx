@@ -1207,44 +1207,6 @@ export default function CustoObras() {
               <div className="cost-detail-loading">Carregando dados do pedido...</div>
             ) : (
               <>
-                <div className="cost-modal-cards">
-                  <label>
-                    <span>NFes</span>
-                    <div className="money-input-wrap">
-                      <span>R$</span>
-                      <Input
-                        value={financeForm.nfes}
-                        onChange={(event) => updateFinanceField("nfes", event.target.value)}
-                      />
-                    </div>
-                  </label>
-                  <label>
-                    <span>Faturamento Direto</span>
-                    <div className="money-input-wrap">
-                      <span>R$</span>
-                      <Input
-                        value={financeForm.faturamentoDireto}
-                        onChange={(event) => updateFinanceField("faturamentoDireto", event.target.value)}
-                      />
-                    </div>
-                  </label>
-                  <label className="readonly">
-                    <span>Receita</span>
-                    <strong>{formatCurrency(modalCalculations.receita)}</strong>
-                  </label>
-                  <label className="readonly">
-                    <span>Valor porcentagem do Imposto</span>
-                    <strong>{formatCurrency(modalCalculations.valorPorcentagemImposto)}</strong>
-                  </label>
-                </div>
-
-                <div className="cost-modal-actions cost-modal-finance-actions">
-                  <button type="button" onClick={handleSaveFinanceiro} disabled={saveFinanceiro.isPending}>
-                    <Save size={14} />
-                    {saveFinanceiro.isPending ? "Salvando..." : "Salvar campos"}
-                  </button>
-                </div>
-
                 <section className={`cost-expense-group cost-revenue-group ${receitaGroupOpen ? "expanded" : "collapsed"}`}>
                   <div className="cost-expense-group-gutter">
                     <button
