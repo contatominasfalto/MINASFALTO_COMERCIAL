@@ -704,9 +704,9 @@ export default function CustoObras() {
                           <td className="num">{formatDecimal(pedido.qtde)}</td>
                           <td className="num">{formatDecimal(pedido.qtdeTapFacil)}</td>
                           <td className="num">{formatDecimal(pedido.qtdeGranel, 3)}</td>
-                          <td className="num">{formatCurrencyOrBlank(pedido.totalPedido)}</td>
+                          <td className="num">{formatCurrency(pedido.totalPedido)}</td>
                           <td className={`num ${isNegativeAmount(pedido.saldo) ? "negative-amount" : ""}`}>
-                            {formatCurrencyOrBlank(pedido.saldo)}
+                            {formatCurrency(pedido.saldo)}
                           </td>
                         </tr>
                       );
