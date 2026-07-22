@@ -242,8 +242,8 @@ export default function CustoObras() {
   const [manualExpenseModalOpen, setManualExpenseModalOpen] = useState(false);
   const [manualRevenueModalOpen, setManualRevenueModalOpen] = useState(false);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
-  const [receitaGroupOpen, setReceitaGroupOpen] = useState(true);
-  const [despesasGroupOpen, setDespesasGroupOpen] = useState(true);
+  const [receitaGroupOpen, setReceitaGroupOpen] = useState(false);
+  const [despesasGroupOpen, setDespesasGroupOpen] = useState(false);
   const [linkSearchTerm, setLinkSearchTerm] = useState("");
   const [linkTipoContaFilter, setLinkTipoContaFilter] = useState("TODOS");
   const [linkPage, setLinkPage] = useState(1);
@@ -926,6 +926,8 @@ export default function CustoObras() {
                           onClick={() => setSelectedPedido(pedido)}
                           onDoubleClick={() => {
                             setSelectedPedido(pedido);
+                            setReceitaGroupOpen(false);
+                            setDespesasGroupOpen(false);
                             setModalPedido(pedido);
                           }}
                         >
@@ -1102,7 +1104,13 @@ export default function CustoObras() {
         </>
       )}
 
-      <Dialog open={Boolean(modalPedido)} onOpenChange={(open) => !open && setModalPedido(null)}>
+      <Dialog open={Boolean(modalPedido)} onOpenChange={(open) => {
+        if (!open) {
+          setReceitaGroupOpen(false);
+          setDespesasGroupOpen(false);
+          setModalPedido(null);
+        }
+      }}>
         <DialogContent className="cost-detail-dialog">
           <DialogHeader>
             <DialogTitle>Pedido {modalPedido?.pedido}</DialogTitle>
@@ -1161,6 +1169,13 @@ export default function CustoObras() {
                   </label>
                 </div>
 
+                <div className="cost-modal-actions cost-modal-finance-actions">
+                  <button type="button" onClick={handleSaveFinanceiro} disabled={saveFinanceiro.isPending}>
+                    <Save size={14} />
+                    {saveFinanceiro.isPending ? "Salvando..." : "Salvar campos"}
+                  </button>
+                </div>
+
                 <section className={`cost-expense-group cost-revenue-group ${receitaGroupOpen ? "expanded" : "collapsed"}`}>
                   <div className="cost-expense-group-gutter">
                     <button
@@ -1180,15 +1195,12 @@ export default function CustoObras() {
                       onClick={() => setReceitaGroupOpen((current) => !current)}
                       aria-expanded={receitaGroupOpen}
                     >
-                      Receita
+                      <span>Receita</span>
+                      <strong>{formatCurrency(modalCalculations.receita)}</strong>
                     </button>
                     {receitaGroupOpen ? (
                       <>
                         <div className="cost-modal-actions">
-                          <button type="button" onClick={handleSaveFinanceiro} disabled={saveFinanceiro.isPending}>
-                            <Save size={14} />
-                            {saveFinanceiro.isPending ? "Salvando..." : "Salvar campos"}
-                          </button>
                           <button type="button" onClick={openNewManualRevenue}>
                             <Plus size={14} />
                             Cadastrar receitas
@@ -1268,15 +1280,12 @@ export default function CustoObras() {
                       onClick={() => setDespesasGroupOpen((current) => !current)}
                       aria-expanded={despesasGroupOpen}
                     >
-                      Despesas
+                      <span>Despesas</span>
+                      <strong>{formatCurrency(modalCalculations.totalDespesas)}</strong>
                     </button>
                     {despesasGroupOpen ? (
                       <>
                         <div className="cost-modal-actions">
-                          <button type="button" onClick={handleSaveFinanceiro} disabled={saveFinanceiro.isPending}>
-                            <Save size={14} />
-                            {saveFinanceiro.isPending ? "Salvando..." : "Salvar campos"}
-                          </button>
                           <button
                             type="button"
                             onClick={openNewManualExpense}
