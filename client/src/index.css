@@ -1943,12 +1943,14 @@
 
 .cost-group-search {
   display: grid;
-  grid-template-columns: 16px auto minmax(180px, 1fr);
+  grid-template-columns: 16px auto minmax(180px, 420px);
   align-items: center;
+  justify-content: start;
   gap: 5px;
   color: #001b34;
   font-size: 12px;
   font-weight: 800;
+  max-width: 520px;
 }
 
 .cost-group-search input {
@@ -2018,7 +2020,7 @@
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: 7px;
   padding: 8px;
 }
