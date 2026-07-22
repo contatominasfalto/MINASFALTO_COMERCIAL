@@ -1273,6 +1273,10 @@ export default function CustoObras() {
                     {despesasGroupOpen ? (
                       <>
                         <div className="cost-modal-actions">
+                          <button type="button" onClick={handleSaveFinanceiro} disabled={saveFinanceiro.isPending}>
+                            <Save size={14} />
+                            {saveFinanceiro.isPending ? "Salvando..." : "Salvar campos"}
+                          </button>
                           <button
                             type="button"
                             onClick={openNewManualExpense}
