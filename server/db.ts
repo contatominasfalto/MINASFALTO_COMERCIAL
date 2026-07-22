@@ -493,8 +493,14 @@ export async function listPedidosObras(filters?: {
   const params: Array<string | number> = [];
 
   if (filters?.status && filters.status !== "TODOS") {
-    whereSql.push("status = ?");
-    params.push(filters.status);
+    const normalizedStatus = String(filters.status).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (normalizedStatus.toLowerCase() === "concluido") {
+      whereSql.push("status IN (?, ?)");
+      params.push("Concluido", "Concluído");
+    } else {
+      whereSql.push("status = ?");
+      params.push(filters.status);
+    }
   }
 
   if (filters?.prioridade && filters.prioridade !== "TODOS") {

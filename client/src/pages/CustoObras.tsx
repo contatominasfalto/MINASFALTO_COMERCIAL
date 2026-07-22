@@ -634,8 +634,7 @@ export default function CustoObras() {
               <SelectContent>
                 <SelectItem value="TODOS">TODOS</SelectItem>
                 <SelectItem value="Aprovado">Aprovado</SelectItem>
-                <SelectItem value="Concluido">Concluido</SelectItem>
-                <SelectItem value="Concluído">Concluído</SelectItem>
+                <SelectItem value="Concluido">Concluído</SelectItem>
                 <SelectItem value="Cancelado">Cancelado</SelectItem>
               </SelectContent>
             </Select>
