@@ -120,12 +120,17 @@ function PaginationControls({
   totalPages,
   onPageChange,
   onPageSizeChange,
+  pageSizeOptions = [25, 50, 100, 200],
 }: PaginationState & {
   onPageChange: (page: number) => void;
   onPageSizeChange: (pageSize: number) => void;
+  pageSizeOptions?: number[];
 }) {
   const firstItem = total === 0 ? 0 : ((page - 1) * pageSize) + 1;
   const lastItem = Math.min(total, page * pageSize);
+  const goToPage = (nextPage: number) => {
+    onPageChange(Math.min(Math.max(1, nextPage), totalPages));
+  };
 
   return (
     <div className="cost-pagination" aria-label="Paginacao">
@@ -137,23 +142,22 @@ function PaginationControls({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="25">25</SelectItem>
-          <SelectItem value="50">50</SelectItem>
-          <SelectItem value="100">100</SelectItem>
-          <SelectItem value="200">200</SelectItem>
+          {pageSizeOptions.map((option) => (
+            <SelectItem key={option} value={String(option)}>{option}</SelectItem>
+          ))}
         </SelectContent>
       </Select>
-      <button type="button" onClick={() => onPageChange(1)} disabled={page <= 1}>
+      <button type="button" onClick={() => goToPage(1)} disabled={page <= 1}>
         <ChevronsLeft size={15} />
       </button>
-      <button type="button" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
+      <button type="button" onClick={() => goToPage(page - 1)} disabled={page <= 1}>
         <ChevronLeft size={15} />
       </button>
       <strong className="cost-page-label">Pagina {page} de {totalPages}</strong>
-      <button type="button" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages}>
+      <button type="button" onClick={() => goToPage(page + 1)} disabled={page >= totalPages}>
         <ChevronRight size={15} />
       </button>
-      <button type="button" onClick={() => onPageChange(totalPages)} disabled={page >= totalPages}>
+      <button type="button" onClick={() => goToPage(totalPages)} disabled={page >= totalPages}>
         <ChevronsRight size={15} />
       </button>
     </div>
@@ -398,20 +402,22 @@ export default function CustoObras() {
   }, [searchTerm, statusFilter, pedidosPageSize]);
 
   useEffect(() => {
+    if (!pedidosResult) return;
     if (pedidosPage > pedidosTotalPages) {
       setPedidosPage(pedidosTotalPages);
     }
-  }, [pedidosPage, pedidosTotalPages]);
+  }, [pedidosPage, pedidosResult, pedidosTotalPages]);
 
   useEffect(() => {
     setTabelaPage(1);
   }, [despesasSearchTerm, tipoContaFilter, tabelaPageSize]);
 
   useEffect(() => {
+    if (!despesasResult) return;
     if (tabelaPage > despesasTotalPages) {
       setTabelaPage(despesasTotalPages);
     }
-  }, [tabelaPage, despesasTotalPages]);
+  }, [despesasResult, tabelaPage, despesasTotalPages]);
 
   useEffect(() => {
     const financeiro = modalData?.financeiro;
@@ -438,10 +444,11 @@ export default function CustoObras() {
   }, [linkSearchTerm, linkTipoContaFilter, linkPageSize]);
 
   useEffect(() => {
+    if (!availableExpensesResult) return;
     if (linkPage > availableExpensesTotalPages) {
       setLinkPage(availableExpensesTotalPages);
     }
-  }, [linkPage, availableExpensesTotalPages]);
+  }, [availableExpensesResult, linkPage, availableExpensesTotalPages]);
 
   const despesasTotals = useMemo(() => {
     return despesas.reduce(
@@ -1255,6 +1262,7 @@ export default function CustoObras() {
             totalPages={availableExpensesTotalPages}
             onPageChange={setLinkPage}
             onPageSizeChange={setLinkPageSize}
+            pageSizeOptions={[25, 50, 100]}
           />
         </DialogContent>
       </Dialog>
