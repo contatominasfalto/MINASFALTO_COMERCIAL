@@ -44,6 +44,11 @@ const parseMoneyInput = (value: unknown) => {
 const parsePercentInput = (value: unknown) => Number(String(value || "0").replace(",", ".")) || 0;
 const moneyInputValue = (value: unknown) => String(value ?? "0");
 const categoryOptions: CostCategory[] = ["Custo", "Despesa", "Outros"];
+const matchesSearch = (values: unknown[], search: string) => {
+  const needle = search.trim().toLowerCase();
+  if (!needle) return true;
+  return values.some((value) => String(value ?? "").toLowerCase().includes(needle));
+};
 
 const formatCurrency = (value: unknown) =>
   new Intl.NumberFormat("pt-BR", {
@@ -265,6 +270,9 @@ export default function CustoObras() {
   const [receitaGroupOpen, setReceitaGroupOpen] = useState(false);
   const [impostosGroupOpen, setImpostosGroupOpen] = useState(false);
   const [despesasGroupOpen, setDespesasGroupOpen] = useState(false);
+  const [receitaGroupSearch, setReceitaGroupSearch] = useState("");
+  const [despesasGroupSearch, setDespesasGroupSearch] = useState("");
+  const [impostosGroupSearch, setImpostosGroupSearch] = useState("");
   const [linkSearchTerm, setLinkSearchTerm] = useState("");
   const [linkTipoContaFilter, setLinkTipoContaFilter] = useState("TODOS");
   const [linkPage, setLinkPage] = useState(1);
@@ -676,6 +684,43 @@ export default function CustoObras() {
     };
   }, [financeForm, modalDespesas, modalReceitas]);
 
+  const filteredModalReceitas = useMemo(() => {
+    return modalReceitas.filter((receita: any) => matchesSearch([
+      receita.numeroDocumento,
+      receita.status,
+      formatDateBR(receita.data),
+      formatCurrency(receita.valor),
+      receita.valor,
+      receita.descricao,
+    ], receitaGroupSearch));
+  }, [modalReceitas, receitaGroupSearch]);
+
+  const filteredModalDespesas = useMemo(() => {
+    return modalDespesas.filter((despesa: any) => matchesSearch([
+      despesa.codigoFornecedorCliente,
+      despesa.fornecedorCliente,
+      despesa.numeroDocumento,
+      despesa.tipoConta,
+      despesa.tipoDocumento,
+      formatDateBR(despesa.dataEmissao),
+      formatDateBR(despesa.dataVencimento),
+      formatCurrency(despesa.valorTotalDocumento),
+      despesa.valorTotalDocumento,
+      despesa.complemento,
+      despesa.observacoesAprovacao,
+      despesa.categoria,
+    ], despesasGroupSearch));
+  }, [modalDespesas, despesasGroupSearch]);
+
+  const filteredModalImpostos = useMemo(() => {
+    return modalCalculations.impostos.filter((imposto: any) => matchesSearch([
+      imposto.numeroDocumento,
+      formatDateBR(imposto.data),
+      formatCurrency(imposto.valorImposto),
+      imposto.valorImposto,
+    ], impostosGroupSearch));
+  }, [modalCalculations.impostos, impostosGroupSearch]);
+
   const updateFinanceField = (field: keyof typeof financeForm, value: string) => {
     setFinanceForm((current) => ({ ...current, [field]: value }));
   };
@@ -962,6 +1007,9 @@ export default function CustoObras() {
                             setReceitaGroupOpen(false);
                             setImpostosGroupOpen(false);
                             setDespesasGroupOpen(false);
+                            setReceitaGroupSearch("");
+                            setDespesasGroupSearch("");
+                            setImpostosGroupSearch("");
                             setModalPedido(pedido);
                           }}
                         >
@@ -1143,6 +1191,9 @@ export default function CustoObras() {
           setReceitaGroupOpen(false);
           setImpostosGroupOpen(false);
           setDespesasGroupOpen(false);
+          setReceitaGroupSearch("");
+          setDespesasGroupSearch("");
+          setImpostosGroupSearch("");
           setModalPedido(null);
         }
       }}>
@@ -1225,6 +1276,15 @@ export default function CustoObras() {
                           </button>
                         </div>
 
+                        <label className="cost-group-search">
+                          <Search size={14} />
+                          <span>Buscar:</span>
+                          <Input
+                            value={receitaGroupSearch}
+                            onChange={(event) => setReceitaGroupSearch(event.target.value)}
+                          />
+                        </label>
+
                         <div className="modal-table-frame revenue-table-frame">
                           <table className="desktop-table modal-revenues-table">
                             <thead>
@@ -1242,8 +1302,12 @@ export default function CustoObras() {
                                 <tr>
                                   <td colSpan={6} className="desktop-empty">Nenhuma receita cadastrada</td>
                                 </tr>
+                              ) : filteredModalReceitas.length === 0 ? (
+                                <tr>
+                                  <td colSpan={6} className="desktop-empty">Nenhuma receita encontrada para a busca</td>
+                                </tr>
                               ) : (
-                                modalReceitas.map((receita: any) => (
+                                filteredModalReceitas.map((receita: any) => (
                                   <tr key={receita.id}>
                                     <td>{receita.numeroDocumento}</td>
                                     <td>{receita.status}</td>
@@ -1317,6 +1381,15 @@ export default function CustoObras() {
                           </button>
                         </div>
 
+                        <label className="cost-group-search">
+                          <Search size={14} />
+                          <span>Buscar:</span>
+                          <Input
+                            value={despesasGroupSearch}
+                            onChange={(event) => setDespesasGroupSearch(event.target.value)}
+                          />
+                        </label>
+
                         <div className="modal-table-frame">
                           <table className="desktop-table modal-expenses-table">
                             <thead>
@@ -1340,8 +1413,12 @@ export default function CustoObras() {
                                 <tr>
                                   <td colSpan={12} className="desktop-empty">Nenhuma despesa vinculada ou cadastrada</td>
                                 </tr>
+                              ) : filteredModalDespesas.length === 0 ? (
+                                <tr>
+                                  <td colSpan={12} className="desktop-empty">Nenhuma despesa encontrada para a busca</td>
+                                </tr>
                               ) : (
-                                modalDespesas.map((despesa: any) => (
+                                filteredModalDespesas.map((despesa: any) => (
                                   <tr key={despesa.id}>
                                     <td>{despesa.codigoFornecedorCliente}</td>
                                     <td className="desktop-client">{despesa.fornecedorCliente}</td>
@@ -1421,6 +1498,15 @@ export default function CustoObras() {
                           </button>
                         </div>
 
+                        <label className="cost-group-search">
+                          <Search size={14} />
+                          <span>Buscar:</span>
+                          <Input
+                            value={impostosGroupSearch}
+                            onChange={(event) => setImpostosGroupSearch(event.target.value)}
+                          />
+                        </label>
+
                         <div className="modal-table-frame tax-table-frame">
                           <table className="desktop-table modal-tax-table">
                             <thead>
@@ -1435,8 +1521,12 @@ export default function CustoObras() {
                                 <tr>
                                   <td colSpan={3} className="desktop-empty">Nenhuma Nfe cadastrada em receitas</td>
                                 </tr>
+                              ) : filteredModalImpostos.length === 0 ? (
+                                <tr>
+                                  <td colSpan={3} className="desktop-empty">Nenhum imposto encontrado para a busca</td>
+                                </tr>
                               ) : (
-                                modalCalculations.impostos.map((imposto: any) => (
+                                filteredModalImpostos.map((imposto: any) => (
                                   <tr key={imposto.id}>
                                     <td>{imposto.numeroDocumento}</td>
                                     <td>{formatDateBR(imposto.data)}</td>

@@ -1941,6 +1941,23 @@
   opacity: 0.55;
 }
 
+.cost-group-search {
+  display: grid;
+  grid-template-columns: 16px auto minmax(180px, 1fr);
+  align-items: center;
+  gap: 5px;
+  color: #001b34;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cost-group-search input {
+  height: 30px;
+  border-radius: 0;
+  border: 1px solid #9fb0c2;
+  background: #ffffff;
+}
+
 .cost-expense-group {
   min-height: 0;
   display: grid;
