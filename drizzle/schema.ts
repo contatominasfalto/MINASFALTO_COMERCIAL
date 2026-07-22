@@ -177,7 +177,7 @@ export const pedidoObraReceitas = mysqlTable("pedido_obra_receitas", {
   pedidoObraId: int("pedidoObraId").notNull(),
   pedidoNum: varchar("pedidoNum", { length: 50 }).notNull(),
   numeroDocumento: varchar("numeroDocumento", { length: 80 }),
-  status: mysqlEnum("status", ["Nfe", "Outros"]).default("Nfe").notNull(),
+  status: mysqlEnum("status", ["Nfe", "Faturamento Direto", "Outros"]).default("Nfe").notNull(),
   data: varchar("data", { length: 10 }),
   valor: decimal("valor", { precision: 18, scale: 2 }).default("0"),
   descricao: text("descricao").default(""),

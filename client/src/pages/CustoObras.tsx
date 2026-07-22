@@ -23,6 +23,7 @@ type SortColumn =
 
 type ActiveTab = "pedidos" | "tabela";
 type CostCategory = "Custo" | "Despesa" | "Outros";
+type RevenueStatus = "Nfe" | "Faturamento Direto" | "Outros";
 
 type PaginationState = {
   page: number;
@@ -234,7 +235,7 @@ export default function CustoObras() {
   const [manualRevenue, setManualRevenue] = useState({
     id: null as number | null,
     numeroDocumento: "",
-    status: "Nfe" as "Nfe" | "Outros",
+    status: "Nfe" as RevenueStatus,
     data: "",
     valor: "",
     descricao: "",
@@ -1402,13 +1403,14 @@ export default function CustoObras() {
               <span>Status</span>
               <Select
                 value={manualRevenue.status}
-                onValueChange={(value) => setManualRevenue((current) => ({ ...current, status: value as "Nfe" | "Outros" }))}
+                onValueChange={(value) => setManualRevenue((current) => ({ ...current, status: value as RevenueStatus }))}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Nfe">Nfe</SelectItem>
+                  <SelectItem value="Faturamento Direto">Faturamento Direto</SelectItem>
                   <SelectItem value="Outros">Outros</SelectItem>
                 </SelectContent>
               </Select>

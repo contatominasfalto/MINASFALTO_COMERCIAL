@@ -154,7 +154,7 @@ try {
       pedidoObraId int NOT NULL,
       pedidoNum varchar(50) NOT NULL,
       numeroDocumento varchar(80) NULL,
-      status enum('Nfe','Outros') NOT NULL DEFAULT 'Nfe',
+      status enum('Nfe','Faturamento Direto','Outros') NOT NULL DEFAULT 'Nfe',
       data varchar(10) NULL,
       valor decimal(18,2) DEFAULT '0',
       descricao text DEFAULT (''),
@@ -165,6 +165,11 @@ try {
       INDEX pedido_obra_receitas_pedidoObraId_idx (pedidoObraId),
       INDEX pedido_obra_receitas_pedidoNum_idx (pedidoNum)
     )
+  `);
+
+  await connection.query(`
+    ALTER TABLE pedido_obra_receitas
+    MODIFY status enum('Nfe','Faturamento Direto','Outros') NOT NULL DEFAULT 'Nfe'
   `);
 
   const [userProfileColumns] = await connection.query("SHOW COLUMNS FROM users LIKE 'profile'");

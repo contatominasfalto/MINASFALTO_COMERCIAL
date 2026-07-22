@@ -1176,7 +1176,7 @@ export async function createPedidoObraReceita(data: {
   pedidoObraId: number;
   pedidoNum: string;
   numeroDocumento?: string;
-  status: "Nfe" | "Outros";
+  status: "Nfe" | "Faturamento Direto" | "Outros";
   data?: string;
   valor: number;
   descricao?: string;
@@ -1219,7 +1219,7 @@ export async function updatePedidoObraReceita(data: {
   id: number;
   pedidoObraId: number;
   numeroDocumento?: string;
-  status: "Nfe" | "Outros";
+  status: "Nfe" | "Faturamento Direto" | "Outros";
   data?: string;
   valor: number;
   descricao?: string;
