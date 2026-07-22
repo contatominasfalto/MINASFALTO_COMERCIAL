@@ -244,6 +244,7 @@ export default function CustoObras() {
   const [manualRevenueModalOpen, setManualRevenueModalOpen] = useState(false);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [receitaGroupOpen, setReceitaGroupOpen] = useState(false);
+  const [impostosGroupOpen, setImpostosGroupOpen] = useState(false);
   const [despesasGroupOpen, setDespesasGroupOpen] = useState(false);
   const [linkSearchTerm, setLinkSearchTerm] = useState("");
   const [linkTipoContaFilter, setLinkTipoContaFilter] = useState("TODOS");
@@ -629,16 +630,28 @@ export default function CustoObras() {
     const receita = modalReceitas.reduce((total: number, receitaItem: any) => {
       return total + numberValue(receitaItem.valor);
     }, 0);
-    const valorTotalImposto = parseMoneyInput(financeForm.valorTotalImposto);
+    const nfeReceitas = modalReceitas.filter((receitaItem: any) => receitaItem.status === "Nfe");
+    const valorTotalImpostoBase = nfeReceitas.reduce((total: number, receitaItem: any) => {
+      return total + numberValue(receitaItem.valor);
+    }, 0);
     const porcentagemImposto = parsePercentInput(financeForm.porcentagemImposto);
-    const valorPorcentagemImposto = valorTotalImposto * (porcentagemImposto / 100);
+    const valorPorcentagemImposto = valorTotalImpostoBase * (porcentagemImposto / 100);
+    const impostos = nfeReceitas.map((receitaItem: any) => ({
+      id: receitaItem.id,
+      numeroDocumento: receitaItem.numeroDocumento,
+      data: receitaItem.data,
+      valorImposto: numberValue(receitaItem.valor) * (porcentagemImposto / 100),
+    }));
     const totalDespesas = modalDespesas.reduce((total: number, despesa: any) => {
       return total + numberValue(despesa.valorTotalDocumento);
     }, 0);
 
     return {
       receita,
+      valorTotalImpostoBase,
+      porcentagemImposto,
       valorPorcentagemImposto,
+      impostos,
       totalDespesas,
       saldo: receita - valorPorcentagemImposto - totalDespesas,
     };
@@ -725,7 +738,7 @@ export default function CustoObras() {
       pedidoNum: String(modalPedido.pedido),
       nfes: parseMoneyInput(financeForm.nfes),
       faturamentoDireto: parseMoneyInput(financeForm.faturamentoDireto),
-      valorTotalImposto: parseMoneyInput(financeForm.valorTotalImposto),
+      valorTotalImposto: modalCalculations.valorTotalImpostoBase,
       porcentagemImposto: parsePercentInput(financeForm.porcentagemImposto),
     });
   };
@@ -928,6 +941,7 @@ export default function CustoObras() {
                           onDoubleClick={() => {
                             setSelectedPedido(pedido);
                             setReceitaGroupOpen(false);
+                            setImpostosGroupOpen(false);
                             setDespesasGroupOpen(false);
                             setModalPedido(pedido);
                           }}
@@ -1108,6 +1122,7 @@ export default function CustoObras() {
       <Dialog open={Boolean(modalPedido)} onOpenChange={(open) => {
         if (!open) {
           setReceitaGroupOpen(false);
+          setImpostosGroupOpen(false);
           setDespesasGroupOpen(false);
           setModalPedido(null);
         }
@@ -1146,23 +1161,6 @@ export default function CustoObras() {
                   <label className="readonly">
                     <span>Receita</span>
                     <strong>{formatCurrency(modalCalculations.receita)}</strong>
-                  </label>
-                  <label>
-                    <span>Valor total Imposto</span>
-                    <div className="money-input-wrap">
-                      <span>R$</span>
-                      <Input
-                        value={financeForm.valorTotalImposto}
-                        onChange={(event) => updateFinanceField("valorTotalImposto", event.target.value)}
-                      />
-                    </div>
-                  </label>
-                  <label>
-                    <span>Porcentagem %</span>
-                    <Input
-                      value={financeForm.porcentagemImposto}
-                      onChange={(event) => updateFinanceField("porcentagemImposto", event.target.value)}
-                    />
                   </label>
                   <label className="readonly">
                     <span>Valor porcentagem do Imposto</span>
@@ -1251,6 +1249,75 @@ export default function CustoObras() {
                                         <Trash2 size={15} />
                                       </button>
                                     </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+                </section>
+
+                <section className={`cost-expense-group cost-tax-group ${impostosGroupOpen ? "expanded" : "collapsed"}`}>
+                  <div className="cost-expense-group-gutter">
+                    <button
+                      type="button"
+                      className="cost-group-toggle"
+                      onClick={() => setImpostosGroupOpen((current) => !current)}
+                      aria-expanded={impostosGroupOpen}
+                      title={impostosGroupOpen ? "Recolher impostos" : "Expandir impostos"}
+                    >
+                      {impostosGroupOpen ? "-" : "+"}
+                    </button>
+                  </div>
+                  <div className="cost-expense-group-main">
+                    <button
+                      type="button"
+                      className="cost-group-title"
+                      onClick={() => setImpostosGroupOpen((current) => !current)}
+                      aria-expanded={impostosGroupOpen}
+                    >
+                      <span>Impostos</span>
+                      <strong>{formatCurrency(modalCalculations.valorPorcentagemImposto)}</strong>
+                    </button>
+                    {impostosGroupOpen ? (
+                      <>
+                        <div className="cost-modal-actions cost-tax-actions">
+                          <label className="cost-tax-percent-field">
+                            <span>Porcentagem Imposto %</span>
+                            <Input
+                              value={financeForm.porcentagemImposto}
+                              onChange={(event) => updateFinanceField("porcentagemImposto", event.target.value)}
+                            />
+                          </label>
+                          <button type="button" onClick={handleSaveFinanceiro} disabled={saveFinanceiro.isPending}>
+                            <Save size={14} />
+                            {saveFinanceiro.isPending ? "Salvando..." : "Salvar campos"}
+                          </button>
+                        </div>
+
+                        <div className="modal-table-frame tax-table-frame">
+                          <table className="desktop-table modal-tax-table">
+                            <thead>
+                              <tr>
+                                <th>N do doc</th>
+                                <th>Data</th>
+                                <th>Valor do Imposto</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {modalCalculations.impostos.length === 0 ? (
+                                <tr>
+                                  <td colSpan={3} className="desktop-empty">Nenhuma Nfe cadastrada em receitas</td>
+                                </tr>
+                              ) : (
+                                modalCalculations.impostos.map((imposto: any) => (
+                                  <tr key={imposto.id}>
+                                    <td>{imposto.numeroDocumento}</td>
+                                    <td>{imposto.data}</td>
+                                    <td className="num">{formatCurrency(imposto.valorImposto)}</td>
                                   </tr>
                                 ))
                               )}

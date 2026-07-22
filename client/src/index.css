@@ -1811,7 +1811,7 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
   gap: 8px;
   padding: 10px 12px;
   background: var(--sap-panel);
@@ -1828,7 +1828,7 @@
 
 .cost-modal-cards {
   display: grid;
-  grid-template-columns: repeat(6, minmax(130px, 1fr));
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
   gap: 8px;
 }
 
@@ -1958,7 +1958,12 @@
   min-height: 150px;
 }
 
-.cost-revenue-group.collapsed {
+.cost-tax-group {
+  min-height: 130px;
+}
+
+.cost-revenue-group.collapsed,
+.cost-tax-group.collapsed {
   min-height: 42px;
 }
 
@@ -2035,6 +2040,27 @@
   border-color: #a47d1d;
 }
 
+.cost-tax-actions {
+  gap: 10px;
+}
+
+.cost-tax-percent-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #001b34;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cost-tax-percent-field input {
+  width: 110px;
+  height: 30px;
+  border-radius: 0;
+  border: 1px solid #9fb0c2;
+  background: #ffffff;
+}
+
 .table-icon-button {
   width: 28px;
   height: 28px;
@@ -2082,10 +2108,16 @@
   min-width: 860px;
 }
 
+.modal-tax-table {
+  min-width: 620px;
+}
+
 .modal-expenses-table th,
 .modal-expenses-table td,
 .modal-revenues-table th,
-.modal-revenues-table td {
+.modal-revenues-table td,
+.modal-tax-table th,
+.modal-tax-table td {
   height: 25px;
   font-size: 11px;
 }
@@ -2096,6 +2128,10 @@
 .modal-revenues-table th:nth-child(4), .modal-revenues-table td:nth-child(4) { width: 130px; text-align: right; }
 .modal-revenues-table th:nth-child(5), .modal-revenues-table td:nth-child(5) { width: 340px; text-align: left; }
 .modal-revenues-table th:nth-child(6), .modal-revenues-table td:nth-child(6) { width: 72px; text-align: center; }
+
+.modal-tax-table th:nth-child(1), .modal-tax-table td:nth-child(1) { width: 180px; text-align: center; }
+.modal-tax-table th:nth-child(2), .modal-tax-table td:nth-child(2) { width: 160px; text-align: center; }
+.modal-tax-table th:nth-child(3), .modal-tax-table td:nth-child(3) { width: 180px; text-align: right; }
 
 .modal-expenses-table th:nth-child(1), .modal-expenses-table td:nth-child(1) { width: 130px; text-align: center; }
 .modal-expenses-table th:nth-child(2), .modal-expenses-table td:nth-child(2) { width: 250px; text-align: left; }

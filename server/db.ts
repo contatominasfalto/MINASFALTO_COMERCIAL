@@ -535,7 +535,7 @@ export async function listPedidosObras(filters?: {
         COALESCE(por.totalReceitas, 0) AS totalPedido,
         (
           COALESCE(por.totalReceitas, 0)
-          - (COALESCE(pof.valorTotalImposto, 0) * (COALESCE(pof.porcentagemImposto, 17) / 100))
+          - (COALESCE(por.totalNfeReceitas, 0) * (COALESCE(pof.porcentagemImposto, 17) / 100))
           - COALESCE(pod.totalDespesas, 0)
         ) AS saldo,
         po.prioridade,
@@ -550,7 +550,10 @@ export async function listPedidosObras(filters?: {
       FROM pedidos_obras po
       LEFT JOIN pedido_obra_financeiro pof ON pof.pedidoObraId = po.id
       LEFT JOIN (
-        SELECT pedidoNum, SUM(COALESCE(valor, 0)) AS totalReceitas
+        SELECT
+          pedidoNum,
+          SUM(COALESCE(valor, 0)) AS totalReceitas,
+          SUM(CASE WHEN status = 'Nfe' THEN COALESCE(valor, 0) ELSE 0 END) AS totalNfeReceitas
         FROM pedido_obra_receitas
         GROUP BY pedidoNum
       ) por ON por.pedidoNum = po.pedido
@@ -625,7 +628,7 @@ export async function exportPedidosObras(filters?: {
         COALESCE(por.totalReceitas, 0) AS totalPedido,
         (
           COALESCE(por.totalReceitas, 0)
-          - (COALESCE(pof.valorTotalImposto, 0) * (COALESCE(pof.porcentagemImposto, 17) / 100))
+          - (COALESCE(por.totalNfeReceitas, 0) * (COALESCE(pof.porcentagemImposto, 17) / 100))
           - COALESCE(pod.totalDespesas, 0)
         ) AS saldo,
         po.prioridade,
@@ -637,7 +640,10 @@ export async function exportPedidosObras(filters?: {
       FROM pedidos_obras po
       LEFT JOIN pedido_obra_financeiro pof ON pof.pedidoObraId = po.id
       LEFT JOIN (
-        SELECT pedidoNum, SUM(COALESCE(valor, 0)) AS totalReceitas
+        SELECT
+          pedidoNum,
+          SUM(COALESCE(valor, 0)) AS totalReceitas,
+          SUM(CASE WHEN status = 'Nfe' THEN COALESCE(valor, 0) ELSE 0 END) AS totalNfeReceitas
         FROM pedido_obra_receitas
         GROUP BY pedidoNum
       ) por ON por.pedidoNum = po.pedido
