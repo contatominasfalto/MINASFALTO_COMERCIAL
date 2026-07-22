@@ -12,6 +12,7 @@ const REQUIRED_TABLES = [
   "despesas_tabela_geral",
   "pedido_obra_financeiro",
   "pedido_obra_despesas",
+  "pedido_obra_receitas",
   "estoque_movimentacoes",
 ];
 
@@ -126,6 +127,19 @@ const REQUIRED_COLUMNS = {
     "valorTotalDocumento",
     "complemento",
     "observacoesAprovacao",
+    "criadoPor",
+    "criadoEm",
+    "atualizadoEm",
+  ],
+  pedido_obra_receitas: [
+    "id",
+    "pedidoObraId",
+    "pedidoNum",
+    "numeroDocumento",
+    "status",
+    "data",
+    "valor",
+    "descricao",
     "criadoPor",
     "criadoEm",
     "atualizadoEm",

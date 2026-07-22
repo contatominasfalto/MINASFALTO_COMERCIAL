@@ -144,6 +144,26 @@ const pedidoObraDespesaUpdateSchema = z.object({
   }
 });
 
+const pedidoObraReceitaSchema = z.object({
+  pedidoObraId: z.number().int().positive(),
+  pedidoNum: z.string().min(1),
+  numeroDocumento: z.string().max(80).optional(),
+  status: z.enum(["Nfe", "Outros"]),
+  data: z.string().max(10).optional(),
+  valor: z.coerce.number().nonnegative(),
+  descricao: z.string().max(5000).optional(),
+});
+
+const pedidoObraReceitaUpdateSchema = z.object({
+  id: z.number().int().positive(),
+  pedidoObraId: z.number().int().positive(),
+  numeroDocumento: z.string().max(80).optional(),
+  status: z.enum(["Nfe", "Outros"]),
+  data: z.string().max(10).optional(),
+  valor: z.coerce.number().nonnegative(),
+  descricao: z.string().max(5000).optional(),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -355,6 +375,24 @@ export const appRouter = router({
         pedidoNum: z.string().min(1),
       }))
       .mutation(({ input }) => db.clearPedidoObraFinanceiro(input.pedidoObraId, input.pedidoNum)),
+
+    createReceita: protectedProcedure
+      .input(pedidoObraReceitaSchema)
+      .mutation(({ input, ctx }) => db.createPedidoObraReceita({
+        ...input,
+        criadoPor: ctx.user?.name || "Sistema",
+      })),
+
+    updateReceita: protectedProcedure
+      .input(pedidoObraReceitaUpdateSchema)
+      .mutation(({ input }) => db.updatePedidoObraReceita(input)),
+
+    deleteReceita: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        pedidoObraId: z.number().int().positive(),
+      }))
+      .mutation(({ input }) => db.deletePedidoObraReceita(input.id, input.pedidoObraId)),
 
     createDespesaManual: protectedProcedure
       .input(pedidoObraDespesaBaseSchema.and(pedidoObraDespesaFieldsSchema))

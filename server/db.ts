@@ -532,9 +532,9 @@ export async function listPedidosObras(filters?: {
         po.qtdeTapFacil,
         po.qtdeGranel,
         po.valorUnit,
-        (COALESCE(pof.nfes, 0) + COALESCE(pof.faturamentoDireto, 0)) AS totalPedido,
+        COALESCE(por.totalReceitas, 0) AS totalPedido,
         (
-          (COALESCE(pof.nfes, 0) + COALESCE(pof.faturamentoDireto, 0))
+          COALESCE(por.totalReceitas, 0)
           - (COALESCE(pof.valorTotalImposto, 0) * (COALESCE(pof.porcentagemImposto, 17) / 100))
           - COALESCE(pod.totalDespesas, 0)
         ) AS saldo,
@@ -549,6 +549,11 @@ export async function listPedidosObras(filters?: {
         po.atualizadoEm
       FROM pedidos_obras po
       LEFT JOIN pedido_obra_financeiro pof ON pof.pedidoObraId = po.id
+      LEFT JOIN (
+        SELECT pedidoNum, SUM(COALESCE(valor, 0)) AS totalReceitas
+        FROM pedido_obra_receitas
+        GROUP BY pedidoNum
+      ) por ON por.pedidoNum = po.pedido
       LEFT JOIN (
         SELECT pedidoNum, SUM(COALESCE(valorTotalDocumento, 0)) AS totalDespesas
         FROM pedido_obra_despesas
@@ -617,9 +622,9 @@ export async function exportPedidosObras(filters?: {
         po.qtdeTapFacil,
         po.qtdeGranel,
         po.valorUnit,
-        (COALESCE(pof.nfes, 0) + COALESCE(pof.faturamentoDireto, 0)) AS totalPedido,
+        COALESCE(por.totalReceitas, 0) AS totalPedido,
         (
-          (COALESCE(pof.nfes, 0) + COALESCE(pof.faturamentoDireto, 0))
+          COALESCE(por.totalReceitas, 0)
           - (COALESCE(pof.valorTotalImposto, 0) * (COALESCE(pof.porcentagemImposto, 17) / 100))
           - COALESCE(pod.totalDespesas, 0)
         ) AS saldo,
@@ -631,6 +636,11 @@ export async function exportPedidosObras(filters?: {
         po.atualizadoEm
       FROM pedidos_obras po
       LEFT JOIN pedido_obra_financeiro pof ON pof.pedidoObraId = po.id
+      LEFT JOIN (
+        SELECT pedidoNum, SUM(COALESCE(valor, 0)) AS totalReceitas
+        FROM pedido_obra_receitas
+        GROUP BY pedidoNum
+      ) por ON por.pedidoNum = po.pedido
       LEFT JOIN (
         SELECT pedidoNum, SUM(COALESCE(valorTotalDocumento, 0)) AS totalDespesas
         FROM pedido_obra_despesas
@@ -1042,6 +1052,7 @@ export async function getPedidoObraModalData(pedidoObraId: number) {
         valorTotalImposto: "0",
         porcentagemImposto: "17.00",
       },
+      receitas: [],
       despesas: [],
     };
   }
@@ -1086,6 +1097,27 @@ export async function getPedidoObraModalData(pedidoObraId: number) {
     [pedidoObraId],
   );
 
+  const [receitas] = await _pool.query<mysql.RowDataPacket[]>(
+    `
+      SELECT
+        id,
+        pedidoObraId,
+        pedidoNum,
+        numeroDocumento,
+        status,
+        \`data\`,
+        valor,
+        descricao,
+        criadoPor,
+        criadoEm,
+        atualizadoEm
+      FROM pedido_obra_receitas
+      WHERE pedidoObraId = ?
+      ORDER BY id DESC
+    `,
+    [pedidoObraId],
+  );
+
   return {
     financeiro: financeiroRows[0] ?? {
       pedidoObraId,
@@ -1094,6 +1126,7 @@ export async function getPedidoObraModalData(pedidoObraId: number) {
       valorTotalImposto: "0",
       porcentagemImposto: "17.00",
     },
+    receitas,
     despesas,
   };
 }
@@ -1137,6 +1170,101 @@ export async function clearPedidoObraFinanceiro(pedidoObraId: number, pedidoNum:
     valorTotalImposto: 0,
     porcentagemImposto: 17,
   });
+}
+
+export async function createPedidoObraReceita(data: {
+  pedidoObraId: number;
+  pedidoNum: string;
+  numeroDocumento?: string;
+  status: "Nfe" | "Outros";
+  data?: string;
+  valor: number;
+  descricao?: string;
+  criadoPor?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (!_pool) throw new Error("Database pool not available");
+
+  const [result] = await _pool.query(
+    `
+      INSERT INTO pedido_obra_receitas (
+        pedidoObraId,
+        pedidoNum,
+        numeroDocumento,
+        status,
+        \`data\`,
+        valor,
+        descricao,
+        criadoPor
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      data.pedidoObraId,
+      data.pedidoNum,
+      data.numeroDocumento || "",
+      data.status,
+      data.data || "",
+      data.valor,
+      data.descricao || "",
+      data.criadoPor || "Sistema",
+    ],
+  );
+
+  return result;
+}
+
+export async function updatePedidoObraReceita(data: {
+  id: number;
+  pedidoObraId: number;
+  numeroDocumento?: string;
+  status: "Nfe" | "Outros";
+  data?: string;
+  valor: number;
+  descricao?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (!_pool) throw new Error("Database pool not available");
+
+  const [result] = await _pool.query(
+    `
+      UPDATE pedido_obra_receitas
+      SET
+        numeroDocumento = ?,
+        status = ?,
+        \`data\` = ?,
+        valor = ?,
+        descricao = ?,
+        atualizadoEm = CURRENT_TIMESTAMP
+      WHERE id = ? AND pedidoObraId = ?
+    `,
+    [
+      data.numeroDocumento || "",
+      data.status,
+      data.data || "",
+      data.valor,
+      data.descricao || "",
+      data.id,
+      data.pedidoObraId,
+    ],
+  );
+
+  return result;
+}
+
+export async function deletePedidoObraReceita(id: number, pedidoObraId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (!_pool) throw new Error("Database pool not available");
+
+  const [result] = await _pool.query(
+    "DELETE FROM pedido_obra_receitas WHERE id = ? AND pedidoObraId = ?",
+    [id, pedidoObraId],
+  );
+
+  return result;
 }
 
 export async function createPedidoObraDespesaManual(data: {

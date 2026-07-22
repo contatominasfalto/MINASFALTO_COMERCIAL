@@ -231,8 +231,18 @@ export default function CustoObras() {
     complemento: "",
     observacoesAprovacao: "",
   });
+  const [manualRevenue, setManualRevenue] = useState({
+    id: null as number | null,
+    numeroDocumento: "",
+    status: "Nfe" as "Nfe" | "Outros",
+    data: "",
+    valor: "",
+    descricao: "",
+  });
   const [manualExpenseModalOpen, setManualExpenseModalOpen] = useState(false);
+  const [manualRevenueModalOpen, setManualRevenueModalOpen] = useState(false);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [receitaGroupOpen, setReceitaGroupOpen] = useState(true);
   const [despesasGroupOpen, setDespesasGroupOpen] = useState(true);
   const [linkSearchTerm, setLinkSearchTerm] = useState("");
   const [linkTipoContaFilter, setLinkTipoContaFilter] = useState("TODOS");
@@ -285,6 +295,7 @@ export default function CustoObras() {
   const availableExpenses = availableExpensesResult?.items ?? [];
   const availableExpensesTotal = availableExpensesResult?.total ?? 0;
   const availableExpensesTotalPages = availableExpensesResult?.totalPages ?? 1;
+  const modalReceitas = modalData?.receitas ?? [];
 
   const { mutate: sincronizarCustos, isPending: isSyncing } = trpc.crti.sincronizacaoCustosObras.useMutation({
     onSuccess: (data) => {
@@ -327,6 +338,34 @@ export default function CustoObras() {
       invalidateModal();
     },
     onError: (mutationError) => toast.error(`Erro ao limpar dados financeiros: ${mutationError.message}`),
+  });
+
+  const createReceita = trpc.pedidosObras.createReceita.useMutation({
+    onSuccess: () => {
+      toast.success("Receita cadastrada");
+      resetManualRevenueForm();
+      setManualRevenueModalOpen(false);
+      invalidateModal();
+    },
+    onError: (mutationError) => toast.error(`Erro ao cadastrar receita: ${mutationError.message}`),
+  });
+
+  const updateReceita = trpc.pedidosObras.updateReceita.useMutation({
+    onSuccess: () => {
+      toast.success("Receita atualizada");
+      resetManualRevenueForm();
+      setManualRevenueModalOpen(false);
+      invalidateModal();
+    },
+    onError: (mutationError) => toast.error(`Erro ao atualizar receita: ${mutationError.message}`),
+  });
+
+  const deleteReceita = trpc.pedidosObras.deleteReceita.useMutation({
+    onSuccess: () => {
+      toast.success("Receita removida");
+      invalidateModal();
+    },
+    onError: (mutationError) => toast.error(`Erro ao remover receita: ${mutationError.message}`),
   });
 
   const createDespesaManual = trpc.pedidosObras.createDespesaManual.useMutation({
@@ -586,9 +625,9 @@ export default function CustoObras() {
   }, [despesas]);
 
   const modalCalculations = useMemo(() => {
-    const nfes = parseMoneyInput(financeForm.nfes);
-    const faturamentoDireto = parseMoneyInput(financeForm.faturamentoDireto);
-    const receita = nfes + faturamentoDireto;
+    const receita = modalReceitas.reduce((total: number, receitaItem: any) => {
+      return total + numberValue(receitaItem.valor);
+    }, 0);
     const valorTotalImposto = parseMoneyInput(financeForm.valorTotalImposto);
     const porcentagemImposto = parsePercentInput(financeForm.porcentagemImposto);
     const valorPorcentagemImposto = valorTotalImposto * (porcentagemImposto / 100);
@@ -602,7 +641,7 @@ export default function CustoObras() {
       totalDespesas,
       saldo: receita - valorPorcentagemImposto - totalDespesas,
     };
-  }, [financeForm, modalDespesas]);
+  }, [financeForm, modalDespesas, modalReceitas]);
 
   const updateFinanceField = (field: keyof typeof financeForm, value: string) => {
     setFinanceForm((current) => ({ ...current, [field]: value }));
@@ -650,6 +689,34 @@ export default function CustoObras() {
     setManualExpenseModalOpen(true);
   };
 
+  function resetManualRevenueForm() {
+    setManualRevenue({
+      id: null,
+      numeroDocumento: "",
+      status: "Nfe",
+      data: "",
+      valor: "",
+      descricao: "",
+    });
+  }
+
+  const openNewManualRevenue = () => {
+    resetManualRevenueForm();
+    setManualRevenueModalOpen(true);
+  };
+
+  const openEditManualRevenue = (receita: any) => {
+    setManualRevenue({
+      id: receita.id,
+      numeroDocumento: receita.numeroDocumento || "",
+      status: receita.status || "Nfe",
+      data: receita.data || "",
+      valor: moneyInputValue(receita.valor),
+      descricao: receita.descricao || "",
+    });
+    setManualRevenueModalOpen(true);
+  };
+
   const handleSaveFinanceiro = () => {
     if (!modalPedido) return;
     saveFinanceiro.mutate({
@@ -668,6 +735,34 @@ export default function CustoObras() {
       pedidoObraId: modalPedido.id,
       pedidoNum: String(modalPedido.pedido),
     });
+  };
+
+  const handleSaveReceita = () => {
+    if (!modalPedido) return;
+    const payload = {
+      pedidoObraId: modalPedido.id,
+      pedidoNum: String(modalPedido.pedido),
+      numeroDocumento: manualRevenue.numeroDocumento,
+      status: manualRevenue.status,
+      data: manualRevenue.data,
+      valor: parseMoneyInput(manualRevenue.valor),
+      descricao: manualRevenue.descricao,
+    };
+
+    if (manualRevenue.id) {
+      updateReceita.mutate({
+        id: manualRevenue.id,
+        pedidoObraId: payload.pedidoObraId,
+        numeroDocumento: payload.numeroDocumento,
+        status: payload.status,
+        data: payload.data,
+        valor: payload.valor,
+        descricao: payload.descricao,
+      });
+      return;
+    }
+
+    createReceita.mutate(payload);
   };
 
   const handleCreateDespesaManual = () => {
@@ -1066,6 +1161,94 @@ export default function CustoObras() {
                   </label>
                 </div>
 
+                <section className={`cost-expense-group cost-revenue-group ${receitaGroupOpen ? "expanded" : "collapsed"}`}>
+                  <div className="cost-expense-group-gutter">
+                    <button
+                      type="button"
+                      className="cost-group-toggle"
+                      onClick={() => setReceitaGroupOpen((current) => !current)}
+                      aria-expanded={receitaGroupOpen}
+                      title={receitaGroupOpen ? "Recolher receita" : "Expandir receita"}
+                    >
+                      {receitaGroupOpen ? "-" : "+"}
+                    </button>
+                  </div>
+                  <div className="cost-expense-group-main">
+                    <button
+                      type="button"
+                      className="cost-group-title"
+                      onClick={() => setReceitaGroupOpen((current) => !current)}
+                      aria-expanded={receitaGroupOpen}
+                    >
+                      Receita
+                    </button>
+                    {receitaGroupOpen ? (
+                      <>
+                        <div className="cost-modal-actions">
+                          <button type="button" onClick={handleSaveFinanceiro} disabled={saveFinanceiro.isPending}>
+                            <Save size={14} />
+                            {saveFinanceiro.isPending ? "Salvando..." : "Salvar campos"}
+                          </button>
+                          <button type="button" onClick={openNewManualRevenue}>
+                            <Plus size={14} />
+                            Cadastrar receitas
+                          </button>
+                        </div>
+
+                        <div className="modal-table-frame revenue-table-frame">
+                          <table className="desktop-table modal-revenues-table">
+                            <thead>
+                              <tr>
+                                <th>N Doc</th>
+                                <th>Status</th>
+                                <th>Data</th>
+                                <th>Valor</th>
+                                <th>Descricao</th>
+                                <th>Acoes</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {modalReceitas.length === 0 ? (
+                                <tr>
+                                  <td colSpan={6} className="desktop-empty">Nenhuma receita cadastrada</td>
+                                </tr>
+                              ) : (
+                                modalReceitas.map((receita: any) => (
+                                  <tr key={receita.id}>
+                                    <td>{receita.numeroDocumento}</td>
+                                    <td>{receita.status}</td>
+                                    <td>{receita.data}</td>
+                                    <td className="num">{formatCurrency(receita.valor)}</td>
+                                    <td className="expense-complement" title={receita.descricao || ""}>{receita.descricao}</td>
+                                    <td>
+                                      <button
+                                        type="button"
+                                        className="table-icon-button"
+                                        onClick={() => openEditManualRevenue(receita)}
+                                        title="Editar"
+                                      >
+                                        <Pencil size={15} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="table-icon-button danger"
+                                        onClick={() => deleteReceita.mutate({ id: receita.id, pedidoObraId: modalPedido.id })}
+                                        title="Excluir"
+                                      >
+                                        <Trash2 size={15} />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+                </section>
+
                 <section className={`cost-expense-group ${despesasGroupOpen ? "expanded" : "collapsed"}`}>
                   <div className="cost-expense-group-gutter">
                     <button
@@ -1090,10 +1273,6 @@ export default function CustoObras() {
                     {despesasGroupOpen ? (
                       <>
                         <div className="cost-modal-actions">
-                          <button type="button" onClick={handleSaveFinanceiro} disabled={saveFinanceiro.isPending}>
-                            <Save size={14} />
-                            {saveFinanceiro.isPending ? "Salvando..." : "Salvar campos"}
-                          </button>
                           <button
                             type="button"
                             onClick={openNewManualExpense}
@@ -1184,6 +1363,81 @@ export default function CustoObras() {
               </>
             )}
           </section>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={manualRevenueModalOpen} onOpenChange={(open) => {
+        setManualRevenueModalOpen(open);
+        if (!open) resetManualRevenueForm();
+      }}>
+        <DialogContent className="manual-expense-dialog manual-revenue-dialog">
+          <DialogHeader>
+            <DialogTitle>{manualRevenue.id ? "Editar receita" : "Cadastrar receita"}</DialogTitle>
+            <DialogDescription>Pedido {modalPedido?.pedido}</DialogDescription>
+          </DialogHeader>
+
+          <section className="manual-expense-form manual-revenue-form">
+            <label>
+              <span>N Doc</span>
+              <Input
+                type="number"
+                value={manualRevenue.numeroDocumento}
+                onChange={(event) => setManualRevenue((current) => ({ ...current, numeroDocumento: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>Status</span>
+              <Select
+                value={manualRevenue.status}
+                onValueChange={(value) => setManualRevenue((current) => ({ ...current, status: value as "Nfe" | "Outros" }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Nfe">Nfe</SelectItem>
+                  <SelectItem value="Outros">Outros</SelectItem>
+                </SelectContent>
+              </Select>
+            </label>
+            <label>
+              <span>Data</span>
+              <Input
+                type="date"
+                value={manualRevenue.data}
+                onChange={(event) => setManualRevenue((current) => ({ ...current, data: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>Valor</span>
+              <div className="money-input-wrap">
+                <span>R$</span>
+                <Input
+                  value={manualRevenue.valor}
+                  onChange={(event) => setManualRevenue((current) => ({ ...current, valor: event.target.value }))}
+                />
+              </div>
+            </label>
+            <label className="span-2">
+              <span>Descricao</span>
+              <Input
+                value={manualRevenue.descricao}
+                onChange={(event) => setManualRevenue((current) => ({ ...current, descricao: event.target.value }))}
+              />
+            </label>
+          </section>
+
+          <footer className="manual-expense-actions">
+            <button type="button" onClick={() => setManualRevenueModalOpen(false)}>Cancelar</button>
+            <button
+              type="button"
+              onClick={handleSaveReceita}
+              disabled={createReceita.isPending || updateReceita.isPending}
+            >
+              <Save size={14} />
+              Salvar
+            </button>
+          </footer>
         </DialogContent>
       </Dialog>
 

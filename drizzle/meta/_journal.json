@@ -43,6 +43,13 @@
       "when": 1784662800000,
       "tag": "0005_modal_pedidos_obras",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1784745600000,
+      "tag": "0006_pedido_obra_receitas",
+      "breakpoints": true
     }
   ]
 }
