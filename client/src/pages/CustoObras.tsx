@@ -779,7 +779,7 @@ export default function CustoObras() {
               type="button"
               title="Filtrar contas a pagar sem vinculo"
             >
-              <Flag size={13} /> Pagar sem vinculo
+              <Flag size={13} /> Filtrar sem Vinculo
             </button>
 
             <button
