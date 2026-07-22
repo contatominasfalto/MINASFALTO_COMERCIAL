@@ -1070,10 +1070,6 @@ export default function CustoObras() {
                     <Save size={14} />
                     {saveFinanceiro.isPending ? "Salvando..." : "Salvar campos"}
                   </button>
-                  <button type="button" onClick={handleClearFinanceiro} disabled={clearFinanceiro.isPending}>
-                    <X size={14} />
-                    Limpar campos
-                  </button>
                   <button
                     type="button"
                     onClick={openNewManualExpense}
