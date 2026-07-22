@@ -402,6 +402,7 @@ export const appRouter = router({
       .input(z.object({
         tipoConta: z.string().optional(),
         search: z.string().optional(),
+        somenteNaoVinculados: z.boolean().optional(),
         page: z.number().int().positive().optional(),
         pageSize: z.number().int().min(10).max(200).optional(),
       }).optional())

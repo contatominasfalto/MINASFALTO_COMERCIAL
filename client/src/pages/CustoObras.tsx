@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Link2, Pencil, Plus, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Flag, Link2, Pencil, Plus, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -173,6 +173,7 @@ export default function CustoObras() {
   const [statusFilter, setStatusFilter] = useState("TODOS");
   const [despesasSearchTerm, setDespesasSearchTerm] = useState("");
   const [tipoContaFilter, setTipoContaFilter] = useState("TODOS");
+  const [somentePagarNaoVinculados, setSomentePagarNaoVinculados] = useState(false);
   const [selectedPedido, setSelectedPedido] = useState<any>(null);
   const [modalPedido, setModalPedido] = useState<any>(null);
   const [pedidosPage, setPedidosPage] = useState(1);
@@ -224,9 +225,11 @@ export default function CustoObras() {
   const pedidos = Array.isArray(pedidosPayload) ? pedidosPayload : pedidosPayload?.items ?? [];
   const pedidosTotal = Array.isArray(pedidosPayload) ? pedidos.length : pedidosPayload?.total ?? pedidos.length;
   const pedidosTotalPages = Array.isArray(pedidosPayload) ? 1 : pedidosPayload?.totalPages ?? 1;
+  const effectiveTipoContaFilter = somentePagarNaoVinculados ? "Pagar" : tipoContaFilter;
   const { data: despesasResult, error: despesasError, isLoading: isLoadingDespesas } = trpc.despesasTabelaGeral.list.useQuery({
-    tipoConta: tipoContaFilter,
+    tipoConta: effectiveTipoContaFilter,
     search: despesasSearchTerm,
+    somenteNaoVinculados: somentePagarNaoVinculados,
     page: tabelaPage,
     pageSize: tabelaPageSize,
   });
@@ -410,7 +413,7 @@ export default function CustoObras() {
 
   useEffect(() => {
     setTabelaPage(1);
-  }, [despesasSearchTerm, tipoContaFilter, tabelaPageSize]);
+  }, [despesasSearchTerm, effectiveTipoContaFilter, somentePagarNaoVinculados, tabelaPageSize]);
 
   useEffect(() => {
     if (!despesasResult) return;
@@ -744,7 +747,13 @@ export default function CustoObras() {
         <>
           <section className="desktop-filters">
             <label>Tipo Conta:</label>
-            <Select value={tipoContaFilter} onValueChange={setTipoContaFilter}>
+            <Select
+              value={effectiveTipoContaFilter}
+              onValueChange={(value) => {
+                setSomentePagarNaoVinculados(false);
+                setTipoContaFilter(value);
+              }}
+            >
               <SelectTrigger className="desktop-select">
                 <SelectValue />
               </SelectTrigger>
@@ -763,6 +772,15 @@ export default function CustoObras() {
               onChange={(event) => setDespesasSearchTerm(event.target.value)}
               className="desktop-search"
             />
+
+            <button
+              className={`desktop-filter-flag ${somentePagarNaoVinculados ? "active" : ""}`}
+              onClick={() => setSomentePagarNaoVinculados((current) => !current)}
+              type="button"
+              title="Filtrar contas a pagar sem vinculo"
+            >
+              <Flag size={13} /> Pagar sem vinculo
+            </button>
 
             <button
               className="desktop-refresh"

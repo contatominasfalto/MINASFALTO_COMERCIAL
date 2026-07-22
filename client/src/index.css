@@ -472,6 +472,32 @@
   cursor: pointer;
 }
 
+.desktop-filter-flag {
+  height: 28px;
+  min-width: 136px;
+  padding: 0 12px;
+  border: 1px solid #9eafc1;
+  background: linear-gradient(#ffffff, #dce6f0);
+  color: var(--sap-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.desktop-filter-flag.active {
+  background: linear-gradient(#fffaf0, #f4dfa8);
+  border-color: #9f7b22;
+  color: var(--sap-text);
+  font-weight: 700;
+}
+
+.desktop-filter-flag + .desktop-refresh {
+  margin-left: 0;
+}
+
 .desktop-refresh + .desktop-refresh {
   margin-left: 0;
 }

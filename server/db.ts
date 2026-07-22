@@ -743,6 +743,7 @@ export async function getUltimaSincronizacaoObras() {
 export async function listDespesasTabelaGeral(filters?: {
   tipoConta?: string;
   search?: string;
+  somenteNaoVinculados?: boolean;
   page?: number;
   pageSize?: number;
 }) {
@@ -767,6 +768,10 @@ export async function listDespesasTabelaGeral(filters?: {
     whereSql.push("(codigoFornecedorCliente LIKE ? OR fornecedorCliente LIKE ? OR numeroDocumento LIKE ? OR complemento LIKE ?)");
     const search = `%${filters.search}%`;
     params.push(search, search, search, search);
+  }
+
+  if (filters?.somenteNaoVinculados) {
+    whereSql.push("NOT EXISTS (SELECT 1 FROM pedido_obra_despesas pod_filter WHERE pod_filter.despesaTabelaGeralId = despesas_tabela_geral.id)");
   }
 
   const whereClause = whereSql.length > 0 ? `WHERE ${whereSql.join(" AND ")}` : "";
