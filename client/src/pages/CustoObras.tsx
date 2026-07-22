@@ -233,6 +233,7 @@ export default function CustoObras() {
   });
   const [manualExpenseModalOpen, setManualExpenseModalOpen] = useState(false);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [despesasGroupOpen, setDespesasGroupOpen] = useState(true);
   const [linkSearchTerm, setLinkSearchTerm] = useState("");
   const [linkTipoContaFilter, setLinkTipoContaFilter] = useState("TODOS");
   const [linkPage, setLinkPage] = useState(1);
@@ -1065,85 +1066,112 @@ export default function CustoObras() {
                   </label>
                 </div>
 
-                <div className="cost-modal-actions">
-                  <button type="button" onClick={handleSaveFinanceiro} disabled={saveFinanceiro.isPending}>
-                    <Save size={14} />
-                    {saveFinanceiro.isPending ? "Salvando..." : "Salvar campos"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={openNewManualExpense}
-                  >
-                    <Plus size={14} />
-                    Cadastrar despesa
-                  </button>
-                  <button type="button" onClick={() => setLinkModalOpen(true)}>
-                    <Link2 size={14} />
-                    Vincular saida
-                  </button>
-                </div>
+                <section className={`cost-expense-group ${despesasGroupOpen ? "expanded" : "collapsed"}`}>
+                  <div className="cost-expense-group-gutter">
+                    <button
+                      type="button"
+                      className="cost-group-toggle"
+                      onClick={() => setDespesasGroupOpen((current) => !current)}
+                      aria-expanded={despesasGroupOpen}
+                      title={despesasGroupOpen ? "Recolher despesas" : "Expandir despesas"}
+                    >
+                      {despesasGroupOpen ? "-" : "+"}
+                    </button>
+                  </div>
+                  <div className="cost-expense-group-main">
+                    <button
+                      type="button"
+                      className="cost-group-title"
+                      onClick={() => setDespesasGroupOpen((current) => !current)}
+                      aria-expanded={despesasGroupOpen}
+                    >
+                      Despesas
+                    </button>
+                    {despesasGroupOpen ? (
+                      <>
+                        <div className="cost-modal-actions">
+                          <button type="button" onClick={handleSaveFinanceiro} disabled={saveFinanceiro.isPending}>
+                            <Save size={14} />
+                            {saveFinanceiro.isPending ? "Salvando..." : "Salvar campos"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={openNewManualExpense}
+                          >
+                            <Plus size={14} />
+                            Cadastrar despesa
+                          </button>
+                          <button type="button" onClick={() => setLinkModalOpen(true)}>
+                            <Link2 size={14} />
+                            Vincular saida
+                          </button>
+                        </div>
 
-                <div className="modal-table-frame">
-                  <table className="desktop-table modal-expenses-table">
-                    <thead>
-                      <tr>
-                        <th>Codigo Forn./Cliente</th>
-                        <th>Fornecedor/Cliente</th>
-                        <th>Numero Documento</th>
-                        <th>Tipo Conta</th>
-                        <th>Tipo Documento</th>
-                        <th>Data Emissao</th>
-                        <th>Data Vencimento</th>
-                        <th>Valor Total</th>
-                        <th>Complemento</th>
-                        <th>Observacoes (Aprovacao)</th>
-                        <th>Tipo</th>
-                        <th>Acoes</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {modalDespesas.length === 0 ? (
-                        <tr>
-                          <td colSpan={12} className="desktop-empty">Nenhuma despesa vinculada ou cadastrada</td>
-                        </tr>
-                      ) : (
-                        modalDespesas.map((despesa: any) => (
-                          <tr key={despesa.id}>
-                            <td>{despesa.codigoFornecedorCliente}</td>
-                            <td className="desktop-client">{despesa.fornecedorCliente}</td>
-                            <td>{despesa.numeroDocumento}</td>
-                            <td>{despesa.tipoConta}</td>
-                            <td>{despesa.tipoDocumento}</td>
-                            <td>{despesa.dataEmissao}</td>
-                            <td>{despesa.dataVencimento}</td>
-                            <td className="num">{formatCurrency(despesa.valorTotalDocumento)}</td>
-                            <td className="expense-complement" title={despesa.complemento || ""}>{despesa.complemento}</td>
-                            <td>{despesa.observacoesAprovacao}</td>
-                            <td>{despesa.categoria}</td>
-                            <td>
-                              <button
-                                type="button"
-                                className="table-icon-button"
-                                onClick={() => openEditManualExpense(despesa)}
-                                title="Editar"
-                              >
-                                <Pencil size={15} />
-                              </button>
-                              <button
-                                type="button"
-                                className="table-icon-button danger"
-                                onClick={() => deleteDespesa.mutate({ id: despesa.id, pedidoObraId: modalPedido.id })}
-                                title={despesa.origem === "vinculada" ? "Desvincular" : "Excluir"}
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                        <div className="modal-table-frame">
+                          <table className="desktop-table modal-expenses-table">
+                            <thead>
+                              <tr>
+                                <th>Codigo Forn./Cliente</th>
+                                <th>Fornecedor/Cliente</th>
+                                <th>Numero Documento</th>
+                                <th>Tipo Conta</th>
+                                <th>Tipo Documento</th>
+                                <th>Data Emissao</th>
+                                <th>Data Vencimento</th>
+                                <th>Valor Total</th>
+                                <th>Complemento</th>
+                                <th>Observacoes (Aprovacao)</th>
+                                <th>Tipo</th>
+                                <th>Acoes</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {modalDespesas.length === 0 ? (
+                                <tr>
+                                  <td colSpan={12} className="desktop-empty">Nenhuma despesa vinculada ou cadastrada</td>
+                                </tr>
+                              ) : (
+                                modalDespesas.map((despesa: any) => (
+                                  <tr key={despesa.id}>
+                                    <td>{despesa.codigoFornecedorCliente}</td>
+                                    <td className="desktop-client">{despesa.fornecedorCliente}</td>
+                                    <td>{despesa.numeroDocumento}</td>
+                                    <td>{despesa.tipoConta}</td>
+                                    <td>{despesa.tipoDocumento}</td>
+                                    <td>{despesa.dataEmissao}</td>
+                                    <td>{despesa.dataVencimento}</td>
+                                    <td className="num">{formatCurrency(despesa.valorTotalDocumento)}</td>
+                                    <td className="expense-complement" title={despesa.complemento || ""}>{despesa.complemento}</td>
+                                    <td>{despesa.observacoesAprovacao}</td>
+                                    <td>{despesa.categoria}</td>
+                                    <td>
+                                      <button
+                                        type="button"
+                                        className="table-icon-button"
+                                        onClick={() => openEditManualExpense(despesa)}
+                                        title="Editar"
+                                      >
+                                        <Pencil size={15} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="table-icon-button danger"
+                                        onClick={() => deleteDespesa.mutate({ id: despesa.id, pedidoObraId: modalPedido.id })}
+                                        title={despesa.origem === "vinculada" ? "Desvincular" : "Excluir"}
+                                      >
+                                        <Trash2 size={15} />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+                </section>
 
                 <footer className="cost-modal-summary">
                   <span>Receita: <b>{formatCurrency(modalCalculations.receita)}</b></span>

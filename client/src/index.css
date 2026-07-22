@@ -1811,7 +1811,7 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 8px;
   padding: 10px 12px;
   background: var(--sap-panel);
@@ -1935,6 +1935,82 @@
 .table-icon-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.cost-expense-group {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  border: 1px solid #a8b6c6;
+  background: #ffffff;
+}
+
+.cost-expense-group.collapsed {
+  align-self: start;
+  min-height: 42px;
+}
+
+.cost-expense-group-gutter {
+  position: relative;
+  border-right: 1px solid #c7d2df;
+  background: linear-gradient(#f8fafc, #e0e8f1);
+}
+
+.cost-expense-group.expanded .cost-expense-group-gutter::after {
+  content: "";
+  position: absolute;
+  top: 30px;
+  bottom: 8px;
+  left: 13px;
+  border-left: 1px solid #9fb0c2;
+}
+
+.cost-group-toggle {
+  position: relative;
+  z-index: 1;
+  width: 20px;
+  height: 20px;
+  margin: 8px 4px;
+  border: 1px solid #8fa2b7;
+  background: #ffffff;
+  color: #001b34;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cost-expense-group-main {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 7px;
+  padding: 8px;
+}
+
+.cost-expense-group.collapsed .cost-expense-group-main {
+  display: flex;
+  align-items: center;
+}
+
+.cost-group-title {
+  justify-self: start;
+  min-width: 132px;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid #9eafc1;
+  background: linear-gradient(#ffffff, #dce6f0);
+  color: #001b34;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cost-group-title:hover {
+  background: linear-gradient(#fffaf0, #f4dfa8);
+  border-color: #a47d1d;
 }
 
 .table-icon-button {
