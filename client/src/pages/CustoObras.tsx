@@ -1274,16 +1274,15 @@ export default function CustoObras() {
                             <Plus size={14} />
                             Cadastrar receitas
                           </button>
+                          <label className="cost-group-search">
+                            <Search size={14} />
+                            <span>Buscar:</span>
+                            <Input
+                              value={receitaGroupSearch}
+                              onChange={(event) => setReceitaGroupSearch(event.target.value)}
+                            />
+                          </label>
                         </div>
-
-                        <label className="cost-group-search">
-                          <Search size={14} />
-                          <span>Buscar:</span>
-                          <Input
-                            value={receitaGroupSearch}
-                            onChange={(event) => setReceitaGroupSearch(event.target.value)}
-                          />
-                        </label>
 
                         <div className="modal-table-frame revenue-table-frame">
                           <table className="desktop-table modal-revenues-table">
@@ -1379,16 +1378,15 @@ export default function CustoObras() {
                             <Link2 size={14} />
                             Vincular saida
                           </button>
+                          <label className="cost-group-search">
+                            <Search size={14} />
+                            <span>Buscar:</span>
+                            <Input
+                              value={despesasGroupSearch}
+                              onChange={(event) => setDespesasGroupSearch(event.target.value)}
+                            />
+                          </label>
                         </div>
-
-                        <label className="cost-group-search">
-                          <Search size={14} />
-                          <span>Buscar:</span>
-                          <Input
-                            value={despesasGroupSearch}
-                            onChange={(event) => setDespesasGroupSearch(event.target.value)}
-                          />
-                        </label>
 
                         <div className="modal-table-frame">
                           <table className="desktop-table modal-expenses-table">
@@ -1496,16 +1494,15 @@ export default function CustoObras() {
                             <Save size={14} />
                             {saveFinanceiro.isPending ? "Salvando..." : "Salvar campos"}
                           </button>
+                          <label className="cost-group-search">
+                            <Search size={14} />
+                            <span>Buscar:</span>
+                            <Input
+                              value={impostosGroupSearch}
+                              onChange={(event) => setImpostosGroupSearch(event.target.value)}
+                            />
+                          </label>
                         </div>
-
-                        <label className="cost-group-search">
-                          <Search size={14} />
-                          <span>Buscar:</span>
-                          <Input
-                            value={impostosGroupSearch}
-                            onChange={(event) => setImpostosGroupSearch(event.target.value)}
-                          />
-                        </label>
 
                         <div className="modal-table-frame tax-table-frame">
                           <table className="desktop-table modal-tax-table">
