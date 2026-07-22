@@ -104,6 +104,25 @@ const formatDateTime = (value: unknown) => {
   });
 };
 
+const formatDateBR = (value: unknown) => {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  const isoDate = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoDate) {
+    const [, year, month, day] = isoDate;
+    return `${day}/${month}/${year}`;
+  }
+  const brDate = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (brDate) return text;
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return text;
+  return date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
 const parseDateValue = (value: unknown) => {
   const text = String(value || "").trim();
   if (!text) return 0;
@@ -1082,8 +1101,8 @@ export default function CustoObras() {
                         <td>{despesa.numeroDocumento}</td>
                         <td>{despesa.tipoConta}</td>
                         <td>{despesa.tipoDocumento}</td>
-                        <td>{despesa.dataEmissao}</td>
-                        <td>{despesa.dataVencimento}</td>
+                        <td>{formatDateBR(despesa.dataEmissao)}</td>
+                        <td>{formatDateBR(despesa.dataVencimento)}</td>
                         <td className="num">{formatCurrency(despesa.valorTotalDocumento)}</td>
                         <td className="expense-complement" title={despesa.complemento || ""}>{despesa.complemento}</td>
                         <td>{despesa.observacoesAprovacao}</td>
@@ -1228,7 +1247,7 @@ export default function CustoObras() {
                                   <tr key={receita.id}>
                                     <td>{receita.numeroDocumento}</td>
                                     <td>{receita.status}</td>
-                                    <td>{receita.data}</td>
+                                    <td>{formatDateBR(receita.data)}</td>
                                     <td className="num">{formatCurrency(receita.valor)}</td>
                                     <td className="expense-complement" title={receita.descricao || ""}>{receita.descricao}</td>
                                     <td>
@@ -1249,75 +1268,6 @@ export default function CustoObras() {
                                         <Trash2 size={15} />
                                       </button>
                                     </td>
-                                  </tr>
-                                ))
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      </>
-                    ) : null}
-                  </div>
-                </section>
-
-                <section className={`cost-expense-group cost-tax-group ${impostosGroupOpen ? "expanded" : "collapsed"}`}>
-                  <div className="cost-expense-group-gutter">
-                    <button
-                      type="button"
-                      className="cost-group-toggle"
-                      onClick={() => setImpostosGroupOpen((current) => !current)}
-                      aria-expanded={impostosGroupOpen}
-                      title={impostosGroupOpen ? "Recolher impostos" : "Expandir impostos"}
-                    >
-                      {impostosGroupOpen ? "-" : "+"}
-                    </button>
-                  </div>
-                  <div className="cost-expense-group-main">
-                    <button
-                      type="button"
-                      className="cost-group-title"
-                      onClick={() => setImpostosGroupOpen((current) => !current)}
-                      aria-expanded={impostosGroupOpen}
-                    >
-                      <span>Impostos</span>
-                      <strong>{formatCurrency(modalCalculations.valorPorcentagemImposto)}</strong>
-                    </button>
-                    {impostosGroupOpen ? (
-                      <>
-                        <div className="cost-modal-actions cost-tax-actions">
-                          <label className="cost-tax-percent-field">
-                            <span>Porcentagem Imposto %</span>
-                            <Input
-                              value={financeForm.porcentagemImposto}
-                              onChange={(event) => updateFinanceField("porcentagemImposto", event.target.value)}
-                            />
-                          </label>
-                          <button type="button" onClick={handleSaveFinanceiro} disabled={saveFinanceiro.isPending}>
-                            <Save size={14} />
-                            {saveFinanceiro.isPending ? "Salvando..." : "Salvar campos"}
-                          </button>
-                        </div>
-
-                        <div className="modal-table-frame tax-table-frame">
-                          <table className="desktop-table modal-tax-table">
-                            <thead>
-                              <tr>
-                                <th>N do doc</th>
-                                <th>Data</th>
-                                <th>Valor do Imposto</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {modalCalculations.impostos.length === 0 ? (
-                                <tr>
-                                  <td colSpan={3} className="desktop-empty">Nenhuma Nfe cadastrada em receitas</td>
-                                </tr>
-                              ) : (
-                                modalCalculations.impostos.map((imposto: any) => (
-                                  <tr key={imposto.id}>
-                                    <td>{imposto.numeroDocumento}</td>
-                                    <td>{imposto.data}</td>
-                                    <td className="num">{formatCurrency(imposto.valorImposto)}</td>
                                   </tr>
                                 ))
                               )}
@@ -1398,8 +1348,8 @@ export default function CustoObras() {
                                     <td>{despesa.numeroDocumento}</td>
                                     <td>{despesa.tipoConta}</td>
                                     <td>{despesa.tipoDocumento}</td>
-                                    <td>{despesa.dataEmissao}</td>
-                                    <td>{despesa.dataVencimento}</td>
+                                    <td>{formatDateBR(despesa.dataEmissao)}</td>
+                                    <td>{formatDateBR(despesa.dataVencimento)}</td>
                                     <td className="num">{formatCurrency(despesa.valorTotalDocumento)}</td>
                                     <td className="expense-complement" title={despesa.complemento || ""}>{despesa.complemento}</td>
                                     <td>{despesa.observacoesAprovacao}</td>
@@ -1422,6 +1372,75 @@ export default function CustoObras() {
                                         <Trash2 size={15} />
                                       </button>
                                     </td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+                </section>
+
+                <section className={`cost-expense-group cost-tax-group ${impostosGroupOpen ? "expanded" : "collapsed"}`}>
+                  <div className="cost-expense-group-gutter">
+                    <button
+                      type="button"
+                      className="cost-group-toggle"
+                      onClick={() => setImpostosGroupOpen((current) => !current)}
+                      aria-expanded={impostosGroupOpen}
+                      title={impostosGroupOpen ? "Recolher impostos" : "Expandir impostos"}
+                    >
+                      {impostosGroupOpen ? "-" : "+"}
+                    </button>
+                  </div>
+                  <div className="cost-expense-group-main">
+                    <button
+                      type="button"
+                      className="cost-group-title"
+                      onClick={() => setImpostosGroupOpen((current) => !current)}
+                      aria-expanded={impostosGroupOpen}
+                    >
+                      <span>Impostos</span>
+                      <strong>{formatCurrency(modalCalculations.valorPorcentagemImposto)}</strong>
+                    </button>
+                    {impostosGroupOpen ? (
+                      <>
+                        <div className="cost-modal-actions cost-tax-actions">
+                          <label className="cost-tax-percent-field">
+                            <span>Porcentagem Imposto %</span>
+                            <Input
+                              value={financeForm.porcentagemImposto}
+                              onChange={(event) => updateFinanceField("porcentagemImposto", event.target.value)}
+                            />
+                          </label>
+                          <button type="button" onClick={handleSaveFinanceiro} disabled={saveFinanceiro.isPending}>
+                            <Save size={14} />
+                            {saveFinanceiro.isPending ? "Salvando..." : "Salvar campos"}
+                          </button>
+                        </div>
+
+                        <div className="modal-table-frame tax-table-frame">
+                          <table className="desktop-table modal-tax-table">
+                            <thead>
+                              <tr>
+                                <th>N do doc</th>
+                                <th>Data</th>
+                                <th>Valor do Imposto</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {modalCalculations.impostos.length === 0 ? (
+                                <tr>
+                                  <td colSpan={3} className="desktop-empty">Nenhuma Nfe cadastrada em receitas</td>
+                                </tr>
+                              ) : (
+                                modalCalculations.impostos.map((imposto: any) => (
+                                  <tr key={imposto.id}>
+                                    <td>{imposto.numeroDocumento}</td>
+                                    <td>{formatDateBR(imposto.data)}</td>
+                                    <td className="num">{formatCurrency(imposto.valorImposto)}</td>
                                   </tr>
                                 ))
                               )}
@@ -1738,8 +1757,8 @@ export default function CustoObras() {
                       <td>{despesa.numeroDocumento}</td>
                       <td>{despesa.tipoConta}</td>
                       <td>{despesa.tipoDocumento}</td>
-                      <td>{despesa.dataEmissao}</td>
-                      <td>{despesa.dataVencimento}</td>
+                      <td>{formatDateBR(despesa.dataEmissao)}</td>
+                      <td>{formatDateBR(despesa.dataVencimento)}</td>
                       <td className="num">{formatCurrency(despesa.valorTotalDocumento)}</td>
                       <td className="expense-complement" title={despesa.complemento || ""}>{despesa.complemento}</td>
                       <td>{despesa.observacoesAprovacao}</td>
