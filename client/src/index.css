@@ -15,7 +15,7 @@
   --sap-cell: #f8fafc;
   --sap-cell-alt: #edf3f8;
   --sap-hover: #dbeaf7;
-  --sap-selected: #627f93;
+  --sap-selected: #f4dfa8;
   --sap-text: #001b34;
   --sap-muted: #40566d;
   --sap-yellow: #f5a623;
@@ -546,7 +546,8 @@
 
 .desktop-table tr.selected {
   background: var(--sap-selected) !important;
-  color: #fff;
+  color: var(--sap-text);
+  font-weight: 700;
 }
 
 .desktop-table tr:hover {
