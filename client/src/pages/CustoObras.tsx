@@ -792,22 +792,23 @@ export default function CustoObras() {
                     <th>Valor Total</th>
                     <th>Complemento</th>
                     <th>Observacoes (Aprovacao)</th>
+                    <th>Vinculado</th>
                   </tr>
                 </thead>
                 <tbody>
                   {isLoadingDespesas ? (
                     <tr>
-                      <td colSpan={10} className="desktop-empty">Carregando despesas...</td>
+                      <td colSpan={11} className="desktop-empty">Carregando despesas...</td>
                     </tr>
                   ) : despesasError ? (
                     <tr>
-                      <td colSpan={10} className="desktop-empty">
+                      <td colSpan={11} className="desktop-empty">
                         Erro ao carregar despesas: {despesasError.message}
                       </td>
                     </tr>
                   ) : despesas.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="desktop-empty">Nenhuma despesa encontrada</td>
+                      <td colSpan={11} className="desktop-empty">Nenhuma despesa encontrada</td>
                     </tr>
                   ) : (
                     despesas.map((despesa: any) => (
@@ -822,6 +823,7 @@ export default function CustoObras() {
                         <td className="num">{formatCurrency(despesa.valorTotalDocumento)}</td>
                         <td className="expense-complement" title={despesa.complemento || ""}>{despesa.complemento}</td>
                         <td>{despesa.observacoesAprovacao}</td>
+                        <td className="linked-order-code">{despesa.vinculado}</td>
                       </tr>
                     ))
                   )}

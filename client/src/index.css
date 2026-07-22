@@ -1566,6 +1566,12 @@
 .expenses-table th:nth-child(8), .expenses-table td:nth-child(8) { width: 128px; text-align: right; }
 .expenses-table th:nth-child(9), .expenses-table td:nth-child(9) { width: 520px; text-align: left; }
 .expenses-table th:nth-child(10), .expenses-table td:nth-child(10) { width: 220px; text-align: left; }
+.expenses-table th:nth-child(11), .expenses-table td:nth-child(11) { width: 92px; text-align: center; }
+
+.linked-order-code {
+  color: #001b34;
+  font-weight: 700;
+}
 
 .expense-complement {
   white-space: nowrap;

@@ -791,12 +791,22 @@ export async function listDespesasTabelaGeral(filters?: {
         valorTotalDocumento,
         complemento,
         observacoesAprovacao,
+        CASE
+          WHEN pod.pedidoNum IS NULL THEN ''
+          ELSE CONCAT('VO', pod.pedidoNum)
+        END AS vinculado,
         situacao,
         criadoEm,
         atualizadoEm
       FROM despesas_tabela_geral
+      LEFT JOIN (
+        SELECT despesaTabelaGeralId, MAX(pedidoNum) AS pedidoNum
+        FROM pedido_obra_despesas
+        WHERE despesaTabelaGeralId IS NOT NULL
+        GROUP BY despesaTabelaGeralId
+      ) pod ON pod.despesaTabelaGeralId = despesas_tabela_geral.id
       ${whereClause}
-      ORDER BY id DESC
+      ORDER BY despesas_tabela_geral.id DESC
       LIMIT ? OFFSET ?
     `,
     [...params, pageSize, offset],
