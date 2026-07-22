@@ -532,17 +532,23 @@ export async function listPedidosObras(filters?: {
         po.qtdeTapFacil,
         po.qtdeGranel,
         po.valorUnit,
-        CASE
-          WHEN pof.id IS NULL THEN NULL
-          ELSE COALESCE(pof.nfes, 0) + COALESCE(pof.faturamentoDireto, 0)
-        END AS totalPedido,
-        CASE
-          WHEN pof.id IS NULL THEN NULL
-          ELSE
+        COALESCE(
+          CASE
+            WHEN pof.id IS NULL THEN NULL
+            ELSE COALESCE(pof.nfes, 0) + COALESCE(pof.faturamentoDireto, 0)
+          END,
+          po.totalPedido
+        ) AS totalPedido,
+        COALESCE(
+          CASE
+            WHEN pof.id IS NULL THEN NULL
+            ELSE
             (COALESCE(pof.nfes, 0) + COALESCE(pof.faturamentoDireto, 0))
             - (COALESCE(pof.valorTotalImposto, 0) * (COALESCE(pof.porcentagemImposto, 17) / 100))
             - COALESCE(pod.totalDespesas, 0)
-        END AS saldo,
+          END,
+          po.saldo
+        ) AS saldo,
         po.prioridade,
         po.status,
         po.observacoesPagamento,
