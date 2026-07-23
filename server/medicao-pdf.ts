@@ -188,7 +188,7 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
     content = drawPageBackground(timbrado);
     content += "q 92 0 0 92 42 750 cm /LOGO Do Q\n";
     y = 790;
-    content += drawCenteredText("MEDICAO DE OBRA", y, 17, true, "0 0.10 0.20");
+    content += drawCenteredText("RESULTADO OBRA", y, 17, true, "0 0.10 0.20");
     content += drawCenteredText(`Pedido ${pedido.pedido} - ${pedido.cliente}`, y - 20, 10, true, "0.20 0.28 0.36");
     content += "0.95 0.65 0.10 RG 50 748 m 545 748 l S\n";
     y = 704;
@@ -281,7 +281,7 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
   pages.push(content);
 
   return {
-    filename: `medicao-obra-${pedido.pedido}-${new Date().toISOString().slice(0, 10)}.pdf`,
+    filename: `resultado-obra-${pedido.pedido}-${new Date().toISOString().slice(0, 10)}.pdf`,
     buffer: createPdf(pages, timbrado, assinatura, logo),
   };
 }
@@ -301,7 +301,7 @@ export function registerMedicaoPdfRoutes(app: Express) {
     } catch (error) {
       console.error("[MedicaoPDF]", error);
       const message = error instanceof Error ? error.message : String(error);
-      res.status(500).send(`Erro ao gerar PDF da medicao: ${message}`);
+      res.status(500).send(`Erro ao gerar PDF do resultado obra: ${message}`);
     }
   };
 

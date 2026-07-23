@@ -1255,10 +1255,10 @@ export default function CustoObras() {
                     <a
                       className="cost-detail-actionbar-button"
                       href={getMedicaoPdfUrl(modalPedido.pedido)}
-                      title="Extrair medicao em PDF"
+                      title="Extrair resultado obra em PDF"
                     >
                       <FileText size={14} />
-                      PDF Medicao
+                      PDF Resultado Obra
                     </a>
                   </div>
                 ) : null}
