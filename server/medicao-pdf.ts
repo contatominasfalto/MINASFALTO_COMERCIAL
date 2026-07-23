@@ -125,9 +125,12 @@ function drawRect(x: number, y: number, w: number, h: number, fill = "1 1 1", st
   return `${fill} rg ${stroke} RG ${x} ${y} ${w} ${h} re B\n`;
 }
 
-async function buildMedicaoPdf(pedidoObraId: number) {
-  const pedido = await db.getPedidoObraById(pedidoObraId);
-  if (!pedido) throw new Error("Pedido nao encontrado");
+async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
+  const pedido = await db.getPedidoObraById(pedidoObraIdOrPedidoNum)
+    ?? await db.getPedidoObraByNumber(String(pedidoObraIdOrPedidoNum));
+  if (!pedido) throw new Error(`Pedido nao encontrado: ${pedidoObraIdOrPedidoNum}`);
+
+  const pedidoObraId = Number(pedido.id);
   const modal = await db.getPedidoObraModalData(pedidoObraId);
   const receitas = modal.receitas as any[];
   const despesas = modal.despesas as any[];
@@ -237,19 +240,20 @@ async function buildMedicaoPdf(pedidoObraId: number) {
 
 export function registerMedicaoPdfRoutes(app: Express) {
   const handler = async (req: Request, res: Response) => {
-    const pedidoObraId = Number(req.params.id);
-    if (!Number.isFinite(pedidoObraId)) {
+    const pedidoObraIdOrPedidoNum = Number(req.params.id);
+    if (!Number.isFinite(pedidoObraIdOrPedidoNum)) {
       res.status(400).send("Pedido invalido");
       return;
     }
     try {
-      const pdf = await buildMedicaoPdf(pedidoObraId);
+      const pdf = await buildMedicaoPdf(pedidoObraIdOrPedidoNum);
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename="${pdf.filename}"`);
       res.send(pdf.buffer);
     } catch (error) {
       console.error("[MedicaoPDF]", error);
-      res.status(500).send("Erro ao gerar PDF da medicao");
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).send(`Erro ao gerar PDF da medicao: ${message}`);
     }
   };
 
