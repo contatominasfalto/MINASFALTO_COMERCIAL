@@ -749,15 +749,31 @@ export default function CustoObras() {
   const handleExportMedicaoPdf = () => {
     if (!modalPedido) return;
 
-    const printWindow = window.open("", "_blank", "width=1120,height=800");
-    if (!printWindow) {
-      toast.error("Nao foi possivel abrir a janela de impressao. Verifique o bloqueador de pop-ups.");
+    const printFrame = document.createElement("iframe");
+    printFrame.title = `Medicao Pedido ${modalPedido.pedido}`;
+    printFrame.style.position = "fixed";
+    printFrame.style.right = "0";
+    printFrame.style.bottom = "0";
+    printFrame.style.width = "0";
+    printFrame.style.height = "0";
+    printFrame.style.border = "0";
+    printFrame.style.visibility = "hidden";
+    document.body.appendChild(printFrame);
+
+    const frameWindow = printFrame.contentWindow;
+    const frameDocument = printFrame.contentDocument || frameWindow?.document;
+    if (!frameWindow || !frameDocument) {
+      printFrame.remove();
+      toast.error("Nao foi possivel preparar a medicao para PDF.");
       return;
     }
 
     const dataInicio = formatDateBR(modalPedido.dataPedido) || "Nao informado";
     const dataImpressao = formatDateTime(new Date());
     const saldoClass = modalCalculations.saldo < 0 ? "negative" : "";
+    const logoUrl = new URL(minasfaltoLogo, window.location.href).href;
+    const assinaturaUrl = new URL(assinaturaDiretor, window.location.href).href;
+    const papelTimbradoUrl = new URL(papelTimbradoMinasfalto, window.location.href).href;
 
     const renderRows = (rows: unknown[][]) => rows.map((row) => `
       <tr>
@@ -974,10 +990,10 @@ export default function CustoObras() {
           </style>
         </head>
         <body>
-          <img class="letterhead-bg" src="${papelTimbradoMinasfalto}" alt="" />
+          <img class="letterhead-bg" src="${papelTimbradoUrl}" alt="" />
           <main class="page">
             <header>
-              <img class="logo" src="${minasfaltoLogo}" alt="Minasfalto" />
+              <img class="logo" src="${logoUrl}" alt="Minasfalto" />
               <div>
                 <h1>Medicao de Obra</h1>
                 <p class="subtitle">Pedido ${escapeHtmlValue(modalPedido.pedido)} - ${escapeHtmlValue(modalPedido.cliente)}</p>
@@ -1005,29 +1021,38 @@ export default function CustoObras() {
             ${renderTable("Custos", ["N Doc", "Data", "Valor Total", "Situacao", "Complemento"], custosRows, "Nenhum custo sincronizado pelo CRTI")}
 
             <section class="signature">
-              <img src="${assinaturaDiretor}" alt="Assinatura do diretor" />
+              <img src="${assinaturaUrl}" alt="Assinatura do diretor" />
               <div class="signature-line">Diretoria Minasfalto</div>
             </section>
             <p class="print-note">Documento gerado pelo Sistema Integrado Minasfalto.</p>
           </main>
-          <script>
-            const images = Array.from(document.images);
-            Promise.all(images.map((image) => image.complete ? Promise.resolve() : new Promise((resolve) => {
-              image.onload = resolve;
-              image.onerror = resolve;
-            }))).then(() => {
-              setTimeout(() => {
-                window.focus();
-                window.print();
-              }, 250);
-            });
-          </script>
         </body>
       </html>`;
 
-    printWindow.document.open();
-    printWindow.document.write(documentHtml);
-    printWindow.document.close();
+    frameDocument.open();
+    frameDocument.write(documentHtml);
+    frameDocument.close();
+
+    const images = Array.from(frameDocument.images);
+    Promise.all(images.map((image) => image.complete ? Promise.resolve() : new Promise((resolve) => {
+      image.onload = resolve;
+      image.onerror = resolve;
+    }))).then(() => {
+      setTimeout(() => {
+        frameWindow.focus();
+        frameWindow.print();
+        toast.success("Medicao pronta para salvar em PDF");
+      }, 250);
+    }).catch(() => {
+      toast.error("Nao foi possivel carregar o timbrado da medicao.");
+    });
+
+    frameWindow.onafterprint = () => {
+      printFrame.remove();
+    };
+    setTimeout(() => {
+      if (document.body.contains(printFrame)) printFrame.remove();
+    }, 60000);
   };
 
   const updateFinanceField = (field: keyof typeof financeForm, value: string) => {
