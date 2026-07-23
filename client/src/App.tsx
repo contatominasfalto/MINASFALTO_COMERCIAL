@@ -14,9 +14,55 @@ import { Spinner } from "@/components/ui/spinner";
 import { appBasePath } from "@/lib/app-base";
 import { StockProvider } from "@/contexts/StockContext";
 import "./stock.css";
+import { useEffect, useRef } from "react";
+
+const SESSION_STORAGE_KEY = "minasfalto_active_session";
+const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
+
+function useSessionLifecycle(isAuthenticated: boolean, loading: boolean, logout: () => Promise<void>) {
+  const logoutRef = useRef(logout);
+
+  useEffect(() => {
+    logoutRef.current = logout;
+  }, [logout]);
+
+  useEffect(() => {
+    if (loading || !isAuthenticated) return;
+
+    if (!sessionStorage.getItem(SESSION_STORAGE_KEY)) {
+      void logoutRef.current().finally(() => {
+        window.location.href = appBasePath ? `${appBasePath}/login` : "/login";
+      });
+      return;
+    }
+
+    let timeoutId: number | undefined;
+    const logoutByInactivity = () => {
+      sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      void logoutRef.current().finally(() => {
+        window.location.href = appBasePath ? `${appBasePath}/login` : "/login";
+      });
+    };
+    const resetTimer = () => {
+      if (timeoutId) window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(logoutByInactivity, INACTIVITY_TIMEOUT_MS);
+    };
+    const events = ["click", "keydown", "mousemove", "scroll", "touchstart", "visibilitychange"];
+
+    events.forEach((event) => window.addEventListener(event, resetTimer, { passive: true }));
+    resetTimer();
+
+    return () => {
+      if (timeoutId) window.clearTimeout(timeoutId);
+      events.forEach((event) => window.removeEventListener(event, resetTimer));
+    };
+  }, [isAuthenticated, loading]);
+}
 
 function Router() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, logout } = useAuth();
+
+  useSessionLifecycle(isAuthenticated, loading, logout);
 
   if (loading) {
     return (

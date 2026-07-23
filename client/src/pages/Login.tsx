@@ -25,6 +25,7 @@ export default function Login() {
 
   const localLogin = trpc.auth.localLogin.useMutation({
     onSuccess: async () => {
+      sessionStorage.setItem("minasfalto_active_session", "1");
       await utils.auth.me.invalidate();
       window.location.href = withAppBase("/");
     },
