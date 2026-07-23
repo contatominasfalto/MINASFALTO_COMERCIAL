@@ -743,9 +743,9 @@ export default function CustoObras() {
     ], impostosGroupSearch));
   }, [modalCalculations.impostos, impostosGroupSearch]);
 
-  const getMedicaoPdfUrl = (pedidoId: number) => {
+  const getMedicaoPdfUrl = (pedidoNumero: string | number) => {
     const basePath = window.location.pathname.startsWith("/control_pedidos") ? "/control_pedidos" : "";
-    return `${basePath}/api/medicao-obras/${pedidoId}/pdf`;
+    return `${basePath}/api/medicao-obras/${pedidoNumero}/pdf`;
   };
   const updateFinanceField = (field: keyof typeof financeForm, value: string) => {
     setFinanceForm((current) => ({ ...current, [field]: value }));
@@ -1237,10 +1237,7 @@ export default function CustoObras() {
             <div className="cost-detail-header-actions">
               {modalPedido && !isLoadingModal ? (
                 <a
-                  href={getMedicaoPdfUrl(modalPedido.id)}
-                  target="_blank"
-                  rel="noreferrer"
-                  download={`medicao-obra-${modalPedido.pedido}.pdf`}
+                  href={getMedicaoPdfUrl(modalPedido.pedido)}
                   title="Extrair medicao em PDF"
                 >
                   <FileText size={14} />
