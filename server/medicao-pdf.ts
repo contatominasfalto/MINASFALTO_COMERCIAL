@@ -250,10 +250,9 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
   card("Saldo", money(saldo), 446, 99);
   y -= 55;
 
-  section("Receitas", ["N Doc", "Status", "Tipo", "Data", "Valor", "Descricao"], receitas.map((item) => [
+  section("Receitas", ["N Doc", "Status", "Data", "Valor", "Descricao"], receitas.map((item) => [
     item.numeroDocumento,
-    item.status,
-    item.tipoReceitaOutros,
+    item.status === "Outros" ? item.tipoReceitaOutros || "Outros" : item.status,
     dateBR(item.data),
     money(item.valor),
     item.descricao,

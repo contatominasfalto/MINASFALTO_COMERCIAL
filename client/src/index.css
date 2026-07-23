@@ -2152,7 +2152,7 @@
 }
 
 .modal-revenues-table {
-  min-width: 1040px;
+  min-width: 860px;
 }
 
 .modal-tax-table {
@@ -2176,12 +2176,11 @@
 }
 
 .modal-revenues-table th:nth-child(1), .modal-revenues-table td:nth-child(1) { width: 120px; text-align: center; }
-.modal-revenues-table th:nth-child(2), .modal-revenues-table td:nth-child(2) { width: 90px; text-align: center; }
-.modal-revenues-table th:nth-child(3), .modal-revenues-table td:nth-child(3) { width: 180px; text-align: left; }
-.modal-revenues-table th:nth-child(4), .modal-revenues-table td:nth-child(4) { width: 120px; text-align: center; }
-.modal-revenues-table th:nth-child(5), .modal-revenues-table td:nth-child(5) { width: 130px; text-align: right; }
-.modal-revenues-table th:nth-child(6), .modal-revenues-table td:nth-child(6) { width: 340px; text-align: left; }
-.modal-revenues-table th:nth-child(7), .modal-revenues-table td:nth-child(7) { width: 72px; text-align: center; }
+.modal-revenues-table th:nth-child(2), .modal-revenues-table td:nth-child(2) { width: 140px; text-align: center; }
+.modal-revenues-table th:nth-child(3), .modal-revenues-table td:nth-child(3) { width: 120px; text-align: center; }
+.modal-revenues-table th:nth-child(4), .modal-revenues-table td:nth-child(4) { width: 130px; text-align: right; }
+.modal-revenues-table th:nth-child(5), .modal-revenues-table td:nth-child(5) { width: 340px; text-align: left; }
+.modal-revenues-table th:nth-child(6), .modal-revenues-table td:nth-child(6) { width: 72px; text-align: center; }
 
 .modal-tax-table th:nth-child(1), .modal-tax-table td:nth-child(1) { width: 180px; text-align: center; }
 .modal-tax-table th:nth-child(2), .modal-tax-table td:nth-child(2) { width: 160px; text-align: center; }

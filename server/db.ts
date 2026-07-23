@@ -1195,27 +1195,55 @@ export async function getPedidoObraModalData(pedidoObraId: number) {
     [pedidoObraId],
   );
 
-  const [receitas] = await _pool.query<mysql.RowDataPacket[]>(
-    `
-      SELECT
-        id,
-        pedidoObraId,
-        pedidoNum,
-        numeroDocumento,
-        status,
-        tipoReceitaOutros,
-        \`data\`,
-        valor,
-        descricao,
-        criadoPor,
-        criadoEm,
-        atualizadoEm
-      FROM pedido_obra_receitas
-      WHERE pedidoObraId = ?
-      ORDER BY id DESC
-    `,
-    [pedidoObraId],
-  );
+  let receitas: mysql.RowDataPacket[];
+  try {
+    const [receitasRows] = await _pool.query<mysql.RowDataPacket[]>(
+      `
+        SELECT
+          id,
+          pedidoObraId,
+          pedidoNum,
+          numeroDocumento,
+          status,
+          tipoReceitaOutros,
+          \`data\`,
+          valor,
+          descricao,
+          criadoPor,
+          criadoEm,
+          atualizadoEm
+        FROM pedido_obra_receitas
+        WHERE pedidoObraId = ?
+        ORDER BY id DESC
+      `,
+      [pedidoObraId],
+    );
+    receitas = receitasRows;
+  } catch (error) {
+    if ((error as { code?: string }).code !== "ER_BAD_FIELD_ERROR") throw error;
+    const [receitasRows] = await _pool.query<mysql.RowDataPacket[]>(
+      `
+        SELECT
+          id,
+          pedidoObraId,
+          pedidoNum,
+          numeroDocumento,
+          status,
+          '' AS tipoReceitaOutros,
+          \`data\`,
+          valor,
+          descricao,
+          criadoPor,
+          criadoEm,
+          atualizadoEm
+        FROM pedido_obra_receitas
+        WHERE pedidoObraId = ?
+        ORDER BY id DESC
+      `,
+      [pedidoObraId],
+    );
+    receitas = receitasRows;
+  }
 
   const [custos] = await _pool.query<mysql.RowDataPacket[]>(
     `

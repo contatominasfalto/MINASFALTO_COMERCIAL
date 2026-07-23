@@ -1307,7 +1307,6 @@ export default function CustoObras() {
                               <tr>
                                 <th>N Doc</th>
                                 <th>Status</th>
-                                <th>Tipo Receita</th>
                                 <th>Data</th>
                                 <th>Valor</th>
                                 <th>Descricao</th>
@@ -1317,18 +1316,17 @@ export default function CustoObras() {
                             <tbody>
                               {modalReceitas.length === 0 ? (
                                 <tr>
-                                  <td colSpan={7} className="desktop-empty">Nenhuma receita cadastrada</td>
+                                  <td colSpan={6} className="desktop-empty">Nenhuma receita cadastrada</td>
                                 </tr>
                               ) : filteredModalReceitas.length === 0 ? (
                                 <tr>
-                                  <td colSpan={7} className="desktop-empty">Nenhuma receita encontrada para a busca</td>
+                                  <td colSpan={6} className="desktop-empty">Nenhuma receita encontrada para a busca</td>
                                 </tr>
                               ) : (
                                 filteredModalReceitas.map((receita: any) => (
                                   <tr key={receita.id}>
                                     <td>{receita.numeroDocumento}</td>
-                                    <td>{receita.status}</td>
-                                    <td className="expense-complement" title={receita.tipoReceitaOutros || ""}>{receita.tipoReceitaOutros || ""}</td>
+                                    <td>{receita.status === "Outros" ? receita.tipoReceitaOutros || "Outros" : receita.status}</td>
                                     <td>{formatDateBR(receita.data)}</td>
                                     <td className="num">{formatCurrency(receita.valor)}</td>
                                     <td className="expense-complement" title={receita.descricao || ""}>{receita.descricao}</td>
