@@ -13,6 +13,8 @@ type PdfImage = {
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
 const TIMBRADO_MARGIN = 18;
+const TIMBRADO_VERTICAL_OFFSET = -12;
+const CONTENT_BOTTOM_Y = 150;
 
 const money = (value: unknown) => {
   const amount = Number(value) || 0;
@@ -152,7 +154,7 @@ function drawPageBackground(image: PdfImage) {
   const width = image.width * scale;
   const height = image.height * scale;
   const x = (PAGE_WIDTH - width) / 2;
-  const y = (PAGE_HEIGHT - height) / 2;
+  const y = Math.max(4, (PAGE_HEIGHT - height) / 2 + TIMBRADO_VERTICAL_OFFSET);
   return `q ${width.toFixed(2)} 0 0 ${height.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /BG Do Q\n`;
 }
 
@@ -197,7 +199,7 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
     content += drawText(value, x + 6, y + 8, 8, true, "0 0.10 0.20");
   };
   const section = (title: string, headers: string[], rows: unknown[][]) => {
-    if (y < 170) newPage();
+    if (y < CONTENT_BOTTOM_Y + 70) newPage();
     const widths = headers.map(() => 495 / headers.length);
     content += drawRect(50, y, 495, 18, "0.86 0.90 0.94");
     content += drawText(title, 56, y + 6, 9, true, "0 0.10 0.20");
@@ -208,7 +210,7 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
     y -= 14;
     const tableRows = rows.length ? rows : [[`Nenhum registro em ${title.toLowerCase()}`]];
     for (const row of tableRows) {
-      if (y < 95) newPage();
+      if (y < CONTENT_BOTTOM_Y) newPage();
       row.forEach((cell, index) => {
         const x = 52 + widths.slice(0, index).reduce((a, b) => a + b, 0);
         wrap(cell, Math.max(10, Math.floor(widths[index] / 4.2)), 2).forEach((line, lineIndex) => {
@@ -220,11 +222,11 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
     y -= 10;
   };
   const signatureBlock = () => {
-    if (y < 150) newPage();
+    if (y < CONTENT_BOTTOM_Y + 100) newPage();
     y -= 24;
     const signatureWidth = 190;
     const signatureHeight = 25;
-    const signatureX = (595.28 - signatureWidth) / 2;
+    const signatureX = (PAGE_WIDTH - signatureWidth) / 2;
     const signatureY = y - signatureHeight;
     const lineY = signatureY - 8;
     content += `q ${signatureWidth} 0 0 ${signatureHeight} ${signatureX} ${signatureY} cm /SIG Do Q\n`;
