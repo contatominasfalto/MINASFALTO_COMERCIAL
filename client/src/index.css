@@ -1764,10 +1764,10 @@
 .cost-detail-dialog [data-slot="dialog-header"] {
   min-height: 54px;
   display: grid;
-  grid-template-columns: 110px minmax(0, 1fr) 110px;
+  grid-template-columns: 110px minmax(0, 1fr) 170px;
   align-items: center;
   gap: 12px;
-  padding: 10px 56px 9px 18px;
+  padding: 10px 58px 9px 18px;
   border-bottom: 1px solid var(--sap-line);
   background: linear-gradient(#f9fbfd, #d8e3ef);
 }
@@ -1784,6 +1784,37 @@
   grid-column: 2;
   min-width: 0;
   text-align: center;
+}
+
+.cost-detail-header-actions {
+  grid-column: 3;
+  justify-self: end;
+}
+
+.cost-detail-header-actions button {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid #8fa2b7;
+  border-radius: 2px;
+  background: linear-gradient(#ffffff, #dce6f0);
+  color: #001b34;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cost-detail-header-actions button:hover {
+  background: linear-gradient(#fffaf0, #f4dfa8);
+  border-color: #a47d1d;
+}
+
+.cost-detail-header-actions button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
 }
 
 .cost-detail-dialog [data-slot="dialog-title"] {

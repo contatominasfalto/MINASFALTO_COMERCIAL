@@ -3,11 +3,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileSpreadsheet, Flag, Link2, Pencil, Plus, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileSpreadsheet, FileText, Flag, Link2, Pencil, Plus, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
+import assinaturaDiretor from "@/assets/assinatura-diretor.png";
+import papelTimbradoMinasfalto from "@/assets/papel-timbrado-minasfalto.jpeg";
 
 type SortDirection = "asc" | "desc";
 type SortColumn =
@@ -65,6 +67,7 @@ const escapeExcelValue = (value: unknown) => String(value ?? "")
   .replace(/</g, "&lt;")
   .replace(/>/g, "&gt;")
   .replace(/"/g, "&quot;");
+const escapeHtmlValue = escapeExcelValue;
 const buildExcelSheet = (name: string, rows: unknown[][]) => `
   <Worksheet ss:Name="${escapeExcelValue(name)}">
     <Table>
@@ -743,6 +746,290 @@ export default function CustoObras() {
     ], impostosGroupSearch));
   }, [modalCalculations.impostos, impostosGroupSearch]);
 
+  const handleExportMedicaoPdf = () => {
+    if (!modalPedido) return;
+
+    const printWindow = window.open("", "_blank", "width=1120,height=800");
+    if (!printWindow) {
+      toast.error("Nao foi possivel abrir a janela de impressao. Verifique o bloqueador de pop-ups.");
+      return;
+    }
+
+    const dataInicio = formatDateBR(modalPedido.dataPedido) || "Nao informado";
+    const dataImpressao = formatDateTime(new Date());
+    const saldoClass = modalCalculations.saldo < 0 ? "negative" : "";
+
+    const renderRows = (rows: unknown[][]) => rows.map((row) => `
+      <tr>
+        ${row.map((cell) => `<td>${escapeHtmlValue(cell)}</td>`).join("")}
+      </tr>
+    `).join("");
+
+    const renderTable = (title: string, headers: string[], rows: unknown[][], emptyText: string) => `
+      <section class="section-block">
+        <h2>${escapeHtmlValue(title)}</h2>
+        <table>
+          <thead>
+            <tr>${headers.map((header) => `<th>${escapeHtmlValue(header)}</th>`).join("")}</tr>
+          </thead>
+          <tbody>
+            ${rows.length > 0 ? renderRows(rows) : `<tr><td colspan="${headers.length}" class="empty">${escapeHtmlValue(emptyText)}</td></tr>`}
+          </tbody>
+        </table>
+      </section>
+    `;
+
+    const receitasRows = modalReceitas.map((receita: any) => [
+      receita.numeroDocumento,
+      receita.status,
+      formatDateBR(receita.data),
+      formatCurrency(receita.valor),
+      receita.descricao,
+    ]);
+    const despesasRows = modalDespesas.map((despesa: any) => [
+      despesa.codigoFornecedorCliente,
+      despesa.fornecedorCliente,
+      despesa.numeroDocumento,
+      despesa.tipoConta,
+      despesa.tipoDocumento,
+      formatDateBR(despesa.dataEmissao),
+      formatDateBR(despesa.dataVencimento),
+      formatCurrency(despesa.valorTotalDocumento),
+      despesa.complemento,
+      despesa.observacoesAprovacao,
+      despesa.categoria,
+    ]);
+    const impostosRows = modalCalculations.impostos.map((imposto: any) => [
+      imposto.numeroDocumento,
+      formatDateBR(imposto.data),
+      formatCurrency(imposto.valorImposto),
+    ]);
+    const custosRows = modalCustos.map((custo: any) => [
+      custo.numeroDocumento,
+      formatDateBR(custo.dataEmissao),
+      formatCurrency(custo.valorTotal),
+      custo.situacao,
+      custo.complemento,
+    ]);
+
+    const documentHtml = `<!doctype html>
+      <html lang="pt-BR">
+        <head>
+          <meta charset="utf-8" />
+          <title>Medicao Obra Pedido ${escapeHtmlValue(modalPedido.pedido)}</title>
+          <style>
+            @page { size: A4; margin: 12mm; }
+            * { box-sizing: border-box; }
+            body {
+              margin: 0;
+              color: #111827;
+              font-family: Arial, Helvetica, sans-serif;
+              font-size: 10px;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .letterhead-bg {
+              position: fixed;
+              inset: 0;
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+              z-index: -1;
+            }
+            .page {
+              min-height: 270mm;
+              padding: 18mm 8mm 32mm;
+              position: relative;
+            }
+            header {
+              display: grid;
+              grid-template-columns: 92px minmax(0, 1fr);
+              gap: 16px;
+              align-items: center;
+              border-bottom: 2px solid #f2a51c;
+              padding-bottom: 10px;
+              margin-bottom: 14px;
+            }
+            .logo {
+              width: 86px;
+              height: 62px;
+              object-fit: contain;
+            }
+            h1 {
+              margin: 0 0 6px;
+              color: #001b34;
+              font-size: 20px;
+              letter-spacing: 0;
+              text-transform: uppercase;
+            }
+            .subtitle {
+              margin: 0;
+              color: #334155;
+              font-size: 12px;
+              font-weight: 700;
+            }
+            .meta-grid {
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 8px;
+              margin-bottom: 12px;
+            }
+            .meta-card, .summary-card {
+              border: 1px solid #9fb0c2;
+              background: rgba(255,255,255,.92);
+              padding: 8px;
+            }
+            .label {
+              display: block;
+              color: #475569;
+              font-size: 8px;
+              font-weight: 800;
+              text-transform: uppercase;
+              margin-bottom: 4px;
+            }
+            .value {
+              color: #001b34;
+              font-size: 12px;
+              font-weight: 800;
+            }
+            .summary-grid {
+              display: grid;
+              grid-template-columns: repeat(5, 1fr);
+              gap: 8px;
+              margin-bottom: 12px;
+            }
+            .summary-card .value {
+              font-size: 13px;
+            }
+            .negative {
+              color: #c00000 !important;
+              font-weight: 900;
+            }
+            .section-block {
+              page-break-inside: avoid;
+              margin: 0 0 12px;
+              background: rgba(255,255,255,.94);
+            }
+            h2 {
+              margin: 0;
+              padding: 7px 8px;
+              border: 1px solid #9fb0c2;
+              border-bottom: 0;
+              background: linear-gradient(#ffffff, #dce6f0);
+              color: #001b34;
+              font-size: 12px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              table-layout: fixed;
+            }
+            th, td {
+              border: 1px solid #b7c5d5;
+              padding: 5px 6px;
+              vertical-align: top;
+              overflow-wrap: anywhere;
+            }
+            th {
+              background: #e7eef6;
+              color: #001b34;
+              font-size: 8px;
+              text-transform: uppercase;
+            }
+            td {
+              font-size: 8px;
+            }
+            tbody tr:nth-child(even) td {
+              background: rgba(231, 238, 246, .55);
+            }
+            .empty {
+              text-align: center;
+              color: #64748b;
+              font-weight: 700;
+            }
+            .signature {
+              width: 260px;
+              margin: 22px auto 0;
+              text-align: center;
+              page-break-inside: avoid;
+            }
+            .signature img {
+              width: 220px;
+              height: 58px;
+              object-fit: contain;
+            }
+            .signature-line {
+              border-top: 1px solid #111827;
+              padding-top: 6px;
+              color: #001b34;
+              font-size: 10px;
+              font-weight: 800;
+            }
+            .print-note {
+              margin-top: 10px;
+              color: #64748b;
+              font-size: 8px;
+              text-align: center;
+            }
+          </style>
+        </head>
+        <body>
+          <img class="letterhead-bg" src="${papelTimbradoMinasfalto}" alt="" />
+          <main class="page">
+            <header>
+              <img class="logo" src="${minasfaltoLogo}" alt="Minasfalto" />
+              <div>
+                <h1>Medicao de Obra</h1>
+                <p class="subtitle">Pedido ${escapeHtmlValue(modalPedido.pedido)} - ${escapeHtmlValue(modalPedido.cliente)}</p>
+              </div>
+            </header>
+
+            <section class="meta-grid">
+              <div class="meta-card"><span class="label">Pedido</span><span class="value">${escapeHtmlValue(modalPedido.pedido)}</span></div>
+              <div class="meta-card"><span class="label">Data de inicio</span><span class="value">${escapeHtmlValue(dataInicio)}</span></div>
+              <div class="meta-card"><span class="label">Data da impressao</span><span class="value">${escapeHtmlValue(dataImpressao)}</span></div>
+              <div class="meta-card"><span class="label">Status</span><span class="value">${escapeHtmlValue(modalPedido.status)}</span></div>
+            </section>
+
+            <section class="summary-grid">
+              <div class="summary-card"><span class="label">Receita</span><span class="value">${escapeHtmlValue(formatCurrency(modalCalculations.receita))}</span></div>
+              <div class="summary-card"><span class="label">Impostos</span><span class="value">${escapeHtmlValue(formatCurrency(modalCalculations.valorPorcentagemImposto))}</span></div>
+              <div class="summary-card"><span class="label">Despesas</span><span class="value">${escapeHtmlValue(formatCurrency(modalCalculations.totalDespesas))}</span></div>
+              <div class="summary-card"><span class="label">Custos</span><span class="value">${escapeHtmlValue(formatCurrency(modalCalculations.totalCustos))}</span></div>
+              <div class="summary-card"><span class="label">Saldo</span><span class="value ${saldoClass}">${escapeHtmlValue(formatCurrency(modalCalculations.saldo))}</span></div>
+            </section>
+
+            ${renderTable("Receitas", ["N Doc", "Status", "Data", "Valor", "Descricao"], receitasRows, "Nenhuma receita cadastrada")}
+            ${renderTable("Despesas", ["Codigo", "Fornecedor/Cliente", "N Documento", "Tipo Conta", "Tipo Documento", "Data Emissao", "Data Vencimento", "Valor Total", "Complemento", "Observacoes", "Tipo"], despesasRows, "Nenhuma despesa vinculada ou cadastrada")}
+            ${renderTable("Impostos", ["N Doc", "Data", "Valor do Imposto"], impostosRows, "Nenhum imposto calculado")}
+            ${renderTable("Custos", ["N Doc", "Data", "Valor Total", "Situacao", "Complemento"], custosRows, "Nenhum custo sincronizado pelo CRTI")}
+
+            <section class="signature">
+              <img src="${assinaturaDiretor}" alt="Assinatura do diretor" />
+              <div class="signature-line">Diretoria Minasfalto</div>
+            </section>
+            <p class="print-note">Documento gerado pelo Sistema Integrado Minasfalto.</p>
+          </main>
+          <script>
+            const images = Array.from(document.images);
+            Promise.all(images.map((image) => image.complete ? Promise.resolve() : new Promise((resolve) => {
+              image.onload = resolve;
+              image.onerror = resolve;
+            }))).then(() => {
+              setTimeout(() => {
+                window.focus();
+                window.print();
+              }, 250);
+            });
+          </script>
+        </body>
+      </html>`;
+
+    printWindow.document.open();
+    printWindow.document.write(documentHtml);
+    printWindow.document.close();
+  };
+
   const updateFinanceField = (field: keyof typeof financeForm, value: string) => {
     setFinanceForm((current) => ({ ...current, [field]: value }));
   };
@@ -1229,6 +1516,17 @@ export default function CustoObras() {
             <div className="cost-detail-heading">
               <DialogTitle>Pedido {modalPedido?.pedido}</DialogTitle>
               <DialogDescription>{modalPedido?.cliente}</DialogDescription>
+            </div>
+            <div className="cost-detail-header-actions">
+              <button
+                type="button"
+                onClick={handleExportMedicaoPdf}
+                disabled={isLoadingModal}
+                title="Extrair medicao em PDF"
+              >
+                <FileText size={14} />
+                PDF Medicao
+              </button>
             </div>
           </DialogHeader>
           <section className="cost-detail-workspace" aria-label="Area de trabalho do pedido">
