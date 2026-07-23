@@ -1791,7 +1791,7 @@
   justify-self: end;
 }
 
-.cost-detail-header-actions button {
+.cost-detail-header-actions a {
   min-height: 30px;
   display: inline-flex;
   align-items: center;
@@ -1805,16 +1805,12 @@
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
+  text-decoration: none;
 }
 
-.cost-detail-header-actions button:hover {
+.cost-detail-header-actions a:hover {
   background: linear-gradient(#fffaf0, #f4dfa8);
   border-color: #a47d1d;
-}
-
-.cost-detail-header-actions button:disabled {
-  cursor: not-allowed;
-  opacity: .55;
 }
 
 .cost-detail-dialog [data-slot="dialog-title"] {

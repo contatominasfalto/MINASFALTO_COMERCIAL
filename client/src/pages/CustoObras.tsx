@@ -743,10 +743,9 @@ export default function CustoObras() {
     ], impostosGroupSearch));
   }, [modalCalculations.impostos, impostosGroupSearch]);
 
-  const handleExportMedicaoPdf = () => {
-    if (!modalPedido) return;
+  const getMedicaoPdfUrl = (pedidoId: number) => {
     const basePath = window.location.pathname.startsWith("/control_pedidos") ? "/control_pedidos" : "";
-    window.location.href = `${basePath}/api/medicao-obras/${modalPedido.id}/pdf`;
+    return `${basePath}/api/medicao-obras/${pedidoId}/pdf`;
   };
   const updateFinanceField = (field: keyof typeof financeForm, value: string) => {
     setFinanceForm((current) => ({ ...current, [field]: value }));
@@ -1236,15 +1235,18 @@ export default function CustoObras() {
               <DialogDescription>{modalPedido?.cliente}</DialogDescription>
             </div>
             <div className="cost-detail-header-actions">
-              <button
-                type="button"
-                onClick={handleExportMedicaoPdf}
-                disabled={isLoadingModal}
-                title="Extrair medicao em PDF"
-              >
-                <FileText size={14} />
-                PDF Medicao
-              </button>
+              {modalPedido && !isLoadingModal ? (
+                <a
+                  href={getMedicaoPdfUrl(modalPedido.id)}
+                  target="_blank"
+                  rel="noreferrer"
+                  download={`medicao-obra-${modalPedido.pedido}.pdf`}
+                  title="Extrair medicao em PDF"
+                >
+                  <FileText size={14} />
+                  PDF Medicao
+                </a>
+              ) : null}
             </div>
           </DialogHeader>
           <section className="cost-detail-workspace" aria-label="Area de trabalho do pedido">
