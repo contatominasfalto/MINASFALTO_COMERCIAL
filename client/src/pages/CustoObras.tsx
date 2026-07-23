@@ -1236,13 +1236,16 @@ export default function CustoObras() {
             </div>
             <div className="cost-detail-header-actions">
               {modalPedido && !isLoadingModal ? (
-                <a
-                  href={getMedicaoPdfUrl(modalPedido.pedido)}
+                <form
+                  action={getMedicaoPdfUrl(modalPedido.pedido)}
+                  method="get"
                   title="Extrair medicao em PDF"
                 >
-                  <FileText size={14} />
-                  PDF Medicao
-                </a>
+                  <button type="submit">
+                    <FileText size={14} />
+                    PDF Medicao
+                  </button>
+                </form>
               ) : null}
             </div>
           </DialogHeader>

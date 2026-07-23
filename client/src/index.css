@@ -1791,7 +1791,11 @@
   justify-self: end;
 }
 
-.cost-detail-header-actions a {
+.cost-detail-header-actions form {
+  margin: 0;
+}
+
+.cost-detail-header-actions button {
   min-height: 30px;
   display: inline-flex;
   align-items: center;
@@ -1805,10 +1809,9 @@
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
-  text-decoration: none;
 }
 
-.cost-detail-header-actions a:hover {
+.cost-detail-header-actions button:hover {
   background: linear-gradient(#fffaf0, #f4dfa8);
   border-color: #a47d1d;
 }
