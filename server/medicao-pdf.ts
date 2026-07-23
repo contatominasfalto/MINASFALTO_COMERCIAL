@@ -82,7 +82,7 @@ function wrap(text: unknown, maxChars: number, maxLines = 2) {
   return (lines.length ? lines : [""]).slice(0, maxLines);
 }
 
-function createPdf(pages: string[], timbrado: PdfImage, assinatura: PdfImage) {
+function createPdf(pages: string[], timbrado: PdfImage, assinatura: PdfImage, logo: PdfImage) {
   const chunks: Buffer[] = [];
   const offsets: number[] = [];
   let position = 0;
@@ -98,19 +98,20 @@ function createPdf(pages: string[], timbrado: PdfImage, assinatura: PdfImage) {
     write("\nendobj\n");
   };
 
-  const pageIds = pages.map((_, index) => 5 + index * 2);
-  const maxObject = 4 + pages.length * 2;
+  const pageIds = pages.map((_, index) => 6 + index * 2);
+  const maxObject = 5 + pages.length * 2;
   write("%PDF-1.3\n");
   obj(1, "<< /Type /Catalog /Pages 2 0 R >>");
   obj(2, `<< /Type /Pages /Count ${pages.length} /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] >>`);
   obj(3, `<< /Type /XObject /Subtype /Image /Width ${timbrado.width} /Height ${timbrado.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${timbrado.data.length} >>\nstream\n${timbrado.data.toString("binary")}\nendstream`);
   obj(4, `<< /Type /XObject /Subtype /Image /Width ${assinatura.width} /Height ${assinatura.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${assinatura.data.length} >>\nstream\n${assinatura.data.toString("binary")}\nendstream`);
+  obj(5, `<< /Type /XObject /Subtype /Image /Width ${logo.width} /Height ${logo.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.data.length} >>\nstream\n${logo.data.toString("binary")}\nendstream`);
 
   pages.forEach((content, index) => {
-    const contentId = 6 + index * 2;
-    const pageId = 5 + index * 2;
+    const pageId = 6 + index * 2;
+    const contentId = 7 + index * 2;
     const contentBytes = Buffer.from(content, "binary");
-    obj(pageId, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> >> /XObject << /BG 3 0 R /SIG 4 0 R >> >> /Contents ${contentId} 0 R >>`);
+    obj(pageId, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> >> /XObject << /BG 3 0 R /SIG 4 0 R /LOGO 5 0 R >> >> /Contents ${contentId} 0 R >>`);
     obj(contentId, `<< /Length ${contentBytes.length} >>\nstream\n${content}\nendstream`);
   });
 
@@ -125,6 +126,15 @@ function createPdf(pages: string[], timbrado: PdfImage, assinatura: PdfImage) {
 
 function drawText(text: unknown, x: number, y: number, size = 9, bold = false, color = "0 0 0") {
   return `BT /${bold ? "F2" : "F1"} ${size} Tf ${color} rg ${x} ${y} Td (${pdfText(text)}) Tj ET\n`;
+}
+
+function estimateTextWidth(text: unknown, size: number, bold = false) {
+  return String(text ?? "").length * size * (bold ? 0.58 : 0.52);
+}
+
+function drawCenteredText(text: unknown, y: number, size = 9, bold = false, color = "0 0 0", centerX = 297.64) {
+  const x = Math.max(50, centerX - estimateTextWidth(text, size, bold) / 2);
+  return drawText(text, x, y, size, bold, color);
 }
 
 function drawRect(x: number, y: number, w: number, h: number, fill = "1 1 1", stroke = "0.65 0.72 0.80") {
@@ -152,16 +162,18 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
 
   const timbrado = await loadJpeg("client/src/assets/papel-timbrado-minasfalto.jpeg");
   const assinatura = await loadJpeg("client/src/assets/assinatura-diretor.jpg");
+  const logo = await loadJpeg("client/src/assets/minasfalto-logo.jpg");
   const pages: string[] = [];
   let content = "";
   let y = 790;
   const newPage = () => {
     if (content) pages.push(content);
     content = "q 595.28 0 0 841.89 0 0 cm /BG Do Q\n";
+    content += "q 46 0 0 46 56 754 cm /LOGO Do Q\n";
     y = 790;
-    content += drawText("MEDICAO DE OBRA", 96, y, 17, true, "0 0.10 0.20");
-    content += drawText(`Pedido ${pedido.pedido} - ${pedido.cliente}`, 96, y - 20, 10, true, "0.20 0.28 0.36");
-    content += "0.95 0.65 0.10 RG 50 748 495 0 l S\n";
+    content += drawCenteredText("MEDICAO DE OBRA", y, 17, true, "0 0.10 0.20");
+    content += drawCenteredText(`Pedido ${pedido.pedido} - ${pedido.cliente}`, y - 20, 10, true, "0.20 0.28 0.36");
+    content += "0.95 0.65 0.10 RG 50 748 m 545 748 l S\n";
     y = 720;
   };
   const card = (label: string, value: unknown, x: number, width = 115) => {
@@ -191,6 +203,21 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
       y -= 22;
     }
     y -= 10;
+  };
+  const signatureBlock = () => {
+    if (y < 150) newPage();
+    y -= 24;
+    const signatureWidth = 190;
+    const signatureHeight = 25;
+    const signatureX = (595.28 - signatureWidth) / 2;
+    const signatureY = y - signatureHeight;
+    const lineY = signatureY - 8;
+    content += `q ${signatureWidth} 0 0 ${signatureHeight} ${signatureX} ${signatureY} cm /SIG Do Q\n`;
+    content += `0 0 0 RG 190 ${lineY} m 405 ${lineY} l S\n`;
+    content += drawCenteredText("MINASFALTO INDUSTRIA E COMERCIO LTDA", lineY - 14, 8, false, "0 0 0");
+    content += drawCenteredText("Marco Aurelio Barreto Modesto", lineY - 28, 8, false, "0 0 0");
+    content += drawCenteredText("CPF n 055.467.797-05 - CI n 1.481.440", lineY - 42, 8, false, "0 0 0");
+    y = lineY - 62;
   };
 
   newPage();
@@ -232,16 +259,12 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
     item.situacao,
     item.complemento,
   ]));
-  if (y < 180) newPage();
-  content += "q 230 0 0 32 182 105 cm /SIG Do Q\n";
-  content += drawText("MINASFALTO INDUSTRIA E COMERCIO LTDA", 190, 84, 8, false, "0 0 0");
-  content += drawText("Marco Aurelio Barreto Modesto", 224, 70, 8, false, "0 0 0");
-  content += drawText("CPF n 055.467.797-05 - CI n 1.481.440", 200, 56, 8, false, "0 0 0");
+  signatureBlock();
   pages.push(content);
 
   return {
     filename: `medicao-obra-${pedido.pedido}-${new Date().toISOString().slice(0, 10)}.pdf`,
-    buffer: createPdf(pages, timbrado, assinatura),
+    buffer: createPdf(pages, timbrado, assinatura, logo),
   };
 }
 
