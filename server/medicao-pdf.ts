@@ -174,7 +174,7 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
     content += drawCenteredText("MEDICAO DE OBRA", y, 17, true, "0 0.10 0.20");
     content += drawCenteredText(`Pedido ${pedido.pedido} - ${pedido.cliente}`, y - 20, 10, true, "0.20 0.28 0.36");
     content += "0.95 0.65 0.10 RG 50 748 m 545 748 l S\n";
-    y = 720;
+    y = 704;
   };
   const card = (label: string, value: unknown, x: number, width = 115) => {
     content += drawRect(x, y, width, 36, "1 1 1");
