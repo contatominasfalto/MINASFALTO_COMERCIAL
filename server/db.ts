@@ -681,6 +681,14 @@ export async function getPedidoObraByNumber(pedidoNum: string) {
   return result.length > 0 ? result[0] : null;
 }
 
+export async function getPedidoObraById(id: number) {
+  const db = await getDb();
+  if (!db) return shouldUseDemoData() ? demoPedidosObras.find((pedido) => Number(pedido.id) === id) ?? null : null;
+
+  const result = await db.select().from(pedidosObras).where(eq(pedidosObras.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
 export async function upsertPedidoObraFromCrti(data: {
   dataPedido: string;
   cliente: string;
