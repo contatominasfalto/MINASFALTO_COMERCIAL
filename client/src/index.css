@@ -1763,9 +1763,27 @@
 
 .cost-detail-dialog [data-slot="dialog-header"] {
   min-height: 54px;
-  padding: 12px 56px 9px 18px;
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) 110px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 56px 9px 18px;
   border-bottom: 1px solid var(--sap-line);
   background: linear-gradient(#f9fbfd, #d8e3ef);
+}
+
+.cost-detail-logo {
+  width: 72px;
+  height: 48px;
+  object-fit: contain;
+  justify-self: start;
+  background: #ffffff;
+}
+
+.cost-detail-heading {
+  grid-column: 2;
+  min-width: 0;
+  text-align: center;
 }
 
 .cost-detail-dialog [data-slot="dialog-title"] {

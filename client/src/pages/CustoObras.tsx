@@ -1225,8 +1225,11 @@ export default function CustoObras() {
       }}>
         <DialogContent className="cost-detail-dialog">
           <DialogHeader>
-            <DialogTitle>Pedido {modalPedido?.pedido}</DialogTitle>
-            <DialogDescription>{modalPedido?.cliente}</DialogDescription>
+            <img src={minasfaltoLogo} alt="Minasfalto" className="cost-detail-logo" />
+            <div className="cost-detail-heading">
+              <DialogTitle>Pedido {modalPedido?.pedido}</DialogTitle>
+              <DialogDescription>{modalPedido?.cliente}</DialogDescription>
+            </div>
           </DialogHeader>
           <section className="cost-detail-workspace" aria-label="Area de trabalho do pedido">
             {isLoadingModal ? (
