@@ -1786,36 +1786,6 @@
   text-align: center;
 }
 
-.cost-detail-header-actions {
-  grid-column: 3;
-  justify-self: end;
-}
-
-.cost-detail-header-actions form {
-  margin: 0;
-}
-
-.cost-detail-header-actions button {
-  min-height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 0 12px;
-  border: 1px solid #8fa2b7;
-  border-radius: 2px;
-  background: linear-gradient(#ffffff, #dce6f0);
-  color: #001b34;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.cost-detail-header-actions button:hover {
-  background: linear-gradient(#fffaf0, #f4dfa8);
-  border-color: #a47d1d;
-}
-
 .cost-detail-dialog [data-slot="dialog-title"] {
   color: #001b34;
   font-size: 20px;
@@ -1863,6 +1833,33 @@
   gap: 8px;
   padding: 10px 12px;
   background: var(--sap-panel);
+}
+
+.cost-detail-actionbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.cost-detail-actionbar-button {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid #8fa2b7;
+  border-radius: 2px;
+  background: linear-gradient(#ffffff, #dce6f0);
+  color: #001b34;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.cost-detail-actionbar-button:hover {
+  background: linear-gradient(#fffaf0, #f4dfa8);
+  border-color: #a47d1d;
 }
 
 .cost-detail-loading {

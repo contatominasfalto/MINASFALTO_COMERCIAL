@@ -1234,26 +1234,24 @@ export default function CustoObras() {
               <DialogTitle>Pedido {modalPedido?.pedido}</DialogTitle>
               <DialogDescription>{modalPedido?.cliente}</DialogDescription>
             </div>
-            <div className="cost-detail-header-actions">
-              {modalPedido && !isLoadingModal ? (
-                <form
-                  action={getMedicaoPdfUrl(modalPedido.pedido)}
-                  method="get"
-                  title="Extrair medicao em PDF"
-                >
-                  <button type="submit">
-                    <FileText size={14} />
-                    PDF Medicao
-                  </button>
-                </form>
-              ) : null}
-            </div>
           </DialogHeader>
           <section className="cost-detail-workspace" aria-label="Area de trabalho do pedido">
             {isLoadingModal ? (
               <div className="cost-detail-loading">Carregando dados do pedido...</div>
             ) : (
               <>
+                {modalPedido ? (
+                  <div className="cost-detail-actionbar">
+                    <a
+                      className="cost-detail-actionbar-button"
+                      href={getMedicaoPdfUrl(modalPedido.pedido)}
+                      title="Extrair medicao em PDF"
+                    >
+                      <FileText size={14} />
+                      PDF Medicao
+                    </a>
+                  </div>
+                ) : null}
                 <section className={`cost-expense-group cost-revenue-group ${receitaGroupOpen ? "expanded" : "collapsed"}`}>
                   <div className="cost-expense-group-gutter">
                     <button
