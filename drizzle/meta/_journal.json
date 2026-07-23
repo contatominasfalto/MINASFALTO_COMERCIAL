@@ -64,6 +64,13 @@
       "when": 1784835600000,
       "tag": "0008_pedido_obra_custos",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1784842800000,
+      "tag": "0009_receita_outros_tipo",
+      "breakpoints": true
     }
   ]
 }

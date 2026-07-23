@@ -138,6 +138,7 @@ const REQUIRED_COLUMNS = {
     "pedidoNum",
     "numeroDocumento",
     "status",
+    "tipoReceitaOutros",
     "data",
     "valor",
     "descricao",

@@ -189,9 +189,18 @@ const pedidoObraReceitaSchema = z.object({
   pedidoNum: z.string().min(1),
   numeroDocumento: z.string().max(80).optional(),
   status: z.enum(["Nfe", "Faturamento Direto", "Outros"]),
+  tipoReceitaOutros: z.string().max(1000).optional(),
   data: z.string().max(10).optional(),
   valor: z.coerce.number().nonnegative(),
   descricao: z.string().max(5000).optional(),
+}).superRefine((data, ctx) => {
+  if (data.status === "Outros" && !data.tipoReceitaOutros?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["tipoReceitaOutros"],
+      message: "Tipo de receita obrigatorio para Outros",
+    });
+  }
 });
 
 const pedidoObraReceitaUpdateSchema = z.object({
@@ -199,9 +208,18 @@ const pedidoObraReceitaUpdateSchema = z.object({
   pedidoObraId: z.number().int().positive(),
   numeroDocumento: z.string().max(80).optional(),
   status: z.enum(["Nfe", "Faturamento Direto", "Outros"]),
+  tipoReceitaOutros: z.string().max(1000).optional(),
   data: z.string().max(10).optional(),
   valor: z.coerce.number().nonnegative(),
   descricao: z.string().max(5000).optional(),
+}).superRefine((data, ctx) => {
+  if (data.status === "Outros" && !data.tipoReceitaOutros?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["tipoReceitaOutros"],
+      message: "Tipo de receita obrigatorio para Outros",
+    });
+  }
 });
 
 export const appRouter = router({

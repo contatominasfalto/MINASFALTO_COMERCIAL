@@ -1203,6 +1203,7 @@ export async function getPedidoObraModalData(pedidoObraId: number) {
         pedidoNum,
         numeroDocumento,
         status,
+        tipoReceitaOutros,
         \`data\`,
         valor,
         descricao,
@@ -1297,6 +1298,7 @@ export async function createPedidoObraReceita(data: {
   pedidoNum: string;
   numeroDocumento?: string;
   status: "Nfe" | "Faturamento Direto" | "Outros";
+  tipoReceitaOutros?: string;
   data?: string;
   valor: number;
   descricao?: string;
@@ -1313,18 +1315,20 @@ export async function createPedidoObraReceita(data: {
         pedidoNum,
         numeroDocumento,
         status,
+        tipoReceitaOutros,
         \`data\`,
         valor,
         descricao,
         criadoPor
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       data.pedidoObraId,
       data.pedidoNum,
       data.numeroDocumento || "",
       data.status,
+      data.status === "Outros" ? data.tipoReceitaOutros || "" : "",
       data.data || "",
       data.valor,
       data.descricao || "",
@@ -1340,6 +1344,7 @@ export async function updatePedidoObraReceita(data: {
   pedidoObraId: number;
   numeroDocumento?: string;
   status: "Nfe" | "Faturamento Direto" | "Outros";
+  tipoReceitaOutros?: string;
   data?: string;
   valor: number;
   descricao?: string;
@@ -1354,6 +1359,7 @@ export async function updatePedidoObraReceita(data: {
       SET
         numeroDocumento = ?,
         status = ?,
+        tipoReceitaOutros = ?,
         \`data\` = ?,
         valor = ?,
         descricao = ?,
@@ -1363,6 +1369,7 @@ export async function updatePedidoObraReceita(data: {
     [
       data.numeroDocumento || "",
       data.status,
+      data.status === "Outros" ? data.tipoReceitaOutros || "" : "",
       data.data || "",
       data.valor,
       data.descricao || "",

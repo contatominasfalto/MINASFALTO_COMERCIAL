@@ -155,6 +155,7 @@ try {
       pedidoNum varchar(50) NOT NULL,
       numeroDocumento varchar(80) NULL,
       status enum('Nfe','Faturamento Direto','Outros') NOT NULL DEFAULT 'Nfe',
+      tipoReceitaOutros text DEFAULT (''),
       data varchar(10) NULL,
       valor decimal(18,2) DEFAULT '0',
       descricao text DEFAULT (''),
@@ -171,6 +172,11 @@ try {
     ALTER TABLE pedido_obra_receitas
     MODIFY status enum('Nfe','Faturamento Direto','Outros') NOT NULL DEFAULT 'Nfe'
   `);
+
+  const [receitaTipoOutrosColumns] = await connection.query("SHOW COLUMNS FROM pedido_obra_receitas LIKE 'tipoReceitaOutros'");
+  if (receitaTipoOutrosColumns.length === 0) {
+    await connection.query("ALTER TABLE pedido_obra_receitas ADD tipoReceitaOutros text DEFAULT ('') AFTER status");
+  }
 
   await connection.query(`
     CREATE TABLE IF NOT EXISTS pedido_obra_custos (

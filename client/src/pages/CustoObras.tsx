@@ -260,6 +260,7 @@ export default function CustoObras() {
     id: null as number | null,
     numeroDocumento: "",
     status: "Nfe" as RevenueStatus,
+    tipoReceitaOutros: "",
     data: "",
     valor: "",
     descricao: "",
@@ -699,6 +700,7 @@ export default function CustoObras() {
     return modalReceitas.filter((receita: any) => matchesSearch([
       receita.numeroDocumento,
       receita.status,
+      receita.tipoReceitaOutros,
       formatDateBR(receita.data),
       formatCurrency(receita.valor),
       receita.valor,
@@ -798,6 +800,7 @@ export default function CustoObras() {
       id: null,
       numeroDocumento: "",
       status: "Nfe",
+      tipoReceitaOutros: "",
       data: "",
       valor: "",
       descricao: "",
@@ -814,6 +817,7 @@ export default function CustoObras() {
       id: receita.id,
       numeroDocumento: receita.numeroDocumento || "",
       status: receita.status || "Nfe",
+      tipoReceitaOutros: receita.tipoReceitaOutros || "",
       data: receita.data || "",
       valor: moneyInputValue(receita.valor),
       descricao: receita.descricao || "",
@@ -843,11 +847,16 @@ export default function CustoObras() {
 
   const handleSaveReceita = () => {
     if (!modalPedido) return;
+    if (manualRevenue.status === "Outros" && !manualRevenue.tipoReceitaOutros.trim()) {
+      toast.error("Informe o tipo da receita para status Outros.");
+      return;
+    }
     const payload = {
       pedidoObraId: modalPedido.id,
       pedidoNum: String(modalPedido.pedido),
       numeroDocumento: manualRevenue.numeroDocumento,
       status: manualRevenue.status,
+      tipoReceitaOutros: manualRevenue.status === "Outros" ? manualRevenue.tipoReceitaOutros : "",
       data: manualRevenue.data,
       valor: parseMoneyInput(manualRevenue.valor),
       descricao: manualRevenue.descricao,
@@ -859,6 +868,7 @@ export default function CustoObras() {
         pedidoObraId: payload.pedidoObraId,
         numeroDocumento: payload.numeroDocumento,
         status: payload.status,
+        tipoReceitaOutros: payload.tipoReceitaOutros,
         data: payload.data,
         valor: payload.valor,
         descricao: payload.descricao,
@@ -1297,6 +1307,7 @@ export default function CustoObras() {
                               <tr>
                                 <th>N Doc</th>
                                 <th>Status</th>
+                                <th>Tipo Receita</th>
                                 <th>Data</th>
                                 <th>Valor</th>
                                 <th>Descricao</th>
@@ -1306,17 +1317,18 @@ export default function CustoObras() {
                             <tbody>
                               {modalReceitas.length === 0 ? (
                                 <tr>
-                                  <td colSpan={6} className="desktop-empty">Nenhuma receita cadastrada</td>
+                                  <td colSpan={7} className="desktop-empty">Nenhuma receita cadastrada</td>
                                 </tr>
                               ) : filteredModalReceitas.length === 0 ? (
                                 <tr>
-                                  <td colSpan={6} className="desktop-empty">Nenhuma receita encontrada para a busca</td>
+                                  <td colSpan={7} className="desktop-empty">Nenhuma receita encontrada para a busca</td>
                                 </tr>
                               ) : (
                                 filteredModalReceitas.map((receita: any) => (
                                   <tr key={receita.id}>
                                     <td>{receita.numeroDocumento}</td>
                                     <td>{receita.status}</td>
+                                    <td className="expense-complement" title={receita.tipoReceitaOutros || ""}>{receita.tipoReceitaOutros || ""}</td>
                                     <td>{formatDateBR(receita.data)}</td>
                                     <td className="num">{formatCurrency(receita.valor)}</td>
                                     <td className="expense-complement" title={receita.descricao || ""}>{receita.descricao}</td>
@@ -1658,7 +1670,11 @@ export default function CustoObras() {
               <span>Status</span>
               <Select
                 value={manualRevenue.status}
-                onValueChange={(value) => setManualRevenue((current) => ({ ...current, status: value as RevenueStatus }))}
+                onValueChange={(value) => setManualRevenue((current) => ({
+                  ...current,
+                  status: value as RevenueStatus,
+                  tipoReceitaOutros: value === "Outros" ? current.tipoReceitaOutros : "",
+                }))}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -1670,6 +1686,16 @@ export default function CustoObras() {
                 </SelectContent>
               </Select>
             </label>
+            {manualRevenue.status === "Outros" ? (
+              <label>
+                <span>Tipo de receita</span>
+                <Input
+                  value={manualRevenue.tipoReceitaOutros}
+                  onChange={(event) => setManualRevenue((current) => ({ ...current, tipoReceitaOutros: event.target.value }))}
+                  placeholder="Informe o tipo da receita"
+                />
+              </label>
+            ) : null}
             <label>
               <span>Data</span>
               <Input
