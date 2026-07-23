@@ -67,7 +67,6 @@ const escapeExcelValue = (value: unknown) => String(value ?? "")
   .replace(/</g, "&lt;")
   .replace(/>/g, "&gt;")
   .replace(/"/g, "&quot;");
-const escapeHtmlValue = escapeExcelValue;
 const buildExcelSheet = (name: string, rows: unknown[][]) => `
   <Worksheet ss:Name="${escapeExcelValue(name)}">
     <Table>
@@ -284,6 +283,7 @@ export default function CustoObras() {
   const [linkPageSize, setLinkPageSize] = useState(25);
   const [linkCategory, setLinkCategory] = useState<CostCategory>("Despesa");
   const [linkJustificativa, setLinkJustificativa] = useState("");
+  const [showMedicaoPrint, setShowMedicaoPrint] = useState(false);
 
   const { data: pedidosResult, error, isLoading, refetch } = trpc.pedidosObras.list.useQuery({
     status: statusFilter,
@@ -653,6 +653,19 @@ export default function CustoObras() {
     }
   }, [availableExpensesResult, linkPage, availableExpensesTotalPages]);
 
+  useEffect(() => {
+    if (!showMedicaoPrint) return;
+
+    const cleanup = () => setShowMedicaoPrint(false);
+    window.addEventListener("afterprint", cleanup);
+    const fallback = window.setTimeout(cleanup, 120000);
+
+    return () => {
+      window.removeEventListener("afterprint", cleanup);
+      window.clearTimeout(fallback);
+    };
+  }, [showMedicaoPrint]);
+
   const despesasTotals = useMemo(() => {
     return despesas.reduce(
       (acc: { valor: number }, despesa: any) => {
@@ -749,310 +762,12 @@ export default function CustoObras() {
   const handleExportMedicaoPdf = () => {
     if (!modalPedido) return;
 
-    const printFrame = document.createElement("iframe");
-    printFrame.title = `Medicao Pedido ${modalPedido.pedido}`;
-    printFrame.style.position = "fixed";
-    printFrame.style.right = "0";
-    printFrame.style.bottom = "0";
-    printFrame.style.width = "0";
-    printFrame.style.height = "0";
-    printFrame.style.border = "0";
-    printFrame.style.visibility = "hidden";
-    document.body.appendChild(printFrame);
+    setShowMedicaoPrint(true);
+    toast.info("Preparando medicao. Na janela de impressao, escolha Salvar como PDF.");
 
-    const frameWindow = printFrame.contentWindow;
-    const frameDocument = printFrame.contentDocument || frameWindow?.document;
-    if (!frameWindow || !frameDocument) {
-      printFrame.remove();
-      toast.error("Nao foi possivel preparar a medicao para PDF.");
-      return;
-    }
-
-    const dataInicio = formatDateBR(modalPedido.dataPedido) || "Nao informado";
-    const dataImpressao = formatDateTime(new Date());
-    const saldoClass = modalCalculations.saldo < 0 ? "negative" : "";
-    const logoUrl = new URL(minasfaltoLogo, window.location.href).href;
-    const assinaturaUrl = new URL(assinaturaDiretor, window.location.href).href;
-    const papelTimbradoUrl = new URL(papelTimbradoMinasfalto, window.location.href).href;
-
-    const renderRows = (rows: unknown[][]) => rows.map((row) => `
-      <tr>
-        ${row.map((cell) => `<td>${escapeHtmlValue(cell)}</td>`).join("")}
-      </tr>
-    `).join("");
-
-    const renderTable = (title: string, headers: string[], rows: unknown[][], emptyText: string) => `
-      <section class="section-block">
-        <h2>${escapeHtmlValue(title)}</h2>
-        <table>
-          <thead>
-            <tr>${headers.map((header) => `<th>${escapeHtmlValue(header)}</th>`).join("")}</tr>
-          </thead>
-          <tbody>
-            ${rows.length > 0 ? renderRows(rows) : `<tr><td colspan="${headers.length}" class="empty">${escapeHtmlValue(emptyText)}</td></tr>`}
-          </tbody>
-        </table>
-      </section>
-    `;
-
-    const receitasRows = modalReceitas.map((receita: any) => [
-      receita.numeroDocumento,
-      receita.status,
-      formatDateBR(receita.data),
-      formatCurrency(receita.valor),
-      receita.descricao,
-    ]);
-    const despesasRows = modalDespesas.map((despesa: any) => [
-      despesa.codigoFornecedorCliente,
-      despesa.fornecedorCliente,
-      despesa.numeroDocumento,
-      despesa.tipoConta,
-      despesa.tipoDocumento,
-      formatDateBR(despesa.dataEmissao),
-      formatDateBR(despesa.dataVencimento),
-      formatCurrency(despesa.valorTotalDocumento),
-      despesa.complemento,
-      despesa.observacoesAprovacao,
-      despesa.categoria,
-    ]);
-    const impostosRows = modalCalculations.impostos.map((imposto: any) => [
-      imposto.numeroDocumento,
-      formatDateBR(imposto.data),
-      formatCurrency(imposto.valorImposto),
-    ]);
-    const custosRows = modalCustos.map((custo: any) => [
-      custo.numeroDocumento,
-      formatDateBR(custo.dataEmissao),
-      formatCurrency(custo.valorTotal),
-      custo.situacao,
-      custo.complemento,
-    ]);
-
-    const documentHtml = `<!doctype html>
-      <html lang="pt-BR">
-        <head>
-          <meta charset="utf-8" />
-          <title>Medicao Obra Pedido ${escapeHtmlValue(modalPedido.pedido)}</title>
-          <style>
-            @page { size: A4; margin: 12mm; }
-            * { box-sizing: border-box; }
-            body {
-              margin: 0;
-              color: #111827;
-              font-family: Arial, Helvetica, sans-serif;
-              font-size: 10px;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .letterhead-bg {
-              position: fixed;
-              inset: 0;
-              width: 100%;
-              height: 100%;
-              object-fit: cover;
-              z-index: -1;
-            }
-            .page {
-              min-height: 270mm;
-              padding: 18mm 8mm 32mm;
-              position: relative;
-            }
-            header {
-              display: grid;
-              grid-template-columns: 92px minmax(0, 1fr);
-              gap: 16px;
-              align-items: center;
-              border-bottom: 2px solid #f2a51c;
-              padding-bottom: 10px;
-              margin-bottom: 14px;
-            }
-            .logo {
-              width: 86px;
-              height: 62px;
-              object-fit: contain;
-            }
-            h1 {
-              margin: 0 0 6px;
-              color: #001b34;
-              font-size: 20px;
-              letter-spacing: 0;
-              text-transform: uppercase;
-            }
-            .subtitle {
-              margin: 0;
-              color: #334155;
-              font-size: 12px;
-              font-weight: 700;
-            }
-            .meta-grid {
-              display: grid;
-              grid-template-columns: repeat(4, 1fr);
-              gap: 8px;
-              margin-bottom: 12px;
-            }
-            .meta-card, .summary-card {
-              border: 1px solid #9fb0c2;
-              background: rgba(255,255,255,.92);
-              padding: 8px;
-            }
-            .label {
-              display: block;
-              color: #475569;
-              font-size: 8px;
-              font-weight: 800;
-              text-transform: uppercase;
-              margin-bottom: 4px;
-            }
-            .value {
-              color: #001b34;
-              font-size: 12px;
-              font-weight: 800;
-            }
-            .summary-grid {
-              display: grid;
-              grid-template-columns: repeat(5, 1fr);
-              gap: 8px;
-              margin-bottom: 12px;
-            }
-            .summary-card .value {
-              font-size: 13px;
-            }
-            .negative {
-              color: #c00000 !important;
-              font-weight: 900;
-            }
-            .section-block {
-              page-break-inside: avoid;
-              margin: 0 0 12px;
-              background: rgba(255,255,255,.94);
-            }
-            h2 {
-              margin: 0;
-              padding: 7px 8px;
-              border: 1px solid #9fb0c2;
-              border-bottom: 0;
-              background: linear-gradient(#ffffff, #dce6f0);
-              color: #001b34;
-              font-size: 12px;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              table-layout: fixed;
-            }
-            th, td {
-              border: 1px solid #b7c5d5;
-              padding: 5px 6px;
-              vertical-align: top;
-              overflow-wrap: anywhere;
-            }
-            th {
-              background: #e7eef6;
-              color: #001b34;
-              font-size: 8px;
-              text-transform: uppercase;
-            }
-            td {
-              font-size: 8px;
-            }
-            tbody tr:nth-child(even) td {
-              background: rgba(231, 238, 246, .55);
-            }
-            .empty {
-              text-align: center;
-              color: #64748b;
-              font-weight: 700;
-            }
-            .signature {
-              width: 260px;
-              margin: 22px auto 0;
-              text-align: center;
-              page-break-inside: avoid;
-            }
-            .signature img {
-              width: 220px;
-              height: 58px;
-              object-fit: contain;
-            }
-            .signature-line {
-              border-top: 1px solid #111827;
-              padding-top: 6px;
-              color: #001b34;
-              font-size: 10px;
-              font-weight: 800;
-            }
-            .print-note {
-              margin-top: 10px;
-              color: #64748b;
-              font-size: 8px;
-              text-align: center;
-            }
-          </style>
-        </head>
-        <body>
-          <img class="letterhead-bg" src="${papelTimbradoUrl}" alt="" />
-          <main class="page">
-            <header>
-              <img class="logo" src="${logoUrl}" alt="Minasfalto" />
-              <div>
-                <h1>Medicao de Obra</h1>
-                <p class="subtitle">Pedido ${escapeHtmlValue(modalPedido.pedido)} - ${escapeHtmlValue(modalPedido.cliente)}</p>
-              </div>
-            </header>
-
-            <section class="meta-grid">
-              <div class="meta-card"><span class="label">Pedido</span><span class="value">${escapeHtmlValue(modalPedido.pedido)}</span></div>
-              <div class="meta-card"><span class="label">Data de inicio</span><span class="value">${escapeHtmlValue(dataInicio)}</span></div>
-              <div class="meta-card"><span class="label">Data da impressao</span><span class="value">${escapeHtmlValue(dataImpressao)}</span></div>
-              <div class="meta-card"><span class="label">Status</span><span class="value">${escapeHtmlValue(modalPedido.status)}</span></div>
-            </section>
-
-            <section class="summary-grid">
-              <div class="summary-card"><span class="label">Receita</span><span class="value">${escapeHtmlValue(formatCurrency(modalCalculations.receita))}</span></div>
-              <div class="summary-card"><span class="label">Impostos</span><span class="value">${escapeHtmlValue(formatCurrency(modalCalculations.valorPorcentagemImposto))}</span></div>
-              <div class="summary-card"><span class="label">Despesas</span><span class="value">${escapeHtmlValue(formatCurrency(modalCalculations.totalDespesas))}</span></div>
-              <div class="summary-card"><span class="label">Custos</span><span class="value">${escapeHtmlValue(formatCurrency(modalCalculations.totalCustos))}</span></div>
-              <div class="summary-card"><span class="label">Saldo</span><span class="value ${saldoClass}">${escapeHtmlValue(formatCurrency(modalCalculations.saldo))}</span></div>
-            </section>
-
-            ${renderTable("Receitas", ["N Doc", "Status", "Data", "Valor", "Descricao"], receitasRows, "Nenhuma receita cadastrada")}
-            ${renderTable("Despesas", ["Codigo", "Fornecedor/Cliente", "N Documento", "Tipo Conta", "Tipo Documento", "Data Emissao", "Data Vencimento", "Valor Total", "Complemento", "Observacoes", "Tipo"], despesasRows, "Nenhuma despesa vinculada ou cadastrada")}
-            ${renderTable("Impostos", ["N Doc", "Data", "Valor do Imposto"], impostosRows, "Nenhum imposto calculado")}
-            ${renderTable("Custos", ["N Doc", "Data", "Valor Total", "Situacao", "Complemento"], custosRows, "Nenhum custo sincronizado pelo CRTI")}
-
-            <section class="signature">
-              <img src="${assinaturaUrl}" alt="Assinatura do diretor" />
-              <div class="signature-line">Diretoria Minasfalto</div>
-            </section>
-            <p class="print-note">Documento gerado pelo Sistema Integrado Minasfalto.</p>
-          </main>
-        </body>
-      </html>`;
-
-    frameDocument.open();
-    frameDocument.write(documentHtml);
-    frameDocument.close();
-
-    const images = Array.from(frameDocument.images);
-    Promise.all(images.map((image) => image.complete ? Promise.resolve() : new Promise((resolve) => {
-      image.onload = resolve;
-      image.onerror = resolve;
-    }))).then(() => {
-      setTimeout(() => {
-        frameWindow.focus();
-        frameWindow.print();
-        toast.success("Medicao pronta para salvar em PDF");
-      }, 250);
-    }).catch(() => {
-      toast.error("Nao foi possivel carregar o timbrado da medicao.");
-    });
-
-    frameWindow.onafterprint = () => {
-      printFrame.remove();
-    };
     setTimeout(() => {
-      if (document.body.contains(printFrame)) printFrame.remove();
-    }, 60000);
+      window.print();
+    }, 350);
   };
 
   const updateFinanceField = (field: keyof typeof financeForm, value: string) => {
@@ -1237,6 +952,177 @@ export default function CustoObras() {
           <span>Voltar</span>
         </button>
       </header>
+
+      {showMedicaoPrint && modalPedido ? (
+        <section className="medicao-print-root" aria-label="Medicao de obra para impressao">
+          <img className="medicao-letterhead-bg" src={papelTimbradoMinasfalto} alt="" />
+          <main className="medicao-print-page">
+            <header className="medicao-print-header">
+              <img src={minasfaltoLogo} alt="Minasfalto" className="medicao-print-logo" />
+              <div>
+                <h1>Medicao de Obra</h1>
+                <p>Pedido {modalPedido.pedido} - {modalPedido.cliente}</p>
+              </div>
+            </header>
+
+            <section className="medicao-meta-grid">
+              <div>
+                <span>Pedido</span>
+                <strong>{modalPedido.pedido}</strong>
+              </div>
+              <div>
+                <span>Data de inicio</span>
+                <strong>{formatDateBR(modalPedido.dataPedido) || "Nao informado"}</strong>
+              </div>
+              <div>
+                <span>Data da impressao</span>
+                <strong>{formatDateTime(new Date())}</strong>
+              </div>
+              <div>
+                <span>Status</span>
+                <strong>{modalPedido.status}</strong>
+              </div>
+            </section>
+
+            <section className="medicao-summary-grid">
+              <div><span>Receita</span><strong>{formatCurrency(modalCalculations.receita)}</strong></div>
+              <div><span>Impostos</span><strong>{formatCurrency(modalCalculations.valorPorcentagemImposto)}</strong></div>
+              <div><span>Despesas</span><strong>{formatCurrency(modalCalculations.totalDespesas)}</strong></div>
+              <div><span>Custos</span><strong>{formatCurrency(modalCalculations.totalCustos)}</strong></div>
+              <div>
+                <span>Saldo</span>
+                <strong className={modalCalculations.saldo < 0 ? "negative" : ""}>{formatCurrency(modalCalculations.saldo)}</strong>
+              </div>
+            </section>
+
+            <section className="medicao-section">
+              <h2>Receitas</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>N Doc</th>
+                    <th>Status</th>
+                    <th>Data</th>
+                    <th>Valor</th>
+                    <th>Descricao</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modalReceitas.length === 0 ? (
+                    <tr><td colSpan={5}>Nenhuma receita cadastrada</td></tr>
+                  ) : modalReceitas.map((receita: any) => (
+                    <tr key={receita.id}>
+                      <td>{receita.numeroDocumento}</td>
+                      <td>{receita.status}</td>
+                      <td>{formatDateBR(receita.data)}</td>
+                      <td>{formatCurrency(receita.valor)}</td>
+                      <td>{receita.descricao}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+
+            <section className="medicao-section">
+              <h2>Despesas</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Codigo</th>
+                    <th>Fornecedor/Cliente</th>
+                    <th>N Documento</th>
+                    <th>Tipo Conta</th>
+                    <th>Tipo Documento</th>
+                    <th>Data Emissao</th>
+                    <th>Data Vencimento</th>
+                    <th>Valor Total</th>
+                    <th>Complemento</th>
+                    <th>Observacoes</th>
+                    <th>Tipo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modalDespesas.length === 0 ? (
+                    <tr><td colSpan={11}>Nenhuma despesa vinculada ou cadastrada</td></tr>
+                  ) : modalDespesas.map((despesa: any) => (
+                    <tr key={despesa.id}>
+                      <td>{despesa.codigoFornecedorCliente}</td>
+                      <td>{despesa.fornecedorCliente}</td>
+                      <td>{despesa.numeroDocumento}</td>
+                      <td>{despesa.tipoConta}</td>
+                      <td>{despesa.tipoDocumento}</td>
+                      <td>{formatDateBR(despesa.dataEmissao)}</td>
+                      <td>{formatDateBR(despesa.dataVencimento)}</td>
+                      <td>{formatCurrency(despesa.valorTotalDocumento)}</td>
+                      <td>{despesa.complemento}</td>
+                      <td>{despesa.observacoesAprovacao}</td>
+                      <td>{despesa.categoria}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+
+            <section className="medicao-section">
+              <h2>Impostos</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>N Doc</th>
+                    <th>Data</th>
+                    <th>Valor do Imposto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modalCalculations.impostos.length === 0 ? (
+                    <tr><td colSpan={3}>Nenhum imposto calculado</td></tr>
+                  ) : modalCalculations.impostos.map((imposto: any) => (
+                    <tr key={imposto.id}>
+                      <td>{imposto.numeroDocumento}</td>
+                      <td>{formatDateBR(imposto.data)}</td>
+                      <td>{formatCurrency(imposto.valorImposto)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+
+            <section className="medicao-section">
+              <h2>Custos</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>N Doc</th>
+                    <th>Data</th>
+                    <th>Valor Total</th>
+                    <th>Situacao</th>
+                    <th>Complemento</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modalCustos.length === 0 ? (
+                    <tr><td colSpan={5}>Nenhum custo sincronizado pelo CRTI</td></tr>
+                  ) : modalCustos.map((custo: any) => (
+                    <tr key={custo.id}>
+                      <td>{custo.numeroDocumento}</td>
+                      <td>{formatDateBR(custo.dataEmissao)}</td>
+                      <td>{formatCurrency(custo.valorTotal)}</td>
+                      <td>{custo.situacao}</td>
+                      <td>{custo.complemento}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+
+            <section className="medicao-signature">
+              <img src={assinaturaDiretor} alt="Assinatura do diretor" />
+              <div>Diretoria Minasfalto</div>
+            </section>
+            <p className="medicao-print-note">Documento gerado pelo Sistema Integrado Minasfalto.</p>
+          </main>
+        </section>
+      ) : null}
 
       <nav className="cost-tabs" aria-label="Abas do painel de custos">
         <button
