@@ -283,7 +283,6 @@ export default function CustoObras() {
   const [linkPageSize, setLinkPageSize] = useState(25);
   const [linkCategory, setLinkCategory] = useState<CostCategory>("Despesa");
   const [linkJustificativa, setLinkJustificativa] = useState("");
-  const [showMedicaoPrint, setShowMedicaoPrint] = useState(false);
 
   const { data: pedidosResult, error, isLoading, refetch } = trpc.pedidosObras.list.useQuery({
     status: statusFilter,
@@ -653,19 +652,6 @@ export default function CustoObras() {
     }
   }, [availableExpensesResult, linkPage, availableExpensesTotalPages]);
 
-  useEffect(() => {
-    if (!showMedicaoPrint) return;
-
-    const cleanup = () => setShowMedicaoPrint(false);
-    window.addEventListener("afterprint", cleanup);
-    const fallback = window.setTimeout(cleanup, 120000);
-
-    return () => {
-      window.removeEventListener("afterprint", cleanup);
-      window.clearTimeout(fallback);
-    };
-  }, [showMedicaoPrint]);
-
   const despesasTotals = useMemo(() => {
     return despesas.reduce(
       (acc: { valor: number }, despesa: any) => {
@@ -761,13 +747,8 @@ export default function CustoObras() {
 
   const handleExportMedicaoPdf = () => {
     if (!modalPedido) return;
-
-    setShowMedicaoPrint(true);
-    toast.info("Preparando medicao. Na janela de impressao, escolha Salvar como PDF.");
-
-    setTimeout(() => {
-      window.print();
-    }, 350);
+    window.print();
+    toast.info("Na janela de impressao, escolha Salvar como PDF.");
   };
 
   const updateFinanceField = (field: keyof typeof financeForm, value: string) => {
@@ -953,7 +934,7 @@ export default function CustoObras() {
         </button>
       </header>
 
-      {showMedicaoPrint && modalPedido ? (
+      {modalPedido ? (
         <section className="medicao-print-root" aria-label="Medicao de obra para impressao">
           <img className="medicao-letterhead-bg" src={papelTimbradoMinasfalto} alt="" />
           <main className="medicao-print-page">
