@@ -169,7 +169,7 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
   const newPage = () => {
     if (content) pages.push(content);
     content = "q 595.28 0 0 841.89 0 0 cm /BG Do Q\n";
-    content += "q 46 0 0 46 56 754 cm /LOGO Do Q\n";
+    content += "q 92 0 0 92 42 720 cm /LOGO Do Q\n";
     y = 790;
     content += drawCenteredText("MEDICAO DE OBRA", y, 17, true, "0 0.10 0.20");
     content += drawCenteredText(`Pedido ${pedido.pedido} - ${pedido.cliente}`, y - 20, 10, true, "0.20 0.28 0.36");
