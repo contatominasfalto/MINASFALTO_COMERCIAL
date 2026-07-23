@@ -46,6 +46,46 @@ function isOAuthEnabled() {
   return Boolean(ENV.appId && ENV.oAuthServerUrl && process.env.VITE_OAUTH_PORTAL_URL);
 }
 
+const HIDDEN_COST_PROFILES = new Set(["comercial", "subcomercial"]);
+let costPanelLoginAutomationRunning = false;
+
+function normalizeUserKey(value: unknown) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function canAccessCostPanel(value: unknown) {
+  const key = normalizeUserKey(value);
+  return Boolean(key) && !HIDDEN_COST_PROFILES.has(key);
+}
+
+function triggerCostPanelLoginAutomation(username: string) {
+  if (!canAccessCostPanel(username)) return;
+  if (costPanelLoginAutomationRunning) {
+    console.log(`[CustoObras] Automacao pos-login ignorada para ${username}: execucao em andamento`);
+    return;
+  }
+
+  costPanelLoginAutomationRunning = true;
+  void (async () => {
+    try {
+      console.log(`[CustoObras] Automacao pos-login iniciada por ${username}`);
+      const sync = await crtiSync.sincronizacaoCustosObras();
+      console.log(
+        `[CustoObras] CRTI pos-login: obras=${sync.obras.pedidosImportados}/${sync.obras.pedidosAtualizados}, despesas=${sync.despesas.pedidosAtualizados}, custos=${sync.custos.pedidosAtualizados}`,
+      );
+      const vinculos = await db.vincularSaidasAutomaticasObras(username);
+      console.log(
+        `[CustoObras] Vinculo automatico pos-login: ${vinculos.vinculadas} vinculada(s), ${vinculos.semPedido} sem pedido`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[CustoObras] Erro na automacao pos-login: ${message}`);
+    } finally {
+      costPanelLoginAutomationRunning = false;
+    }
+  })();
+}
+
 // Schema de validação
 const pedidoSchema = z.object({
   dataPedido: z.string().optional(),
@@ -202,6 +242,7 @@ export const appRouter = router({
         );
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        triggerCostPanelLoginAutomation(username);
 
         return { success: true } as const;
       }),
