@@ -10,8 +10,14 @@ type PdfImage = {
   height: number;
 };
 
-const money = (value: unknown) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value) || 0);
+const money = (value: unknown) => {
+  const amount = Number(value) || 0;
+  const formatted = Math.abs(amount).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${amount < 0 ? "-" : ""}R$ ${formatted}`;
+};
 
 const dateBR = (value: unknown) => {
   const text = String(value ?? "").trim();
@@ -227,9 +233,10 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
     item.complemento,
   ]));
   if (y < 180) newPage();
-  content += "q 145 0 0 44 225 98 cm /SIG Do Q\n";
-  content += "0 0 0 RG 210 92 175 0 l S\n";
-  content += drawText("Diretoria Minasfalto", 250, 76, 9, true, "0 0.10 0.20");
+  content += "q 230 0 0 32 182 105 cm /SIG Do Q\n";
+  content += drawText("MINASFALTO INDUSTRIA E COMERCIO LTDA", 190, 84, 8, false, "0 0 0");
+  content += drawText("Marco Aurelio Barreto Modesto", 224, 70, 8, false, "0 0 0");
+  content += drawText("CPF n 055.467.797-05 - CI n 1.481.440", 200, 56, 8, false, "0 0 0");
   pages.push(content);
 
   return {
