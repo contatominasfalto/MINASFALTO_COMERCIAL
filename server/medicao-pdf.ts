@@ -117,7 +117,7 @@ function createPdf(pages: string[], timbrado: PdfImage, assinatura: PdfImage, lo
     const pageId = 6 + index * 2;
     const contentId = 7 + index * 2;
     const contentBytes = Buffer.from(content, "binary");
-    obj(pageId, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> >> /XObject << /BG 3 0 R /SIG 4 0 R /LOGO 5 0 R >> >> /Contents ${contentId} 0 R >>`);
+    obj(pageId, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >> >> /XObject << /BG 3 0 R /SIG 4 0 R /LOGO 5 0 R >> >> /Contents ${contentId} 0 R >>`);
     obj(contentId, `<< /Length ${contentBytes.length} >>\nstream\n${content}\nendstream`);
   });
 
