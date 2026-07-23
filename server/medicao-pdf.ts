@@ -10,6 +10,10 @@ type PdfImage = {
   height: number;
 };
 
+const PAGE_WIDTH = 595.28;
+const PAGE_HEIGHT = 841.89;
+const TIMBRADO_MARGIN = 18;
+
 const money = (value: unknown) => {
   const amount = Number(value) || 0;
   const formatted = Math.abs(amount).toLocaleString("pt-BR", {
@@ -141,6 +145,17 @@ function drawRect(x: number, y: number, w: number, h: number, fill = "1 1 1", st
   return `${fill} rg ${stroke} RG ${x} ${y} ${w} ${h} re B\n`;
 }
 
+function drawPageBackground(image: PdfImage) {
+  const availableWidth = PAGE_WIDTH - TIMBRADO_MARGIN * 2;
+  const availableHeight = PAGE_HEIGHT - TIMBRADO_MARGIN * 2;
+  const scale = Math.min(availableWidth / image.width, availableHeight / image.height);
+  const width = image.width * scale;
+  const height = image.height * scale;
+  const x = (PAGE_WIDTH - width) / 2;
+  const y = (PAGE_HEIGHT - height) / 2;
+  return `q ${width.toFixed(2)} 0 0 ${height.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /BG Do Q\n`;
+}
+
 async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
   const pedido = await db.getPedidoObraById(pedidoObraIdOrPedidoNum)
     ?? await db.getPedidoObraByNumber(String(pedidoObraIdOrPedidoNum));
@@ -168,7 +183,7 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
   let y = 790;
   const newPage = () => {
     if (content) pages.push(content);
-    content = "q 595.28 0 0 841.89 0 0 cm /BG Do Q\n";
+    content = drawPageBackground(timbrado);
     content += "q 92 0 0 92 42 750 cm /LOGO Do Q\n";
     y = 790;
     content += drawCenteredText("MEDICAO DE OBRA", y, 17, true, "0 0.10 0.20");
