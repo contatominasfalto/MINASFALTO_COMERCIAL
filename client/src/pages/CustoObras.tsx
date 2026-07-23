@@ -268,9 +268,11 @@ export default function CustoObras() {
   const [manualRevenueModalOpen, setManualRevenueModalOpen] = useState(false);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [receitaGroupOpen, setReceitaGroupOpen] = useState(false);
+  const [custosGroupOpen, setCustosGroupOpen] = useState(false);
   const [impostosGroupOpen, setImpostosGroupOpen] = useState(false);
   const [despesasGroupOpen, setDespesasGroupOpen] = useState(false);
   const [receitaGroupSearch, setReceitaGroupSearch] = useState("");
+  const [custosGroupSearch, setCustosGroupSearch] = useState("");
   const [despesasGroupSearch, setDespesasGroupSearch] = useState("");
   const [impostosGroupSearch, setImpostosGroupSearch] = useState("");
   const [linkSearchTerm, setLinkSearchTerm] = useState("");
@@ -311,6 +313,7 @@ export default function CustoObras() {
     { enabled: Boolean(modalPedidoId) },
   );
   const modalDespesas = modalData?.despesas ?? [];
+  const modalCustos = modalData?.custos ?? [];
   const { data: availableExpensesResult, isLoading: isLoadingAvailableExpenses } = trpc.pedidosObras.despesasDisponiveis.useQuery(
     {
       pedidoObraId: modalPedidoId || 1,
@@ -328,13 +331,17 @@ export default function CustoObras() {
 
   const { mutate: sincronizarCustos, isPending: isSyncing } = trpc.crti.sincronizacaoCustosObras.useMutation({
     onSuccess: (data) => {
-      if (!data.obras.sucesso || !data.despesas.sucesso) {
-        const mensagem = !data.obras.sucesso ? data.obras.mensagem : data.despesas.mensagem;
+      if (!data.obras.sucesso || !data.despesas.sucesso || !data.custos.sucesso) {
+        const mensagem = !data.obras.sucesso
+          ? data.obras.mensagem
+          : !data.despesas.sucesso
+            ? data.despesas.mensagem
+            : data.custos.mensagem;
         toast.error(`CRTI Custos: ${mensagem}`);
         return;
       }
       toast.success(
-        `CRTI Custos: obras ${data.obras.pedidosImportados} novos/${data.obras.pedidosAtualizados} atualizados, despesas ${data.despesas.pedidosAtualizados} processadas`
+        `CRTI Custos: obras ${data.obras.pedidosImportados} novos/${data.obras.pedidosAtualizados} atualizados, despesas ${data.despesas.pedidosAtualizados} processadas, custos ${data.custos.pedidosAtualizados} processados`
       );
     },
     onError: (syncError) => toast.error(`Erro ao sincronizar CRTI Custos: ${syncError.message}`),
@@ -672,6 +679,9 @@ export default function CustoObras() {
     const totalDespesas = modalDespesas.reduce((total: number, despesa: any) => {
       return total + numberValue(despesa.valorTotalDocumento);
     }, 0);
+    const totalCustos = modalCustos.reduce((total: number, custo: any) => {
+      return total + numberValue(custo.valorTotal);
+    }, 0);
 
     return {
       receita,
@@ -680,9 +690,10 @@ export default function CustoObras() {
       valorPorcentagemImposto,
       impostos,
       totalDespesas,
-      saldo: receita - valorPorcentagemImposto - totalDespesas,
+      totalCustos,
+      saldo: receita - valorPorcentagemImposto - totalDespesas - totalCustos,
     };
-  }, [financeForm, modalDespesas, modalReceitas]);
+  }, [financeForm, modalCustos, modalDespesas, modalReceitas]);
 
   const filteredModalReceitas = useMemo(() => {
     return modalReceitas.filter((receita: any) => matchesSearch([
@@ -711,6 +722,17 @@ export default function CustoObras() {
       despesa.categoria,
     ], despesasGroupSearch));
   }, [modalDespesas, despesasGroupSearch]);
+
+  const filteredModalCustos = useMemo(() => {
+    return modalCustos.filter((custo: any) => matchesSearch([
+      custo.numeroDocumento,
+      formatDateBR(custo.dataEmissao),
+      formatCurrency(custo.valorTotal),
+      custo.valorTotal,
+      custo.situacao,
+      custo.complemento,
+    ], custosGroupSearch));
+  }, [modalCustos, custosGroupSearch]);
 
   const filteredModalImpostos = useMemo(() => {
     return modalCalculations.impostos.filter((imposto: any) => matchesSearch([
@@ -1005,9 +1027,11 @@ export default function CustoObras() {
                           onDoubleClick={() => {
                             setSelectedPedido(pedido);
                             setReceitaGroupOpen(false);
+                            setCustosGroupOpen(false);
                             setImpostosGroupOpen(false);
                             setDespesasGroupOpen(false);
                             setReceitaGroupSearch("");
+                            setCustosGroupSearch("");
                             setDespesasGroupSearch("");
                             setImpostosGroupSearch("");
                             setModalPedido(pedido);
@@ -1189,9 +1213,11 @@ export default function CustoObras() {
       <Dialog open={Boolean(modalPedido)} onOpenChange={(open) => {
         if (!open) {
           setReceitaGroupOpen(false);
+          setCustosGroupOpen(false);
           setImpostosGroupOpen(false);
           setDespesasGroupOpen(false);
           setReceitaGroupSearch("");
+          setCustosGroupSearch("");
           setDespesasGroupSearch("");
           setImpostosGroupSearch("");
           setModalPedido(null);
@@ -1501,10 +1527,85 @@ export default function CustoObras() {
                   </div>
                 </section>
 
+                <section className={`cost-expense-group cost-values-group ${custosGroupOpen ? "expanded" : "collapsed"}`}>
+                  <div className="cost-expense-group-gutter">
+                    <button
+                      type="button"
+                      className="cost-group-toggle"
+                      onClick={() => setCustosGroupOpen((current) => !current)}
+                      aria-expanded={custosGroupOpen}
+                      title={custosGroupOpen ? "Recolher custos" : "Expandir custos"}
+                    >
+                      {custosGroupOpen ? "-" : "+"}
+                    </button>
+                  </div>
+                  <div className="cost-expense-group-main">
+                    <button
+                      type="button"
+                      className="cost-group-title"
+                      onClick={() => setCustosGroupOpen((current) => !current)}
+                      aria-expanded={custosGroupOpen}
+                    >
+                      <span>Custos</span>
+                      <strong>{formatCurrency(modalCalculations.totalCustos)}</strong>
+                    </button>
+                    {custosGroupOpen ? (
+                      <>
+                        <div className="cost-modal-actions">
+                          <label className="cost-group-search">
+                            <Search size={14} />
+                            <span>Buscar:</span>
+                            <Input
+                              value={custosGroupSearch}
+                              onChange={(event) => setCustosGroupSearch(event.target.value)}
+                            />
+                          </label>
+                        </div>
+
+                        <div className="modal-table-frame">
+                          <table className="desktop-table modal-costs-table">
+                            <thead>
+                              <tr>
+                                <th>N do doc</th>
+                                <th>Data</th>
+                                <th>Valor Total</th>
+                                <th>Situacao</th>
+                                <th>Complemento</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {modalCustos.length === 0 ? (
+                                <tr>
+                                  <td colSpan={5} className="desktop-empty">Nenhum custo sincronizado pelo CRTI</td>
+                                </tr>
+                              ) : filteredModalCustos.length === 0 ? (
+                                <tr>
+                                  <td colSpan={5} className="desktop-empty">Nenhum custo encontrado para a busca</td>
+                                </tr>
+                              ) : (
+                                filteredModalCustos.map((custo: any) => (
+                                  <tr key={custo.id}>
+                                    <td>{custo.numeroDocumento}</td>
+                                    <td>{formatDateBR(custo.dataEmissao)}</td>
+                                    <td className="num">{formatCurrency(custo.valorTotal)}</td>
+                                    <td>{custo.situacao}</td>
+                                    <td className="expense-complement" title={custo.complemento || ""}>{custo.complemento}</td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+                </section>
+
                 <footer className="cost-modal-summary">
                   <span>Receita: <b>{formatCurrency(modalCalculations.receita)}</b></span>
                   <span>Imposto: <b>{formatCurrency(modalCalculations.valorPorcentagemImposto)}</b></span>
                   <span>Despesas: <b>{formatCurrency(modalCalculations.totalDespesas)}</b></span>
+                  <span>Custos: <b>{formatCurrency(modalCalculations.totalCustos)}</b></span>
                   <strong className={modalCalculations.saldo < 0 ? "negative-amount" : ""}>
                     Saldo: {formatCurrency(modalCalculations.saldo)}
                   </strong>

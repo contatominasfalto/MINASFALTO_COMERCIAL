@@ -192,6 +192,27 @@ export const pedidoObraReceitas = mysqlTable("pedido_obra_receitas", {
 export type PedidoObraReceita = typeof pedidoObraReceitas.$inferSelect;
 export type InsertPedidoObraReceita = typeof pedidoObraReceitas.$inferInsert;
 
+export const pedidoObraCustos = mysqlTable("pedido_obra_custos", {
+  id: int("id").autoincrement().primaryKey(),
+  sourceKey: varchar("sourceKey", { length: 191 }).notNull().unique(),
+  pedidoObraId: int("pedidoObraId").notNull(),
+  pedidoNum: varchar("pedidoNum", { length: 50 }).notNull(),
+  numeroDocumento: varchar("numeroDocumento", { length: 80 }),
+  dataEmissao: varchar("dataEmissao", { length: 10 }),
+  valorTotal: decimal("valorTotal", { precision: 18, scale: 2 }).default("0"),
+  situacao: varchar("situacao", { length: 80 }).default("Retirado"),
+  complemento: text("complemento").default(""),
+  criadoEm: timestamp("criadoEm").defaultNow(),
+  atualizadoEm: timestamp("atualizadoEm").defaultNow().onUpdateNow(),
+}, (table) => ({
+  sourceKeyIdx: index("pedido_obra_custos_sourceKey_idx").on(table.sourceKey),
+  pedidoObraIdIdx: index("pedido_obra_custos_pedidoObraId_idx").on(table.pedidoObraId),
+  pedidoNumIdx: index("pedido_obra_custos_pedidoNum_idx").on(table.pedidoNum),
+}));
+
+export type PedidoObraCusto = typeof pedidoObraCustos.$inferSelect;
+export type InsertPedidoObraCusto = typeof pedidoObraCustos.$inferInsert;
+
 /**
  * Tabela de histórico de alterações
  */

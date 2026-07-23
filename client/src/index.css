@@ -2106,12 +2106,18 @@
   min-width: 620px;
 }
 
+.modal-costs-table {
+  min-width: 860px;
+}
+
 .modal-expenses-table th,
 .modal-expenses-table td,
 .modal-revenues-table th,
 .modal-revenues-table td,
 .modal-tax-table th,
-.modal-tax-table td {
+.modal-tax-table td,
+.modal-costs-table th,
+.modal-costs-table td {
   height: 25px;
   font-size: 11px;
 }
@@ -2126,6 +2132,12 @@
 .modal-tax-table th:nth-child(1), .modal-tax-table td:nth-child(1) { width: 180px; text-align: center; }
 .modal-tax-table th:nth-child(2), .modal-tax-table td:nth-child(2) { width: 160px; text-align: center; }
 .modal-tax-table th:nth-child(3), .modal-tax-table td:nth-child(3) { width: 180px; text-align: right; }
+
+.modal-costs-table th:nth-child(1), .modal-costs-table td:nth-child(1) { width: 140px; text-align: center; }
+.modal-costs-table th:nth-child(2), .modal-costs-table td:nth-child(2) { width: 120px; text-align: center; }
+.modal-costs-table th:nth-child(3), .modal-costs-table td:nth-child(3) { width: 130px; text-align: right; }
+.modal-costs-table th:nth-child(4), .modal-costs-table td:nth-child(4) { width: 110px; text-align: center; }
+.modal-costs-table th:nth-child(5), .modal-costs-table td:nth-child(5) { width: 360px; text-align: left; }
 
 .modal-expenses-table th:nth-child(1), .modal-expenses-table td:nth-child(1) { width: 130px; text-align: center; }
 .modal-expenses-table th:nth-child(2), .modal-expenses-table td:nth-child(2) { width: 250px; text-align: left; }

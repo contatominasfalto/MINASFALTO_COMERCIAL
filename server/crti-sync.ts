@@ -66,6 +66,15 @@ type CrtiDespesa = {
   situacao: string | null;
 };
 
+type CrtiCustoObra = {
+  numeropedido: string | number | null;
+  numerodoc: string | number | null;
+  dataemissao: Date | string | null;
+  valortotal: string | number | null;
+  situacao: string | null;
+  complemento: string | null;
+};
+
 function envFlag(name: string, defaultValue: boolean): boolean {
   const value = process.env[name];
   if (value === undefined || value === "") return defaultValue;
@@ -401,6 +410,25 @@ async function buscarDespesasTabelaGeral(client: Client): Promise<CrtiDespesa[]>
   `;
 
   const { rows } = await client.query<CrtiDespesa>(query);
+  return rows;
+}
+
+async function buscarCustosObras(client: Client): Promise<CrtiCustoObra[]> {
+  const tableSaidas = quoteIdentifierPath(CRTI_CONFIG.tableSaidas);
+  const query = `
+    SELECT
+      numeropedido,
+      numeroticket::text AS numerodoc,
+      datahorasaida AS dataemissao,
+      valortotalbruto AS valortotal,
+      'Retirado' AS situacao,
+      descricaomaterial AS complemento
+    FROM ${tableSaidas}
+    WHERE numeropedido IS NOT NULL
+    ORDER BY numeropedido, datahorasaida, numeroticket
+  `;
+
+  const { rows } = await client.query<CrtiCustoObra>(query);
   return rows;
 }
 
@@ -804,15 +832,67 @@ export async function sincronizarDespesasTabelaGeral(): Promise<SincronizacaoRes
   }
 }
 
+export async function sincronizarCustosObrasSaidas(): Promise<SincronizacaoResultado> {
+  const resultado = createEmptyResult();
+  const batchSize = 500;
+
+  try {
+    console.log("[CRTI] Sincronizando custos de obras por saidas de material...");
+    const custos = await withCrtiClient((client) => buscarCustosObras(client));
+    resultado.pedidosEncontrados = custos.length;
+
+    for (let index = 0; index < custos.length; index += batchSize) {
+      const batch = custos.slice(index, index + batchSize).map((item) => {
+        const pedidoNum = String(item.numeropedido ?? "");
+        const numeroDocumento = String(item.numerodoc ?? "");
+        const dataEmissao = formatDate(item.dataemissao);
+        const valorTotal = normalizeNumber(item.valortotal);
+        const situacao = item.situacao || "Retirado";
+        const complemento = item.complemento || "";
+
+        return {
+          sourceKey: createSourceKey([
+            pedidoNum,
+            numeroDocumento,
+            dataEmissao,
+            complemento,
+          ]),
+          pedidoNum,
+          numeroDocumento,
+          dataEmissao,
+          valorTotal,
+          situacao,
+          complemento,
+        };
+      });
+
+      await db.upsertPedidoObraCustosFromCrti(batch);
+      resultado.pedidosAtualizados += batch.length;
+    }
+
+    resultado.sucesso = true;
+    resultado.mensagem = `Sincronizacao custos obras concluida: ${resultado.pedidosAtualizados} registros processados`;
+    console.log(`[CRTI] ${resultado.mensagem}`);
+    return resultado;
+  } catch (error: any) {
+    resultado.sucesso = false;
+    resultado.mensagem = `Erro na sincronizacao custos obras: ${formatCrtiError(error)}`;
+    console.error(`[CRTI] Erro custos obras: ${formatCrtiError(error)}`);
+    return resultado;
+  }
+}
+
 export async function sincronizacaoCustosObras(): Promise<{
   obras: SincronizacaoResultado;
   despesas: SincronizacaoResultado;
+  custos: SincronizacaoResultado;
 }> {
   console.log("[CRTI] Iniciando sincronizacao do painel de custos...");
   const obras = await sincronizarPedidosObras();
   const despesas = await sincronizarDespesasTabelaGeral();
+  const custos = await sincronizarCustosObrasSaidas();
   console.log("[CRTI] Sincronizacao do painel de custos finalizada");
-  return { obras, despesas };
+  return { obras, despesas, custos };
 }
 
 /**

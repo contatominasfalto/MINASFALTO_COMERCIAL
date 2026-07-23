@@ -537,6 +537,7 @@ export async function listPedidosObras(filters?: {
           COALESCE(por.totalReceitas, 0)
           - (COALESCE(por.totalNfeReceitas, 0) * (COALESCE(pof.porcentagemImposto, 17) / 100))
           - COALESCE(pod.totalDespesas, 0)
+          - COALESCE(poc.totalCustos, 0)
         ) AS saldo,
         po.prioridade,
         po.status,
@@ -562,6 +563,11 @@ export async function listPedidosObras(filters?: {
         FROM pedido_obra_despesas
         GROUP BY pedidoNum
       ) pod ON pod.pedidoNum = po.pedido
+      LEFT JOIN (
+        SELECT pedidoNum, SUM(COALESCE(valorTotal, 0)) AS totalCustos
+        FROM pedido_obra_custos
+        GROUP BY pedidoNum
+      ) poc ON poc.pedidoNum = po.pedido
       ${whereClause}
       ORDER BY po.id DESC
       LIMIT ? OFFSET ?
@@ -630,6 +636,7 @@ export async function exportPedidosObras(filters?: {
           COALESCE(por.totalReceitas, 0)
           - (COALESCE(por.totalNfeReceitas, 0) * (COALESCE(pof.porcentagemImposto, 17) / 100))
           - COALESCE(pod.totalDespesas, 0)
+          - COALESCE(poc.totalCustos, 0)
         ) AS saldo,
         po.prioridade,
         po.status,
@@ -652,6 +659,11 @@ export async function exportPedidosObras(filters?: {
         FROM pedido_obra_despesas
         GROUP BY pedidoNum
       ) pod ON pod.pedidoNum = po.pedido
+      LEFT JOIN (
+        SELECT pedidoNum, SUM(COALESCE(valorTotal, 0)) AS totalCustos
+        FROM pedido_obra_custos
+        GROUP BY pedidoNum
+      ) poc ON poc.pedidoNum = po.pedido
       ${whereClause}
       ORDER BY po.id DESC
     `,
@@ -1047,6 +1059,77 @@ export async function upsertDespesasTabelaGeralFromCrti(items: Array<{
   );
 }
 
+export async function upsertPedidoObraCustosFromCrti(items: Array<{
+  sourceKey: string;
+  pedidoNum: string;
+  numeroDocumento: string;
+  dataEmissao: string;
+  valorTotal: number;
+  situacao: string;
+  complemento: string;
+}>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (!_pool) throw new Error("Database pool not available");
+  if (items.length === 0) return { affectedRows: 0 };
+
+  const pedidoNums = Array.from(new Set(items.map((item) => item.pedidoNum).filter(Boolean)));
+  if (pedidoNums.length === 0) return { affectedRows: 0 };
+
+  const [pedidosLocais] = await _pool.query<mysql.RowDataPacket[]>(
+    `SELECT id, pedido FROM pedidos_obras WHERE pedido IN (${pedidoNums.map(() => "?").join(", ")})`,
+    pedidoNums,
+  );
+  const pedidoIdByNum = new Map(pedidosLocais.map((pedido) => [String(pedido.pedido), Number(pedido.id)]));
+  const linkedItems = items
+    .map((item) => ({
+      ...item,
+      pedidoObraId: pedidoIdByNum.get(item.pedidoNum),
+    }))
+    .filter((item): item is typeof item & { pedidoObraId: number } => Number.isFinite(item.pedidoObraId));
+
+  if (linkedItems.length === 0) return { affectedRows: 0 };
+
+  const columns = [
+    "sourceKey",
+    "pedidoObraId",
+    "pedidoNum",
+    "numeroDocumento",
+    "dataEmissao",
+    "valorTotal",
+    "situacao",
+    "complemento",
+  ];
+  const placeholders = linkedItems.map(() => `(${columns.map(() => "?").join(", ")})`).join(", ");
+  const values = linkedItems.flatMap((item) => [
+    item.sourceKey,
+    item.pedidoObraId,
+    item.pedidoNum,
+    item.numeroDocumento,
+    item.dataEmissao,
+    item.valorTotal,
+    item.situacao,
+    item.complemento,
+  ]);
+
+  return _pool.query(
+    `
+      INSERT INTO pedido_obra_custos (${columns.map((column) => `\`${column}\``).join(", ")})
+      VALUES ${placeholders}
+      ON DUPLICATE KEY UPDATE
+        pedidoObraId = VALUES(pedidoObraId),
+        pedidoNum = VALUES(pedidoNum),
+        numeroDocumento = VALUES(numeroDocumento),
+        dataEmissao = VALUES(dataEmissao),
+        valorTotal = VALUES(valorTotal),
+        situacao = VALUES(situacao),
+        complemento = VALUES(complemento),
+        atualizadoEm = CURRENT_TIMESTAMP
+    `,
+    values,
+  );
+}
+
 export async function getPedidoObraModalData(pedidoObraId: number) {
   const db = await getDb();
   if (!db || !_pool) {
@@ -1060,6 +1143,7 @@ export async function getPedidoObraModalData(pedidoObraId: number) {
       },
       receitas: [],
       despesas: [],
+      custos: [],
     };
   }
 
@@ -1124,6 +1208,27 @@ export async function getPedidoObraModalData(pedidoObraId: number) {
     [pedidoObraId],
   );
 
+  const [custos] = await _pool.query<mysql.RowDataPacket[]>(
+    `
+      SELECT
+        id,
+        sourceKey,
+        pedidoObraId,
+        pedidoNum,
+        numeroDocumento,
+        dataEmissao,
+        valorTotal,
+        situacao,
+        complemento,
+        criadoEm,
+        atualizadoEm
+      FROM pedido_obra_custos
+      WHERE pedidoObraId = ?
+      ORDER BY dataEmissao DESC, numeroDocumento DESC
+    `,
+    [pedidoObraId],
+  );
+
   return {
     financeiro: financeiroRows[0] ?? {
       pedidoObraId,
@@ -1134,6 +1239,7 @@ export async function getPedidoObraModalData(pedidoObraId: number) {
     },
     receitas,
     despesas,
+    custos,
   };
 }
 

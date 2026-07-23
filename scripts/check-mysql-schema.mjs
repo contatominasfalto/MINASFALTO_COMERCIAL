@@ -13,6 +13,7 @@ const REQUIRED_TABLES = [
   "pedido_obra_financeiro",
   "pedido_obra_despesas",
   "pedido_obra_receitas",
+  "pedido_obra_custos",
   "estoque_movimentacoes",
 ];
 
@@ -141,6 +142,19 @@ const REQUIRED_COLUMNS = {
     "valor",
     "descricao",
     "criadoPor",
+    "criadoEm",
+    "atualizadoEm",
+  ],
+  pedido_obra_custos: [
+    "id",
+    "sourceKey",
+    "pedidoObraId",
+    "pedidoNum",
+    "numeroDocumento",
+    "dataEmissao",
+    "valorTotal",
+    "situacao",
+    "complemento",
     "criadoEm",
     "atualizadoEm",
   ],
