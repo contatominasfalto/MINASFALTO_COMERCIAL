@@ -1759,6 +1759,14 @@
   border-radius: 3px;
   background: var(--sap-panel);
   box-shadow: 0 16px 46px rgba(20, 37, 56, .35);
+  text-transform: uppercase;
+}
+
+.cost-detail-dialog input,
+.cost-detail-dialog textarea,
+.cost-detail-dialog select,
+.cost-detail-dialog button {
+  text-transform: uppercase;
 }
 
 .cost-detail-dialog [data-slot="dialog-header"] {

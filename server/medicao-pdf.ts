@@ -37,7 +37,7 @@ const dateTimeBR = (value: Date) =>
     minute: "2-digit",
   });
 
-const pdfText = (value: unknown) => String(value ?? "")
+const pdfText = (value: unknown) => String(value ?? "").toUpperCase()
   .replace(/\\/g, "\\\\")
   .replace(/\(/g, "\\(")
   .replace(/\)/g, "\\)")
