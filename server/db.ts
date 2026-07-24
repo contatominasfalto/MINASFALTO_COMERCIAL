@@ -601,7 +601,7 @@ export async function exportPedidosObras(filters?: {
     const normalizedStatus = String(filters.status).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     if (normalizedStatus.toLowerCase() === "concluido") {
       whereSql.push("status IN (?, ?)");
-      params.push("Concluido", "ConcluÃ­do");
+      params.push("Concluido", "Concluí­do");
     } else {
       whereSql.push("status = ?");
       params.push(filters.status);
