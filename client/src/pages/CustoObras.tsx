@@ -876,6 +876,13 @@ export default function CustoObras() {
 
   const chronologicalMonthOptions = useMemo(() => {
     const years = new Set<number>();
+    const currentYear = new Date().getFullYear();
+    const startYear = 2026 - 10;
+    const endYear = currentYear + 50;
+    for (let year = startYear; year <= endYear; year += 1) {
+      years.add(year);
+    }
+
     chronologicalAllocationItems.forEach((item) => {
       const months = [item.originalMonth, item.currentMonth];
       months.forEach((monthValue) => {
@@ -883,7 +890,7 @@ export default function CustoObras() {
         if (Number.isFinite(year)) years.add(year);
       });
     });
-    if (years.size === 0) years.add(new Date().getFullYear());
+
     const orderedYears = Array.from(years).sort((left, right) => left - right);
     return orderedYears.flatMap((year) => monthLabels.map((label, index) => {
       const month = String(index + 1).padStart(2, "0");
