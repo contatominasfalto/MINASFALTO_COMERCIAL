@@ -71,6 +71,13 @@
       "when": 1784842800000,
       "tag": "0009_receita_outros_tipo",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1784929200000,
+      "tag": "0010_resultado_cronologico_alocacoes",
+      "breakpoints": true
     }
   ]
 }

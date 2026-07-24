@@ -222,6 +222,16 @@ const pedidoObraReceitaUpdateSchema = z.object({
   }
 });
 
+const pedidoObraResultadoAlocacoesSchema = z.object({
+  pedidoObraId: z.number().int().positive(),
+  pedidoNum: z.string().min(1),
+  alocacoes: z.array(z.object({
+    itemTipo: z.enum(["receita", "despesa", "custo"]),
+    itemId: z.number().int().positive(),
+    mesReferencia: z.string().regex(/^\d{4}-\d{2}$/),
+  })).min(1),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -452,6 +462,13 @@ export const appRouter = router({
         pedidoObraId: z.number().int().positive(),
       }))
       .mutation(({ input }) => db.deletePedidoObraReceita(input.id, input.pedidoObraId)),
+
+    saveResultadoAlocacoes: protectedProcedure
+      .input(pedidoObraResultadoAlocacoesSchema)
+      .mutation(({ input, ctx }) => db.savePedidoObraResultadoAlocacoes({
+        ...input,
+        criadoPor: ctx.user?.name || "Sistema",
+      })),
 
     createDespesaManual: protectedProcedure
       .input(pedidoObraDespesaBaseSchema.and(pedidoObraDespesaFieldsSchema))

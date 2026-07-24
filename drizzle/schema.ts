@@ -7,6 +7,7 @@ import {
   varchar,
   decimal,
   index,
+  uniqueIndex,
   date
 } from "drizzle-orm/mysql-core";
 import { relations } from "drizzle-orm";
@@ -213,6 +214,25 @@ export const pedidoObraCustos = mysqlTable("pedido_obra_custos", {
 
 export type PedidoObraCusto = typeof pedidoObraCustos.$inferSelect;
 export type InsertPedidoObraCusto = typeof pedidoObraCustos.$inferInsert;
+
+export const pedidoObraResultadoAlocacoes = mysqlTable("pedido_obra_resultado_alocacoes", {
+  id: int("id").autoincrement().primaryKey(),
+  pedidoObraId: int("pedidoObraId").notNull(),
+  pedidoNum: varchar("pedidoNum", { length: 50 }).notNull(),
+  itemTipo: mysqlEnum("itemTipo", ["receita", "despesa", "custo"]).notNull(),
+  itemId: int("itemId").notNull(),
+  mesReferencia: varchar("mesReferencia", { length: 7 }).notNull(),
+  criadoPor: varchar("criadoPor", { length: 100 }).default("Sistema"),
+  criadoEm: timestamp("criadoEm").defaultNow(),
+  atualizadoEm: timestamp("atualizadoEm").defaultNow().onUpdateNow(),
+}, (table) => ({
+  uniqueItemIdx: uniqueIndex("pedido_obra_resultado_alocacoes_item_unique").on(table.pedidoObraId, table.itemTipo, table.itemId),
+  pedidoObraIdIdx: index("pedido_obra_resultado_alocacoes_pedidoObraId_idx").on(table.pedidoObraId),
+  pedidoNumIdx: index("pedido_obra_resultado_alocacoes_pedidoNum_idx").on(table.pedidoNum),
+}));
+
+export type PedidoObraResultadoAlocacao = typeof pedidoObraResultadoAlocacoes.$inferSelect;
+export type InsertPedidoObraResultadoAlocacao = typeof pedidoObraResultadoAlocacoes.$inferInsert;
 
 /**
  * Tabela de histórico de alterações

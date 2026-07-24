@@ -1266,6 +1266,30 @@ export async function getPedidoObraModalData(pedidoObraId: number) {
     [pedidoObraId],
   );
 
+  let resultadoAlocacoes: mysql.RowDataPacket[] = [];
+  try {
+    const [resultadoAlocacoesRows] = await _pool.query<mysql.RowDataPacket[]>(
+      `
+        SELECT
+          id,
+          pedidoObraId,
+          pedidoNum,
+          itemTipo,
+          itemId,
+          mesReferencia,
+          criadoPor,
+          criadoEm,
+          atualizadoEm
+        FROM pedido_obra_resultado_alocacoes
+        WHERE pedidoObraId = ?
+      `,
+      [pedidoObraId],
+    );
+    resultadoAlocacoes = resultadoAlocacoesRows;
+  } catch (error) {
+    if ((error as { code?: string }).code !== "ER_NO_SUCH_TABLE") throw error;
+  }
+
   return {
     financeiro: financeiroRows[0] ?? {
       pedidoObraId,
@@ -1277,7 +1301,64 @@ export async function getPedidoObraModalData(pedidoObraId: number) {
     receitas,
     despesas,
     custos,
+    resultadoAlocacoes,
   };
+}
+
+export async function savePedidoObraResultadoAlocacoes(data: {
+  pedidoObraId: number;
+  pedidoNum: string;
+  alocacoes: Array<{
+    itemTipo: "receita" | "despesa" | "custo";
+    itemId: number;
+    mesReferencia: string;
+  }>;
+  criadoPor?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (!_pool) throw new Error("Database pool not available");
+
+  const validAlocacoes = data.alocacoes.filter((item) =>
+    ["receita", "despesa", "custo"].includes(item.itemTipo)
+    && Number.isFinite(item.itemId)
+    && /^\d{4}-\d{2}$/.test(item.mesReferencia)
+  );
+
+  if (validAlocacoes.length === 0) return { affectedRows: 0 };
+
+  const values = validAlocacoes.flatMap((item) => [
+    data.pedidoObraId,
+    data.pedidoNum,
+    item.itemTipo,
+    item.itemId,
+    item.mesReferencia,
+    data.criadoPor || "Sistema",
+  ]);
+
+  const placeholders = validAlocacoes.map(() => "(?, ?, ?, ?, ?, ?)").join(", ");
+
+  const [result] = await _pool.query(
+    `
+      INSERT INTO pedido_obra_resultado_alocacoes (
+        pedidoObraId,
+        pedidoNum,
+        itemTipo,
+        itemId,
+        mesReferencia,
+        criadoPor
+      )
+      VALUES ${placeholders}
+      ON DUPLICATE KEY UPDATE
+        pedidoNum = VALUES(pedidoNum),
+        mesReferencia = VALUES(mesReferencia),
+        criadoPor = VALUES(criadoPor),
+        atualizadoEm = CURRENT_TIMESTAMP
+    `,
+    values,
+  );
+
+  return result;
 }
 
 export async function savePedidoObraFinanceiro(data: {

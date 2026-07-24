@@ -14,6 +14,7 @@ const REQUIRED_TABLES = [
   "pedido_obra_despesas",
   "pedido_obra_receitas",
   "pedido_obra_custos",
+  "pedido_obra_resultado_alocacoes",
   "estoque_movimentacoes",
 ];
 
@@ -156,6 +157,17 @@ const REQUIRED_COLUMNS = {
     "valorTotal",
     "situacao",
     "complemento",
+    "criadoEm",
+    "atualizadoEm",
+  ],
+  pedido_obra_resultado_alocacoes: [
+    "id",
+    "pedidoObraId",
+    "pedidoNum",
+    "itemTipo",
+    "itemId",
+    "mesReferencia",
+    "criadoPor",
     "criadoEm",
     "atualizadoEm",
   ],
