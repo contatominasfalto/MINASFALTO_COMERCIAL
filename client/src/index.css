@@ -1838,9 +1838,46 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   padding: 10px 12px;
   background: var(--sap-panel);
+}
+
+.cost-result-tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  min-height: 27px;
+  border-bottom: 1px solid #8fa2b7;
+}
+
+.cost-result-tabs button {
+  min-width: 154px;
+  height: 26px;
+  padding: 0 18px;
+  border: 1px solid #8fa2b7;
+  border-bottom: 0;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(#f9fbfd, #dfe8f2);
+  color: #001b34;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cost-result-tabs button.active {
+  position: relative;
+  top: 1px;
+  background: linear-gradient(#fff9e8, #f4dfa8);
+  border-color: #a47d1d;
+  border-top: 2px solid #f3a400;
+}
+
+.cost-chronological-empty {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid #a8b6c6;
+  background: #ffffff;
 }
 
 .cost-detail-actionbar {

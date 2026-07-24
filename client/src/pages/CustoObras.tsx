@@ -229,6 +229,7 @@ export default function CustoObras() {
   const [somentePagarNaoVinculados, setSomentePagarNaoVinculados] = useState(false);
   const [selectedPedido, setSelectedPedido] = useState<any>(null);
   const [modalPedido, setModalPedido] = useState<any>(null);
+  const [modalResultTab, setModalResultTab] = useState<"geral" | "cronologico">("geral");
   const [pedidosPage, setPedidosPage] = useState(1);
   const [pedidosPageSize, setPedidosPageSize] = useState(50);
   const [tabelaPage, setTabelaPage] = useState(1);
@@ -1048,6 +1049,7 @@ export default function CustoObras() {
                             setCustosGroupSearch("");
                             setDespesasGroupSearch("");
                             setImpostosGroupSearch("");
+                            setModalResultTab("geral");
                             setModalPedido(pedido);
                           }}
                         >
@@ -1234,6 +1236,7 @@ export default function CustoObras() {
           setCustosGroupSearch("");
           setDespesasGroupSearch("");
           setImpostosGroupSearch("");
+          setModalResultTab("geral");
           setModalPedido(null);
         }
       }}>
@@ -1250,6 +1253,29 @@ export default function CustoObras() {
               <div className="cost-detail-loading">Carregando dados do pedido...</div>
             ) : (
               <>
+                <div className="cost-result-tabs" role="tablist" aria-label="Resultados da obra">
+                  <button
+                    type="button"
+                    className={modalResultTab === "geral" ? "active" : ""}
+                    onClick={() => setModalResultTab("geral")}
+                    role="tab"
+                    aria-selected={modalResultTab === "geral"}
+                  >
+                    Result Geral
+                  </button>
+                  <button
+                    type="button"
+                    className={modalResultTab === "cronologico" ? "active" : ""}
+                    onClick={() => setModalResultTab("cronologico")}
+                    role="tab"
+                    aria-selected={modalResultTab === "cronologico"}
+                  >
+                    Result Cronol&oacute;gico
+                  </button>
+                </div>
+
+                {modalResultTab === "geral" ? (
+                  <>
                 {modalPedido ? (
                   <div className="cost-detail-actionbar">
                     <a
@@ -1639,6 +1665,10 @@ export default function CustoObras() {
                     Saldo: {formatCurrency(modalCalculations.saldo)}
                   </strong>
                 </footer>
+                  </>
+                ) : (
+                  <section className="cost-chronological-empty" aria-label="Result Cronologico" />
+                )}
               </>
             )}
           </section>
