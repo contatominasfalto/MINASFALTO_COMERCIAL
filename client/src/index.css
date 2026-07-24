@@ -1996,12 +1996,15 @@
   text-align: center;
 }
 
-.allocation-month-select {
-  width: 112px;
+.allocation-month-input {
+  width: 136px;
   height: 26px;
   border-radius: 0;
-  border-color: #9fb0c2;
+  border: 1px solid #9fb0c2;
   background: #ffffff;
+  color: #001b34;
+  font-size: 11px;
+  padding: 2px 6px;
 }
 
 .cost-chronological-month {

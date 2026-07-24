@@ -236,6 +236,16 @@ const getMonthInputValue = (value: unknown) => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 };
 
+const getDateInputFromMonth = (value: string) => {
+  if (/^\d{4}-\d{2}$/.test(value)) return `${value}-01`;
+  return "";
+};
+
+const getMonthInputFromDate = (value: string) => {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value.slice(0, 7);
+  return "";
+};
+
 const compareText = (left: unknown, right: unknown) =>
   String(left || "").localeCompare(String(right || ""), "pt-BR", {
     numeric: true,
@@ -873,33 +883,6 @@ export default function CustoObras() {
       return compareText(left.doc, right.doc);
     });
   }, [allocationMap, modalCustos, modalDespesas, modalReceitas]);
-
-  const chronologicalMonthOptions = useMemo(() => {
-    const years = new Set<number>();
-    const currentYear = new Date().getFullYear();
-    const startYear = 2026 - 10;
-    const endYear = currentYear + 50;
-    for (let year = startYear; year <= endYear; year += 1) {
-      years.add(year);
-    }
-
-    chronologicalAllocationItems.forEach((item) => {
-      const months = [item.originalMonth, item.currentMonth];
-      months.forEach((monthValue) => {
-        const year = Number(monthValue.slice(0, 4));
-        if (Number.isFinite(year)) years.add(year);
-      });
-    });
-
-    const orderedYears = Array.from(years).sort((left, right) => left - right);
-    return orderedYears.flatMap((year) => monthLabels.map((label, index) => {
-      const month = String(index + 1).padStart(2, "0");
-      return {
-        value: `${year}-${month}`,
-        label: `${label}/${String(year).slice(-2)}`,
-      };
-    }));
-  }, [chronologicalAllocationItems]);
 
   const chronologicalResults = useMemo(() => {
     const createGroups = (): Record<ChronologicalGroupKey, ChronologicalGroup> => ({
@@ -2120,24 +2103,21 @@ export default function CustoObras() {
                         <td>{item.doc}</td>
                         <td className="expense-complement" title={item.descricao}>{item.descricao}</td>
                         <td className="num">{formatCurrency(item.valor)}</td>
-                        <td>{chronologicalMonthOptions.find((option) => option.value === item.currentMonth)?.label || item.currentMonth}</td>
+                        <td>{getMonthBucket(`${item.currentMonth}-01`).label}</td>
                         <td>
-                          <Select
-                            value={currentMonth}
-                            onValueChange={(value) => setAllocationDraft((current) => ({
-                              ...current,
-                              [item.key]: value,
-                            }))}
-                          >
-                            <SelectTrigger className="allocation-month-select">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {chronologicalMonthOptions.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Input
+                            type="date"
+                            value={getDateInputFromMonth(currentMonth)}
+                            onChange={(event) => {
+                              const monthValue = getMonthInputFromDate(event.target.value);
+                              if (!monthValue) return;
+                              setAllocationDraft((current) => ({
+                                ...current,
+                                [item.key]: monthValue,
+                              }));
+                            }}
+                            className="allocation-month-input"
+                          />
                         </td>
                       </tr>
                     );
