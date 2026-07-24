@@ -1933,79 +1933,365 @@
   padding: 10px;
 }
 
+/* ============================================ */
+/* 🆕 ESTILOS MELHORADOS PARA O MODAL DE ALOCAÇÃO */
+/* ============================================ */
+
 [data-slot="dialog-content"].allocation-dialog {
-  width: min(1040px, calc(100vw - 44px));
+  width: min(1100px, calc(100vw - 44px));
   max-width: none;
-  max-height: min(720px, calc(100vh - 44px));
+  max-height: min(780px, calc(100vh - 44px));
   display: flex;
   flex-direction: column;
   gap: 10px;
   border: 1px solid #7f95ad;
-  border-radius: 2px;
+  border-radius: 4px;
   background: var(--sap-panel);
   color: #001b34;
-  padding: 14px;
+  padding: 16px 20px;
 }
 
+.allocation-dialog [data-slot="dialog-header"] {
+  padding-right: 44px;
+  margin-bottom: 4px;
+}
+
+.allocation-dialog [data-slot="dialog-title"] {
+  color: #001b34;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.allocation-dialog [data-slot="dialog-description"] {
+  color: #415265;
+  font-size: 12px;
+}
+
+/* Container da tabela de alocação */
 .allocation-table-frame {
-  min-height: 0;
+  flex: 1;
+  min-height: 200px;
+  max-height: 500px;
   overflow: auto;
   border: 1px solid #a8b6c6;
   background: #ffffff;
+  border-radius: 4px;
 }
 
+/* Tabela de alocação - VERSÃO MELHORADA */
 .allocation-table {
-  min-width: 980px;
+  min-width: 1100px;
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed; /* ← Importante para respeitar as larguras */
 }
 
-.allocation-table th,
+/* Cabeçalho da tabela */
+.allocation-table th {
+  padding: 8px 10px;
+  background: linear-gradient(#f9fbfd, #dfe8f2);
+  color: #001b34;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  border-bottom: 2px solid #a8b6c6;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* Células da tabela */
 .allocation-table td {
-  height: 27px;
-  font-size: 11px;
+  padding: 6px 10px;
+  vertical-align: middle;
+  border-bottom: 1px solid #e5e9ef;
+  font-size: 12px;
 }
 
+.allocation-table tbody tr:hover {
+  background-color: #f0f5fb;
+}
+
+.allocation-table tbody tr:nth-child(even) {
+  background-color: #f8fafc;
+}
+
+.allocation-table tbody tr:nth-child(even):hover {
+  background-color: #f0f5fb;
+}
+
+/* Larguras das colunas - AJUSTADAS */
 .allocation-table th:nth-child(1),
 .allocation-table td:nth-child(1) {
-  width: 90px;
+  width: 10%;
+  min-width: 80px;
   text-align: center;
 }
 
 .allocation-table th:nth-child(2),
 .allocation-table td:nth-child(2) {
-  width: 100px;
+  width: 10%;
+  min-width: 80px;
   text-align: center;
 }
 
 .allocation-table th:nth-child(3),
 .allocation-table td:nth-child(3) {
-  width: 390px;
+  width: 28%;
+  min-width: 200px;
   text-align: left;
 }
 
 .allocation-table th:nth-child(4),
 .allocation-table td:nth-child(4) {
-  width: 120px;
+  width: 15%;
+  min-width: 120px;
   text-align: right;
 }
 
 .allocation-table th:nth-child(5),
-.allocation-table td:nth-child(5),
-.allocation-table th:nth-child(6),
-.allocation-table td:nth-child(6) {
-  width: 130px;
+.allocation-table td:nth-child(5) {
+  width: 12%;
+  min-width: 100px;
   text-align: center;
 }
 
+.allocation-table th:nth-child(6),
+.allocation-table td:nth-child(6) {
+  width: 25%;
+  min-width: 180px;
+  max-width: 280px;
+  text-align: center;
+}
+
+/* Estilo da descrição com ellipsis */
+.allocation-table td:nth-child(3) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================ */
+/* 🆕 INPUT DE DATA - VERSÃO MELHORADA */
+/* ============================================ */
+
 .allocation-month-input {
-  width: 136px;
-  height: 26px;
-  border-radius: 0;
-  border: 1px solid #9fb0c2;
+  width: 100%;
+  min-width: 160px;
+  max-width: 220px;
+  height: 34px;
+  padding: 4px 10px;
+  border: 1.5px solid #9fb0c2;
+  border-radius: 4px;
   background: #ffffff;
   color: #001b34;
-  font-size: 11px;
-  padding: 2px 6px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
 }
+
+/* Estilos específicos para input type date */
+.allocation-month-input[type="date"] {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 34px;
+}
+
+/* Ícone do calendário - WebKit (Chrome, Edge, Safari) */
+.allocation-month-input::-webkit-calendar-picker-indicator {
+  padding: 4px;
+  margin-left: 6px;
+  cursor: pointer;
+  opacity: 0.6;
+  filter: invert(0.4);
+  transition: opacity 0.2s ease;
+}
+
+.allocation-month-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Placeholder */
+.allocation-month-input::-moz-placeholder {
+  color: #9ca3af;
+  opacity: 1;
+}
+
+.allocation-month-input::-webkit-input-placeholder {
+  color: #9ca3af;
+}
+
+/* Estados de interação */
+.allocation-month-input:hover {
+  border-color: #7a8da0;
+  background-color: #fafbfc;
+}
+
+.allocation-month-input:focus {
+  outline: none;
+  border-color: #0066cc;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
+  background-color: #ffffff;
+}
+
+.allocation-month-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #f3f5f7;
+}
+
+/* Estilo para o texto da data no input */
+.allocation-month-input[type="date"] {
+  color-scheme: light;
+}
+
+/* Ajuste para Firefox */
+.allocation-month-input[type="date"]::-moz-focus-inner {
+  border: 0;
+  padding: 0;
+}
+
+/* ============================================ */
+/* 🆕 RESPONSIVIDADE */
+/* ============================================ */
+
+@media (max-width: 1200px) {
+  [data-slot="dialog-content"].allocation-dialog {
+    width: calc(100vw - 32px);
+    padding: 14px 16px;
+  }
+
+  .allocation-table {
+    min-width: 980px;
+  }
+
+  .allocation-table th:nth-child(6),
+  .allocation-table td:nth-child(6) {
+    min-width: 160px;
+  }
+
+  .allocation-month-input {
+    min-width: 140px;
+    font-size: 12px;
+    height: 32px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .allocation-table {
+    min-width: 900px;
+  }
+
+  .allocation-table th:nth-child(3),
+  .allocation-table td:nth-child(3) {
+    min-width: 160px;
+  }
+
+  .allocation-table th:nth-child(6),
+  .allocation-table td:nth-child(6) {
+    min-width: 150px;
+  }
+
+  .allocation-month-input {
+    min-width: 130px;
+    font-size: 12px;
+    height: 30px;
+    padding: 2px 8px;
+  }
+}
+
+@media (max-width: 768px) {
+  [data-slot="dialog-content"].allocation-dialog {
+    width: calc(100vw - 20px);
+    padding: 10px 12px;
+    max-height: calc(100vh - 20px);
+  }
+
+  .allocation-table-frame {
+    max-height: 400px;
+  }
+
+  .allocation-table {
+    min-width: 800px;
+  }
+
+  .allocation-table td {
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+
+  .allocation-table th {
+    padding: 6px 6px;
+    font-size: 11px;
+  }
+
+  .allocation-table th:nth-child(3),
+  .allocation-table td:nth-child(3) {
+    min-width: 140px;
+  }
+
+  .allocation-table th:nth-child(6),
+  .allocation-table td:nth-child(6) {
+    min-width: 130px;
+  }
+
+  .allocation-month-input {
+    min-width: 110px;
+    font-size: 11px;
+    height: 28px;
+    padding: 2px 6px;
+  }
+
+  .allocation-month-input[type="date"] {
+    min-height: 28px;
+  }
+
+  .allocation-dialog .manual-expense-actions {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .allocation-dialog .manual-expense-actions button {
+    flex: 1;
+    min-width: 100px;
+  }
+}
+
+@media (max-width: 480px) {
+  [data-slot="dialog-content"].allocation-dialog {
+    padding: 8px 6px;
+    width: calc(100vw - 12px);
+  }
+
+  .allocation-table {
+    min-width: 700px;
+  }
+
+  .allocation-table th:nth-child(6),
+  .allocation-table td:nth-child(6) {
+    min-width: 110px;
+  }
+
+  .allocation-month-input {
+    min-width: 90px;
+    font-size: 10px;
+    height: 26px;
+    padding: 1px 4px;
+  }
+
+  .allocation-month-input[type="date"] {
+    min-height: 26px;
+  }
+}
+
+/* ============================================ */
+/* FIM DOS ESTILOS DO MODAL DE ALOCAÇÃO */
+/* ============================================ */
 
 .cost-chronological-month {
   display: flex;
