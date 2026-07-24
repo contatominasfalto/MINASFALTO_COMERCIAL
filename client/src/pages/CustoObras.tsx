@@ -24,6 +24,29 @@ type SortColumn =
 type ActiveTab = "pedidos" | "tabela";
 type CostCategory = "Custo" | "Despesa" | "Outros";
 type RevenueStatus = "Nfe" | "Faturamento Direto" | "Outros";
+type ChronologicalGroupKey = "receitas" | "despesas" | "impostos" | "custos";
+
+type ChronologicalItem = {
+  id: string;
+  doc: string;
+  date: string;
+  value: number;
+  description: string;
+};
+
+type ChronologicalGroup = {
+  key: ChronologicalGroupKey;
+  label: string;
+  total: number;
+  items: ChronologicalItem[];
+};
+
+type ChronologicalMonth = {
+  key: string;
+  label: string;
+  order: number;
+  groups: Record<ChronologicalGroupKey, ChronologicalGroup>;
+};
 
 type PaginationState = {
   page: number;
@@ -140,6 +163,49 @@ const parseDateValue = (value: unknown) => {
   return Number.isNaN(timestamp) ? 0 : timestamp;
 };
 
+const monthLabels = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+const getMonthBucket = (value: unknown) => {
+  const text = String(value || "").trim();
+  if (!text) {
+    return { key: "sem-data", label: "Sem data", order: 999999 };
+  }
+
+  const isoDate = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoDate) {
+    const [, year, month] = isoDate;
+    const monthIndex = Number(month) - 1;
+    return {
+      key: `${year}-${month}`,
+      label: `${monthLabels[monthIndex] || month}/${String(year).slice(-2)}`,
+      order: Number(year) * 100 + Number(month),
+    };
+  }
+
+  const brDate = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (brDate) {
+    const [, , month, year] = brDate;
+    const monthIndex = Number(month) - 1;
+    return {
+      key: `${year}-${month}`,
+      label: `${monthLabels[monthIndex] || month}/${String(year).slice(-2)}`,
+      order: Number(year) * 100 + Number(month),
+    };
+  }
+
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) {
+    return { key: "sem-data", label: "Sem data", order: 999999 };
+  }
+
+  const month = date.getMonth() + 1;
+  return {
+    key: `${date.getFullYear()}-${String(month).padStart(2, "0")}`,
+    label: `${monthLabels[month - 1]}/${String(date.getFullYear()).slice(-2)}`,
+    order: date.getFullYear() * 100 + month,
+  };
+};
+
 const compareText = (left: unknown, right: unknown) =>
   String(left || "").localeCompare(String(right || ""), "pt-BR", {
     numeric: true,
@@ -230,6 +296,7 @@ export default function CustoObras() {
   const [selectedPedido, setSelectedPedido] = useState<any>(null);
   const [modalPedido, setModalPedido] = useState<any>(null);
   const [modalResultTab, setModalResultTab] = useState<"geral" | "cronologico">("geral");
+  const [chronologicalOpenGroups, setChronologicalOpenGroups] = useState<Record<string, boolean>>({});
   const [pedidosPage, setPedidosPage] = useState(1);
   const [pedidosPageSize, setPedidosPageSize] = useState(50);
   const [tabelaPage, setTabelaPage] = useState(1);
@@ -697,6 +764,94 @@ export default function CustoObras() {
     };
   }, [financeForm, modalCustos, modalDespesas, modalReceitas]);
 
+  const chronologicalResults = useMemo(() => {
+    const createGroups = (): Record<ChronologicalGroupKey, ChronologicalGroup> => ({
+      receitas: { key: "receitas", label: "Receita", total: 0, items: [] },
+      despesas: { key: "despesas", label: "Despesas", total: 0, items: [] },
+      impostos: { key: "impostos", label: "Impostos", total: 0, items: [] },
+      custos: { key: "custos", label: "Custos", total: 0, items: [] },
+    });
+
+    const months = new Map<string, ChronologicalMonth>();
+    const getMonth = (dateValue: unknown) => {
+      const bucket = getMonthBucket(dateValue);
+      const current = months.get(bucket.key);
+      if (current) return current;
+      const month: ChronologicalMonth = {
+        key: bucket.key,
+        label: bucket.label,
+        order: bucket.order,
+        groups: createGroups(),
+      };
+      months.set(bucket.key, month);
+      return month;
+    };
+
+    const addItem = (
+      groupKey: ChronologicalGroupKey,
+      dateValue: unknown,
+      item: ChronologicalItem,
+    ) => {
+      const month = getMonth(dateValue);
+      month.groups[groupKey].items.push(item);
+      month.groups[groupKey].total += item.value;
+    };
+
+    modalReceitas.forEach((receita: any) => {
+      addItem("receitas", receita.data, {
+        id: `receita-${receita.id}`,
+        doc: receita.numeroDocumento || "",
+        date: formatDateBR(receita.data),
+        value: numberValue(receita.valor),
+        description: receita.status === "Outros"
+          ? receita.tipoReceitaOutros || receita.descricao || "Outros"
+          : receita.descricao || receita.status || "",
+      });
+    });
+
+    modalDespesas.forEach((despesa: any) => {
+      addItem("despesas", despesa.dataEmissao, {
+        id: `despesa-${despesa.id}`,
+        doc: despesa.numeroDocumento || "",
+        date: formatDateBR(despesa.dataEmissao),
+        value: numberValue(despesa.valorTotalDocumento),
+        description: despesa.complemento || despesa.fornecedorCliente || "",
+      });
+    });
+
+    modalCalculations.impostos.forEach((imposto: any) => {
+      addItem("impostos", imposto.data, {
+        id: `imposto-${imposto.id}`,
+        doc: imposto.numeroDocumento || "",
+        date: formatDateBR(imposto.data),
+        value: numberValue(imposto.valorImposto),
+        description: "Imposto sobre Nfe",
+      });
+    });
+
+    modalCustos.forEach((custo: any) => {
+      addItem("custos", custo.dataEmissao, {
+        id: `custo-${custo.id}`,
+        doc: custo.numeroDocumento || "",
+        date: formatDateBR(custo.dataEmissao),
+        value: numberValue(custo.valorTotal),
+        description: custo.complemento || custo.situacao || "",
+      });
+    });
+
+    months.forEach((month) => {
+      (Object.keys(month.groups) as ChronologicalGroupKey[]).forEach((groupKey) => {
+        month.groups[groupKey].items.sort((left, right) => {
+          const dateOrder = parseDateValue(left.date) - parseDateValue(right.date);
+          if (dateOrder !== 0) return dateOrder;
+          return compareText(left.doc, right.doc);
+        });
+      });
+    });
+
+    return Array.from(months.values()).sort((left, right) => left.order - right.order);
+  }, [modalCalculations.impostos, modalCustos, modalDespesas, modalReceitas]);
+
   const filteredModalReceitas = useMemo(() => {
     return modalReceitas.filter((receita: any) => matchesSearch([
       receita.numeroDocumento,
@@ -1050,6 +1205,7 @@ export default function CustoObras() {
                             setDespesasGroupSearch("");
                             setImpostosGroupSearch("");
                             setModalResultTab("geral");
+                            setChronologicalOpenGroups({});
                             setModalPedido(pedido);
                           }}
                         >
@@ -1237,6 +1393,7 @@ export default function CustoObras() {
           setDespesasGroupSearch("");
           setImpostosGroupSearch("");
           setModalResultTab("geral");
+          setChronologicalOpenGroups({});
           setModalPedido(null);
         }
       }}>
@@ -1667,7 +1824,89 @@ export default function CustoObras() {
                 </footer>
                   </>
                 ) : (
-                  <section className="cost-chronological-empty" aria-label="Result Cronologico" />
+                  <section className="cost-chronological-panel" aria-label="Result Cronologico">
+                    {chronologicalResults.length === 0 ? (
+                      <div className="cost-chronological-empty">Nenhum resultado cronologico disponivel</div>
+                    ) : (
+                      <div className="cost-chronological-grid">
+                        {chronologicalResults.map((month) => (
+                          <article className="cost-chronological-month" key={month.key}>
+                            <header>{month.label}</header>
+                            {(["receitas", "despesas", "impostos", "custos"] as ChronologicalGroupKey[]).map((groupKey) => {
+                              const group = month.groups[groupKey];
+                              const openKey = `${month.key}:${groupKey}`;
+                              const isOpen = Boolean(chronologicalOpenGroups[openKey]);
+
+                              return (
+                                <section
+                                  key={openKey}
+                                  className={`cost-chronological-group ${isOpen ? "expanded" : "collapsed"}`}
+                                >
+                                  <div className="cost-chronological-group-title-row">
+                                    <button
+                                      type="button"
+                                      className="cost-group-toggle"
+                                      onClick={() => setChronologicalOpenGroups((current) => ({
+                                        ...current,
+                                        [openKey]: !current[openKey],
+                                      }))}
+                                      aria-expanded={isOpen}
+                                      title={isOpen ? `Recolher ${group.label}` : `Expandir ${group.label}`}
+                                    >
+                                      {isOpen ? "-" : "+"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="cost-group-title chronological-title"
+                                      onClick={() => setChronologicalOpenGroups((current) => ({
+                                        ...current,
+                                        [openKey]: !current[openKey],
+                                      }))}
+                                      aria-expanded={isOpen}
+                                    >
+                                      <span>{group.label}</span>
+                                      <strong>{formatCurrency(group.total)}</strong>
+                                    </button>
+                                  </div>
+
+                                  {isOpen ? (
+                                    <div className="cost-chronological-table-frame">
+                                      <table className="desktop-table cost-chronological-table">
+                                        <thead>
+                                          <tr>
+                                            <th>Doc</th>
+                                            <th>Data</th>
+                                            <th>Valor</th>
+                                            <th>Descricao</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {group.items.length === 0 ? (
+                                            <tr>
+                                              <td colSpan={4} className="desktop-empty">Nenhum item no periodo</td>
+                                            </tr>
+                                          ) : (
+                                            group.items.map((item) => (
+                                              <tr key={item.id}>
+                                                <td>{item.doc}</td>
+                                                <td>{item.date}</td>
+                                                <td className="num">{formatCurrency(item.value)}</td>
+                                                <td className="expense-complement" title={item.description}>{item.description}</td>
+                                              </tr>
+                                            ))
+                                          )}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  ) : null}
+                                </section>
+                              );
+                            })}
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
                 )}
               </>
             )}
