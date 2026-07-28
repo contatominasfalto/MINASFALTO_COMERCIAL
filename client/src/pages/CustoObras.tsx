@@ -706,6 +706,40 @@ export default function CustoObras() {
     });
   };
 
+  const handleExportarRealocacoesExcel = () => {
+    if (allocationItemsForSelectedYear.length === 0) {
+      toast.error("Nenhum lancamento para exportar.");
+      return;
+    }
+
+    const rows = [
+      ["Grupo", "Doc", "Descricao", "Valor", "Data Vencimento", "Data realocação"],
+      ...allocationItemsForSelectedYear.map((item) => {
+        const currentDate = allocationDraft[item.key] || item.currentDate || getDateInputFromMonth(item.currentMonth);
+        return [
+          item.grupo,
+          item.doc,
+          item.descricao,
+          formatCurrency(item.valor),
+          formatDateBR(item.originalDate || getDateInputFromMonth(item.originalMonth)),
+          formatDateBR(currentDate),
+        ];
+      }),
+    ];
+    const yearLabel = selectedAllocationYear === "sem-data" ? "sem-data" : selectedAllocationYear || "todos";
+    const excelContent = buildExcelWorkbook([{ name: `Realocacoes ${yearLabel}`, rows }]);
+    const blob = new Blob([excelContent], { type: "application/vnd.ms-excel;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const today = new Date().toISOString().slice(0, 10);
+
+    link.href = url;
+    link.download = `realocacoes-pedido-${modalPedido?.pedido || "obra"}-${yearLabel}-${today}.xls`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${allocationItemsForSelectedYear.length} lancamento(s) exportado(s).`);
+  };
+
   const visiblePedidos = useMemo(() => {
     const multiplier = sortDirection === "asc" ? 1 : -1;
     return [...(pedidos as any[])].sort((left, right) => {
@@ -2284,6 +2318,18 @@ export default function CustoObras() {
             </DialogDescription>
           </DialogHeader>
 
+          <div className="allocation-export-toolbar">
+            <button
+              type="button"
+              onClick={handleExportarRealocacoesExcel}
+              disabled={allocationItemsForSelectedYear.length === 0}
+              title="Exportar a tabela atual para Excel"
+            >
+              <FileSpreadsheet size={14} />
+              Exportar Excel
+            </button>
+          </div>
+
           <section className="allocation-table-frame">
             <table className="desktop-table allocation-table">
               <thead>
@@ -2292,8 +2338,8 @@ export default function CustoObras() {
                   <th>Doc</th>
                   <th>Descricao</th>
                   <th>Valor</th>
-                  <th>Mes atual</th>
-                  <th>Novo mes</th>
+                  <th>Data Vencimento</th>
+                  <th>Data realocação</th>
                 </tr>
               </thead>
               <tbody>

@@ -2056,6 +2056,38 @@
   background: #eef4fb;
 }
 
+.allocation-export-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  min-height: 30px;
+}
+
+.allocation-export-toolbar button {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid #8fa2b7;
+  border-radius: 2px;
+  background: linear-gradient(#ffffff, #dce6f0);
+  color: #001b34;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.allocation-export-toolbar button:hover {
+  background: linear-gradient(#fffaf0, #f4dfa8);
+  border-color: #a47d1d;
+}
+
+.allocation-export-toolbar button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 /* Container da tabela de alocação */
 .allocation-table-frame {
   flex: 1;
