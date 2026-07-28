@@ -45,6 +45,7 @@ type ChronologicalMonth = {
   key: string;
   label: string;
   order: number;
+  saldo: number;
   groups: Record<ChronologicalGroupKey, ChronologicalGroup>;
 };
 
@@ -938,6 +939,7 @@ export default function CustoObras() {
         key: bucket.key,
         label: bucket.label,
         order: bucket.order,
+        saldo: 0,
         groups: createGroups(),
       };
       months.set(bucket.key, month);
@@ -1009,6 +1011,10 @@ export default function CustoObras() {
           return compareText(left.doc, right.doc);
         });
       });
+      month.saldo = month.groups.receitas.total
+        - month.groups.despesas.total
+        - month.groups.impostos.total
+        - month.groups.custos.total;
     });
 
     return Array.from(months.values()).sort((left, right) => left.order - right.order);
@@ -2134,6 +2140,10 @@ export default function CustoObras() {
                                   </section>
                                 );
                               })}
+                              <footer className="cost-chronological-month-balance">
+                                <span>Saldo</span>
+                                <strong className={month.saldo < 0 ? "negative-amount" : ""}>{formatCurrency(month.saldo)}</strong>
+                              </footer>
                             </article>
                           ))}
                         </div>

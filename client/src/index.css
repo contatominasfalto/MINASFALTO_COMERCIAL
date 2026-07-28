@@ -2331,6 +2331,27 @@
   background: #ffffff;
 }
 
+.cost-chronological-month-balance {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 8px 8px;
+  padding: 4px 10px;
+  border: 1px solid #a8b6c6;
+  background: linear-gradient(#f8fafc, #dfe8f2);
+  color: #001b34;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.cost-chronological-month-balance strong {
+  color: #001b34;
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .cost-chronological-group-title-row {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
