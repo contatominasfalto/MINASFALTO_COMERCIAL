@@ -539,7 +539,6 @@ export default function CustoObras() {
   const saveResultadoAlocacoes = trpc.pedidosObras.saveResultadoAlocacoes.useMutation({
     onSuccess: () => {
       toast.success("Realocacoes salvas");
-      setAllocationModalOpen(false);
       invalidateModal();
     },
     onError: (mutationError) => toast.error(`Erro ao salvar realocacoes: ${mutationError.message}`),
@@ -2137,7 +2136,7 @@ export default function CustoObras() {
                         <td>{item.doc}</td>
                         <td className="expense-complement" title={item.descricao}>{item.descricao}</td>
                         <td className="num">{formatCurrency(item.valor)}</td>
-                        <td>{formatDateBR(item.currentDate || getDateInputFromMonth(item.currentMonth))}</td>
+                        <td>{formatDateBR(item.originalDate || getDateInputFromMonth(item.originalMonth))}</td>
                         <td>
                           <Input
                             type="date"
