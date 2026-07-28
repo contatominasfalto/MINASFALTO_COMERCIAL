@@ -56,7 +56,9 @@ type ChronologicalAllocationItem = {
   doc: string;
   descricao: string;
   valor: number;
+  originalDate: string;
   originalMonth: string;
+  currentDate: string;
   currentMonth: string;
 };
 
@@ -163,6 +165,24 @@ const formatDateBR = (value: unknown) => {
   });
 };
 
+const getDateInputValue = (value: unknown) => {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  const isoDate = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoDate) {
+    const [, year, month, day] = isoDate;
+    return `${year}-${month}-${day}`;
+  }
+  const brDate = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (brDate) {
+    const [, day, month, year] = brDate;
+    return `${year}-${month}-${day}`;
+  }
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
+
 const parseDateValue = (value: unknown) => {
   const text = String(value || "").trim();
   if (!text) return 0;
@@ -239,12 +259,6 @@ const getMonthInputValue = (value: unknown) => {
 const getDateInputFromMonth = (value: string) => {
   if (/^\d{4}-\d{2}$/.test(value)) return `${value}-01`;
   return "";
-};
-
-const formatDateBRFromMonth = (value: string) => {
-  if (!/^\d{4}-\d{2}$/.test(value)) return "";
-  const [year, month] = value.split("-");
-  return `01/${month}/${year}`;
 };
 
 const getMonthInputFromDate = (value: string) => {
@@ -833,7 +847,9 @@ export default function CustoObras() {
   const chronologicalAllocationItems = useMemo<ChronologicalAllocationItem[]>(() => {
     const receitas = modalReceitas.map((receita: any) => {
       const key = `receita:${receita.id}`;
-      const originalMonth = getMonthInputValue(receita.data);
+      const originalDate = getDateInputValue(receita.data);
+      const originalMonth = getMonthInputValue(originalDate || receita.data);
+      const allocatedMonth = allocationMap.get(key);
       return {
         key,
         itemTipo: "receita" as const,
@@ -844,14 +860,19 @@ export default function CustoObras() {
           ? receita.tipoReceitaOutros || receita.descricao || "Outros"
           : receita.descricao || receita.status || "",
         valor: numberValue(receita.valor),
+        originalDate,
         originalMonth,
-        currentMonth: allocationMap.get(key) || originalMonth,
+        currentDate: allocatedMonth ? getDateInputFromMonth(allocatedMonth) : originalDate,
+        currentMonth: allocatedMonth || originalMonth,
       };
     });
 
     const despesas = modalDespesas.map((despesa: any) => {
       const key = `despesa:${despesa.id}`;
-      const originalMonth = getMonthInputValue(despesa.dataEmissao);
+      const sourceDate = despesa.dataVencimento || despesa.dataEmissao;
+      const originalDate = getDateInputValue(sourceDate);
+      const originalMonth = getMonthInputValue(originalDate || sourceDate);
+      const allocatedMonth = allocationMap.get(key);
       return {
         key,
         itemTipo: "despesa" as const,
@@ -860,14 +881,18 @@ export default function CustoObras() {
         doc: despesa.numeroDocumento || "",
         descricao: despesa.complemento || despesa.fornecedorCliente || "",
         valor: numberValue(despesa.valorTotalDocumento),
+        originalDate,
         originalMonth,
-        currentMonth: allocationMap.get(key) || originalMonth,
+        currentDate: allocatedMonth ? getDateInputFromMonth(allocatedMonth) : originalDate,
+        currentMonth: allocatedMonth || originalMonth,
       };
     });
 
     const custos = modalCustos.map((custo: any) => {
       const key = `custo:${custo.id}`;
-      const originalMonth = getMonthInputValue(custo.dataEmissao);
+      const originalDate = getDateInputValue(custo.dataEmissao);
+      const originalMonth = getMonthInputValue(originalDate || custo.dataEmissao);
+      const allocatedMonth = allocationMap.get(key);
       return {
         key,
         itemTipo: "custo" as const,
@@ -876,8 +901,10 @@ export default function CustoObras() {
         doc: custo.numeroDocumento || "",
         descricao: custo.complemento || custo.situacao || "",
         valor: numberValue(custo.valorTotal),
+        originalDate,
         originalMonth,
-        currentMonth: allocationMap.get(key) || originalMonth,
+        currentDate: allocatedMonth ? getDateInputFromMonth(allocatedMonth) : originalDate,
+        currentMonth: allocatedMonth || originalMonth,
       };
     });
 
@@ -938,10 +965,11 @@ export default function CustoObras() {
 
     modalDespesas.forEach((despesa: any) => {
       const key = `despesa:${despesa.id}`;
-      addItem("despesas", allocationMap.get(key) || despesa.dataEmissao, {
+      const sourceDate = despesa.dataVencimento || despesa.dataEmissao;
+      addItem("despesas", allocationMap.get(key) || sourceDate, {
         id: `despesa-${despesa.id}`,
         doc: despesa.numeroDocumento || "",
-        date: formatDateBR(despesa.dataEmissao),
+        date: formatDateBR(sourceDate),
         value: numberValue(despesa.valorTotalDocumento),
         description: despesa.complemento || despesa.fornecedorCliente || "",
       });
@@ -1113,7 +1141,7 @@ export default function CustoObras() {
 
   const openAllocationModal = () => {
     setAllocationDraft(Object.fromEntries(
-      chronologicalAllocationItems.map((item) => [item.key, item.currentMonth]),
+      chronologicalAllocationItems.map((item) => [item.key, item.currentDate || getDateInputFromMonth(item.currentMonth)]),
     ));
     setAllocationModalOpen(true);
   };
@@ -1123,7 +1151,7 @@ export default function CustoObras() {
     const alocacoes = chronologicalAllocationItems.map((item) => ({
       itemTipo: item.itemTipo,
       itemId: item.itemId,
-      mesReferencia: allocationDraft[item.key] || item.currentMonth,
+      mesReferencia: getMonthInputFromDate(allocationDraft[item.key] || "") || item.currentMonth,
     }));
 
     saveResultadoAlocacoes.mutate({
@@ -2102,24 +2130,22 @@ export default function CustoObras() {
                   </tr>
                 ) : (
                   chronologicalAllocationItems.map((item) => {
-                    const currentMonth = allocationDraft[item.key] || item.currentMonth;
+                    const currentDate = allocationDraft[item.key] || item.currentDate || getDateInputFromMonth(item.currentMonth);
                     return (
                       <tr key={item.key}>
                         <td>{item.grupo}</td>
                         <td>{item.doc}</td>
                         <td className="expense-complement" title={item.descricao}>{item.descricao}</td>
                         <td className="num">{formatCurrency(item.valor)}</td>
-                        <td>{formatDateBRFromMonth(item.currentMonth)}</td>
+                        <td>{formatDateBR(item.currentDate || getDateInputFromMonth(item.currentMonth))}</td>
                         <td>
                           <Input
                             type="date"
-                            value={getDateInputFromMonth(currentMonth)}
+                            value={currentDate}
                             onChange={(event) => {
-                              const monthValue = getMonthInputFromDate(event.target.value);
-                              if (!monthValue) return;
                               setAllocationDraft((current) => ({
                                 ...current,
-                                [item.key]: monthValue,
+                                [item.key]: event.target.value,
                               }));
                             }}
                             className="allocation-month-input"
