@@ -207,6 +207,7 @@ try {
       itemTipo enum('receita','despesa','custo') NOT NULL,
       itemId int NOT NULL,
       mesReferencia varchar(7) NOT NULL,
+      dataReferencia varchar(10) NULL,
       criadoPor varchar(100) DEFAULT 'Sistema',
       criadoEm timestamp DEFAULT CURRENT_TIMESTAMP,
       atualizadoEm timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -216,6 +217,11 @@ try {
       INDEX pedido_obra_resultado_alocacoes_pedidoNum_idx (pedidoNum)
     )
   `);
+
+  const [resultadoAlocacaoDataColumns] = await connection.query("SHOW COLUMNS FROM pedido_obra_resultado_alocacoes LIKE 'dataReferencia'");
+  if (resultadoAlocacaoDataColumns.length === 0) {
+    await connection.query("ALTER TABLE pedido_obra_resultado_alocacoes ADD dataReferencia varchar(10) NULL AFTER mesReferencia");
+  }
 
   const [userProfileColumns] = await connection.query("SHOW COLUMNS FROM users LIKE 'profile'");
   if (userProfileColumns.length === 0) {

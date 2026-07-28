@@ -167,6 +167,7 @@ const REQUIRED_COLUMNS = {
     "itemTipo",
     "itemId",
     "mesReferencia",
+    "dataReferencia",
     "criadoPor",
     "criadoEm",
     "atualizadoEm",

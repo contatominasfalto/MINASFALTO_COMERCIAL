@@ -852,9 +852,12 @@ export default function CustoObras() {
   }, [financeForm, modalCustos, modalDespesas, modalReceitas]);
 
   const allocationMap = useMemo(() => {
-    const map = new Map<string, string>();
+    const map = new Map<string, { mesReferencia: string; dataReferencia: string }>();
     modalResultadoAlocacoes.forEach((item: any) => {
-      map.set(`${item.itemTipo}:${item.itemId}`, item.mesReferencia);
+      map.set(`${item.itemTipo}:${item.itemId}`, {
+        mesReferencia: item.mesReferencia,
+        dataReferencia: getDateInputValue(item.dataReferencia) || getDateInputFromMonth(item.mesReferencia),
+      });
     });
     return map;
   }, [modalResultadoAlocacoes]);
@@ -864,7 +867,8 @@ export default function CustoObras() {
       const key = `receita:${receita.id}`;
       const originalDate = getDateInputValue(receita.data);
       const originalMonth = getMonthInputValue(originalDate || receita.data);
-      const allocatedMonth = allocationMap.get(key);
+      const allocation = allocationMap.get(key);
+      const allocatedMonth = allocation?.mesReferencia;
       return {
         key,
         itemTipo: "receita" as const,
@@ -877,7 +881,7 @@ export default function CustoObras() {
         valor: numberValue(receita.valor),
         originalDate,
         originalMonth,
-        currentDate: allocatedMonth && allocatedMonth !== originalMonth ? getDateInputFromMonth(allocatedMonth) : originalDate,
+        currentDate: allocatedMonth ? allocation?.dataReferencia || getDateInputFromMonth(allocatedMonth) : originalDate,
         currentMonth: allocatedMonth || originalMonth,
       };
     });
@@ -887,7 +891,8 @@ export default function CustoObras() {
       const sourceDate = despesa.dataVencimento || despesa.dataEmissao;
       const originalDate = getDateInputValue(sourceDate);
       const originalMonth = getMonthInputValue(originalDate || sourceDate);
-      const allocatedMonth = allocationMap.get(key);
+      const allocation = allocationMap.get(key);
+      const allocatedMonth = allocation?.mesReferencia;
       return {
         key,
         itemTipo: "despesa" as const,
@@ -898,7 +903,7 @@ export default function CustoObras() {
         valor: numberValue(despesa.valorTotalDocumento),
         originalDate,
         originalMonth,
-        currentDate: allocatedMonth && allocatedMonth !== originalMonth ? getDateInputFromMonth(allocatedMonth) : originalDate,
+        currentDate: allocatedMonth ? allocation?.dataReferencia || getDateInputFromMonth(allocatedMonth) : originalDate,
         currentMonth: allocatedMonth || originalMonth,
       };
     });
@@ -907,7 +912,8 @@ export default function CustoObras() {
       const key = `custo:${custo.id}`;
       const originalDate = getDateInputValue(custo.dataEmissao);
       const originalMonth = getMonthInputValue(originalDate || custo.dataEmissao);
-      const allocatedMonth = allocationMap.get(key);
+      const allocation = allocationMap.get(key);
+      const allocatedMonth = allocation?.mesReferencia;
       return {
         key,
         itemTipo: "custo" as const,
@@ -918,7 +924,7 @@ export default function CustoObras() {
         valor: numberValue(custo.valorTotal),
         originalDate,
         originalMonth,
-        currentDate: allocatedMonth && allocatedMonth !== originalMonth ? getDateInputFromMonth(allocatedMonth) : originalDate,
+        currentDate: allocatedMonth ? allocation?.dataReferencia || getDateInputFromMonth(allocatedMonth) : originalDate,
         currentMonth: allocatedMonth || originalMonth,
       };
     });
@@ -968,10 +974,11 @@ export default function CustoObras() {
 
     modalReceitas.forEach((receita: any) => {
       const key = `receita:${receita.id}`;
-      addItem("receitas", allocationMap.get(key) || receita.data, {
+      const allocation = allocationMap.get(key);
+      addItem("receitas", allocationMap.get(key)?.mesReferencia || receita.data, {
         id: `receita-${receita.id}`,
         doc: receita.numeroDocumento || "",
-        date: formatDateBR(receita.data),
+        date: formatDateBR(allocation?.dataReferencia || receita.data),
         value: numberValue(receita.valor),
         description: receita.status === "Outros"
           ? receita.tipoReceitaOutros || receita.descricao || "Outros"
@@ -982,10 +989,11 @@ export default function CustoObras() {
     modalDespesas.forEach((despesa: any) => {
       const key = `despesa:${despesa.id}`;
       const sourceDate = despesa.dataVencimento || despesa.dataEmissao;
-      addItem("despesas", allocationMap.get(key) || sourceDate, {
+      const allocation = allocationMap.get(key);
+      addItem("despesas", allocation?.mesReferencia || sourceDate, {
         id: `despesa-${despesa.id}`,
         doc: despesa.numeroDocumento || "",
-        date: formatDateBR(sourceDate),
+        date: formatDateBR(allocation?.dataReferencia || sourceDate),
         value: numberValue(despesa.valorTotalDocumento),
         description: despesa.complemento || despesa.fornecedorCliente || "",
       });
@@ -993,10 +1001,11 @@ export default function CustoObras() {
 
     modalCalculations.impostos.forEach((imposto: any) => {
       const key = `receita:${imposto.id}`;
-      addItem("impostos", allocationMap.get(key) || imposto.data, {
+      const allocation = allocationMap.get(key);
+      addItem("impostos", allocation?.mesReferencia || imposto.data, {
         id: `imposto-${imposto.id}`,
         doc: imposto.numeroDocumento || "",
-        date: formatDateBR(imposto.data),
+        date: formatDateBR(allocation?.dataReferencia || imposto.data),
         value: numberValue(imposto.valorImposto),
         description: "Imposto sobre Nfe",
       });
@@ -1004,10 +1013,11 @@ export default function CustoObras() {
 
     modalCustos.forEach((custo: any) => {
       const key = `custo:${custo.id}`;
-      addItem("custos", allocationMap.get(key) || custo.dataEmissao, {
+      const allocation = allocationMap.get(key);
+      addItem("custos", allocation?.mesReferencia || custo.dataEmissao, {
         id: `custo-${custo.id}`,
         doc: custo.numeroDocumento || "",
-        date: formatDateBR(custo.dataEmissao),
+        date: formatDateBR(allocation?.dataReferencia || custo.dataEmissao),
         value: numberValue(custo.valorTotal),
         description: custo.complemento || custo.situacao || "",
       });
@@ -1212,6 +1222,7 @@ export default function CustoObras() {
       itemTipo: item.itemTipo,
       itemId: item.itemId,
       mesReferencia: getMonthInputFromDate(allocationDraft[item.key] || "") || item.currentMonth,
+      dataReferencia: allocationDraft[item.key] || item.currentDate || getDateInputFromMonth(item.currentMonth),
     }));
 
     saveResultadoAlocacoes.mutate({
@@ -1239,6 +1250,7 @@ export default function CustoObras() {
       itemTipo: item.itemTipo,
       itemId: item.itemId,
       mesReferencia: item.originalMonth,
+      dataReferencia: item.originalDate || getDateInputFromMonth(item.originalMonth),
     }));
 
     setAllocationSaveMode("reset");

@@ -222,6 +222,7 @@ export const pedidoObraResultadoAlocacoes = mysqlTable("pedido_obra_resultado_al
   itemTipo: mysqlEnum("itemTipo", ["receita", "despesa", "custo"]).notNull(),
   itemId: int("itemId").notNull(),
   mesReferencia: varchar("mesReferencia", { length: 7 }).notNull(),
+  dataReferencia: varchar("dataReferencia", { length: 10 }),
   criadoPor: varchar("criadoPor", { length: 100 }).default("Sistema"),
   criadoEm: timestamp("criadoEm").defaultNow(),
   atualizadoEm: timestamp("atualizadoEm").defaultNow().onUpdateNow(),

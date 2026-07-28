@@ -1277,6 +1277,7 @@ export async function getPedidoObraModalData(pedidoObraId: number) {
           itemTipo,
           itemId,
           mesReferencia,
+          dataReferencia,
           criadoPor,
           criadoEm,
           atualizadoEm
@@ -1312,6 +1313,7 @@ export async function savePedidoObraResultadoAlocacoes(data: {
     itemTipo: "receita" | "despesa" | "custo";
     itemId: number;
     mesReferencia: string;
+    dataReferencia?: string;
   }>;
   criadoPor?: string;
 }) {
@@ -1323,6 +1325,7 @@ export async function savePedidoObraResultadoAlocacoes(data: {
     ["receita", "despesa", "custo"].includes(item.itemTipo)
     && Number.isFinite(item.itemId)
     && /^\d{4}-\d{2}$/.test(item.mesReferencia)
+    && (!item.dataReferencia || /^\d{4}-\d{2}-\d{2}$/.test(item.dataReferencia))
   );
 
   if (validAlocacoes.length === 0) return { affectedRows: 0 };
@@ -1333,10 +1336,11 @@ export async function savePedidoObraResultadoAlocacoes(data: {
     item.itemTipo,
     item.itemId,
     item.mesReferencia,
+    item.dataReferencia || `${item.mesReferencia}-01`,
     data.criadoPor || "Sistema",
   ]);
 
-  const placeholders = validAlocacoes.map(() => "(?, ?, ?, ?, ?, ?)").join(", ");
+  const placeholders = validAlocacoes.map(() => "(?, ?, ?, ?, ?, ?, ?)").join(", ");
 
   const [result] = await _pool.query(
     `
@@ -1346,12 +1350,14 @@ export async function savePedidoObraResultadoAlocacoes(data: {
         itemTipo,
         itemId,
         mesReferencia,
+        dataReferencia,
         criadoPor
       )
       VALUES ${placeholders}
       ON DUPLICATE KEY UPDATE
         pedidoNum = VALUES(pedidoNum),
         mesReferencia = VALUES(mesReferencia),
+        dataReferencia = VALUES(dataReferencia),
         criadoPor = VALUES(criadoPor),
         atualizadoEm = CURRENT_TIMESTAMP
     `,
