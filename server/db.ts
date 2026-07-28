@@ -1325,13 +1325,7 @@ export async function savePedidoObraResultadoAlocacoes(data: {
     && /^\d{4}-\d{2}$/.test(item.mesReferencia)
   );
 
-  if (validAlocacoes.length === 0) {
-    const [resetResult] = await _pool.query(
-      "DELETE FROM pedido_obra_resultado_alocacoes WHERE pedidoObraId = ?",
-      [data.pedidoObraId],
-    );
-    return resetResult;
-  }
+  if (validAlocacoes.length === 0) return { affectedRows: 0 };
 
   const values = validAlocacoes.flatMap((item) => [
     data.pedidoObraId,

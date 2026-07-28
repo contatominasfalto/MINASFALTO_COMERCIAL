@@ -397,7 +397,6 @@ export default function CustoObras() {
   const [manualRevenueModalOpen, setManualRevenueModalOpen] = useState(false);
   const [allocationModalOpen, setAllocationModalOpen] = useState(false);
   const [allocationDraft, setAllocationDraft] = useState<Record<string, string>>({});
-  const [allocationSaveMode, setAllocationSaveMode] = useState<"save" | "reset">("save");
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [receitaGroupOpen, setReceitaGroupOpen] = useState(false);
   const [custosGroupOpen, setCustosGroupOpen] = useState(false);
@@ -539,10 +538,19 @@ export default function CustoObras() {
 
   const saveResultadoAlocacoes = trpc.pedidosObras.saveResultadoAlocacoes.useMutation({
     onSuccess: () => {
-      toast.success(allocationSaveMode === "reset" ? "Realocacoes resetadas" : "Realocacoes salvas");
+      toast.success("Realocacoes salvas");
       invalidateModal();
     },
     onError: (mutationError) => toast.error(`Erro ao salvar realocacoes: ${mutationError.message}`),
+  });
+
+  const resetResultadoAlocacoes = trpc.pedidosObras.resetResultadoAlocacoes.useMutation({
+    onSuccess: () => {
+      toast.success("Realocacoes resetadas");
+      setAllocationDraft({});
+      invalidateModal();
+    },
+    onError: (mutationError) => toast.error(`Erro ao resetar realocacoes: ${mutationError.message}`),
   });
 
   const createDespesaManual = trpc.pedidosObras.createDespesaManual.useMutation({
@@ -1152,7 +1160,11 @@ export default function CustoObras() {
 
   const handleSaveAllocations = () => {
     if (!modalPedido) return;
-    setAllocationSaveMode("save");
+    if (chronologicalAllocationItems.length === 0) {
+      toast.error("Nenhum lancamento disponivel para realocar");
+      return;
+    }
+
     const alocacoes = chronologicalAllocationItems.map((item) => ({
       itemTipo: item.itemTipo,
       itemId: item.itemId,
@@ -1168,17 +1180,7 @@ export default function CustoObras() {
 
   const handleResetAllocations = () => {
     if (!modalPedido) return;
-    setAllocationSaveMode("reset");
-
-    setAllocationDraft(Object.fromEntries(
-      chronologicalAllocationItems.map((item) => [item.key, item.originalDate || getDateInputFromMonth(item.originalMonth)]),
-    ));
-
-    saveResultadoAlocacoes.mutate({
-      pedidoObraId: modalPedido.id,
-      pedidoNum: String(modalPedido.pedido),
-      alocacoes: [],
-    });
+    resetResultadoAlocacoes.mutate({ pedidoObraId: modalPedido.id });
   };
 
   const handleSaveFinanceiro = () => {
@@ -2035,7 +2037,7 @@ export default function CustoObras() {
                           <button
                             type="button"
                             onClick={handleResetAllocations}
-                            disabled={saveResultadoAlocacoes.isPending || !hasResultadoRealocacoes}
+                            disabled={resetResultadoAlocacoes.isPending || !hasResultadoRealocacoes}
                           >
                             <RefreshCw size={14} />
                             Resetar realocacoes
