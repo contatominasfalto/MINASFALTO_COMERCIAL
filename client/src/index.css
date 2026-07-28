@@ -2059,9 +2059,8 @@
 
 .allocation-table th:nth-child(6),
 .allocation-table td:nth-child(6) {
-  width: 25%;
-  min-width: 180px;
-  max-width: 280px;
+  width: 240px;
+  min-width: 240px;
   text-align: center;
 }
 
@@ -2077,11 +2076,11 @@
 /* ============================================ */
 
 .allocation-month-input {
-  width: 100%;
-  min-width: 160px;
-  max-width: 220px;
+  width: 190px;
+  min-width: 190px;
+  max-width: 190px;
   height: 34px;
-  padding: 4px 10px;
+  padding: 4px 8px;
   border: 1.5px solid #9fb0c2;
   border-radius: 4px;
   background: #ffffff;
@@ -2097,8 +2096,8 @@
 
 /* Estilos específicos para input type date */
 .allocation-month-input[type="date"] {
-  appearance: none;
-  -webkit-appearance: none;
+  appearance: auto;
+  -webkit-appearance: auto;
   min-height: 34px;
 }
 

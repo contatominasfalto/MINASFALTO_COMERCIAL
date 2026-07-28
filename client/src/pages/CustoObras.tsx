@@ -241,6 +241,12 @@ const getDateInputFromMonth = (value: string) => {
   return "";
 };
 
+const formatDateBRFromMonth = (value: string) => {
+  if (!/^\d{4}-\d{2}$/.test(value)) return "";
+  const [year, month] = value.split("-");
+  return `01/${month}/${year}`;
+};
+
 const getMonthInputFromDate = (value: string) => {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value.slice(0, 7);
   return "";
@@ -2103,7 +2109,7 @@ export default function CustoObras() {
                         <td>{item.doc}</td>
                         <td className="expense-complement" title={item.descricao}>{item.descricao}</td>
                         <td className="num">{formatCurrency(item.valor)}</td>
-                        <td>{getMonthBucket(`${item.currentMonth}-01`).label}</td>
+                        <td>{formatDateBRFromMonth(item.currentMonth)}</td>
                         <td>
                           <Input
                             type="date"
