@@ -43,6 +43,27 @@ const dateTimeBR = (value: Date) =>
     minute: "2-digit",
   });
 
+const monthLabels = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+
+const monthKey = (value: unknown) => {
+  const text = String(value ?? "").trim();
+  if (/^\d{4}-\d{2}$/.test(text)) return text;
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}`;
+  const br = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (br) return `${br[3]}-${br[2]}`;
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const monthLabel = (key: string) => {
+  const match = key.match(/^(\d{4})-(\d{2})$/);
+  if (!match) return "SEM DATA";
+  const [, year, month] = match;
+  return `${monthLabels[Number(month) - 1] || month}/${String(year).slice(-2)}`;
+};
+
 const pdfText = (value: unknown) => String(value ?? "").toUpperCase()
   .replace(/\\/g, "\\\\")
   .replace(/\(/g, "\\(")
@@ -285,6 +306,152 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
   };
 }
 
+async function buildCronologicoPdf(pedidoObraIdOrPedidoNum: number, referenciaMes: string) {
+  if (!/^\d{4}-\d{2}$/.test(referenciaMes)) throw new Error(`Mes invalido: ${referenciaMes}`);
+
+  const pedido = await db.getPedidoObraById(pedidoObraIdOrPedidoNum)
+    ?? await db.getPedidoObraByNumber(String(pedidoObraIdOrPedidoNum));
+  if (!pedido) throw new Error(`Pedido nao encontrado: ${pedidoObraIdOrPedidoNum}`);
+
+  const pedidoObraId = Number(pedido.id);
+  const modal = await db.getPedidoObraModalData(pedidoObraId);
+  const alocacoes = new Map<string, any>();
+  (modal.resultadoAlocacoes as any[]).forEach((item) => {
+    alocacoes.set(`${item.itemTipo}:${item.itemId}`, item);
+  });
+  const alocacaoMes = (tipo: string, item: any, originalDate: unknown) => {
+    const allocation = alocacoes.get(`${tipo}:${item.id}`);
+    return allocation?.mesReferencia || monthKey(originalDate);
+  };
+  const alocacaoData = (tipo: string, item: any, originalDate: unknown) => {
+    const allocation = alocacoes.get(`${tipo}:${item.id}`);
+    return allocation?.dataReferencia || originalDate;
+  };
+
+  const receitas = (modal.receitas as any[]).filter((item) => alocacaoMes("receita", item, item.data) === referenciaMes);
+  const despesas = (modal.despesas as any[]).filter((item) => {
+    const sourceDate = item.dataVencimento || item.dataEmissao;
+    return alocacaoMes("despesa", item, sourceDate) === referenciaMes;
+  });
+  const custos = (modal.custos as any[]).filter((item) => alocacaoMes("custo", item, item.dataEmissao) === referenciaMes);
+  const percent = Number(modal.financeiro?.porcentagemImposto ?? 17) || 17;
+  const receitaTotal = receitas.reduce((sum, item) => sum + Number(item.valor || 0), 0);
+  const impostoTotal = receitas
+    .filter((item) => item.status === "Nfe")
+    .reduce((sum, item) => sum + Number(item.valor || 0), 0) * (percent / 100);
+  const despesaTotal = despesas.reduce((sum, item) => sum + Number(item.valorTotalDocumento || 0), 0);
+  const custoTotal = custos.reduce((sum, item) => sum + Number(item.valorTotal || 0), 0);
+  const saldo = receitaTotal - impostoTotal - despesaTotal - custoTotal;
+
+  const timbrado = await loadJpeg("client/src/assets/papel-timbrado-minasfalto.jpeg");
+  const assinatura = await loadJpeg("client/src/assets/assinatura-diretor.jpg");
+  const logo = await loadJpeg("client/src/assets/minasfalto-logo.jpg");
+  const pages: string[] = [];
+  let content = "";
+  let y = 790;
+  const newPage = () => {
+    if (content) pages.push(content);
+    content = drawPageBackground(timbrado);
+    content += "q 92 0 0 92 42 750 cm /LOGO Do Q\n";
+    y = 790;
+    content += drawCenteredText("RESULTADO CRONOLOGICO", y, 17, true, "0 0.10 0.20");
+    content += drawCenteredText(`Pedido ${pedido.pedido} - ${pedido.cliente}`, y - 20, 10, true, "0.20 0.28 0.36");
+    content += drawCenteredText(`Periodo ${monthLabel(referenciaMes)}`, y - 36, 10, true, "0.20 0.28 0.36");
+    content += "0.95 0.65 0.10 RG 50 736 m 545 736 l S\n";
+    y = 692;
+  };
+  const card = (label: string, value: unknown, x: number, width = 115) => {
+    content += drawRect(x, y, width, 36, "1 1 1");
+    content += drawText(label.toUpperCase(), x + 6, y + 22, 6, true, "0.38 0.45 0.54");
+    content += drawText(value, x + 6, y + 8, 8, true, "0 0.10 0.20");
+  };
+  const section = (title: string, headers: string[], rows: unknown[][]) => {
+    if (y < CONTENT_BOTTOM_Y + 70) newPage();
+    const widths = headers.map(() => 495 / headers.length);
+    content += drawRect(50, y, 495, 18, "0.86 0.90 0.94");
+    content += drawText(title, 56, y + 6, 9, true, "0 0.10 0.20");
+    y -= 18;
+    headers.forEach((header, index) => {
+      content += drawText(header, 52 + widths.slice(0, index).reduce((a, b) => a + b, 0), y + 5, 6, true, "0 0.10 0.20");
+    });
+    y -= 14;
+    const tableRows = rows.length ? rows : [[`Nenhum registro em ${title.toLowerCase()}`]];
+    for (const row of tableRows) {
+      if (y < CONTENT_BOTTOM_Y) newPage();
+      row.forEach((cell, index) => {
+        const x = 52 + widths.slice(0, index).reduce((a, b) => a + b, 0);
+        wrap(cell, Math.max(10, Math.floor(widths[index] / 4.2)), 2).forEach((line, lineIndex) => {
+          content += drawText(line, x, y - lineIndex * 8, 6);
+        });
+      });
+      y -= 22;
+    }
+    y -= 10;
+  };
+  const signatureBlock = () => {
+    if (y < CONTENT_BOTTOM_Y + 100) newPage();
+    y -= 24;
+    const signatureWidth = 190;
+    const signatureHeight = 25;
+    const signatureX = (PAGE_WIDTH - signatureWidth) / 2;
+    const signatureY = y - signatureHeight;
+    const lineY = signatureY - 8;
+    content += `q ${signatureWidth} 0 0 ${signatureHeight} ${signatureX} ${signatureY} cm /SIG Do Q\n`;
+    content += `0 0 0 RG 190 ${lineY} m 405 ${lineY} l S\n`;
+    content += drawCenteredText("MINASFALTO INDUSTRIA E COMERCIO LTDA", lineY - 14, 8, false, "0 0 0");
+    content += drawCenteredText("Marco Aurelio Barreto Modesto", lineY - 28, 8, false, "0 0 0");
+    content += drawCenteredText("CPF n 055.467.797-05 - CI n 1.481.440", lineY - 42, 8, false, "0 0 0");
+    y = lineY - 62;
+  };
+
+  newPage();
+  card("Pedido", pedido.pedido, 50);
+  card("Periodo", monthLabel(referenciaMes), 174);
+  card("Data impressao", dateTimeBR(new Date()), 298, 130);
+  card("Status", pedido.status, 437, 108);
+  y -= 54;
+  card("Receita", money(receitaTotal), 50);
+  card("Impostos", money(impostoTotal), 149);
+  card("Despesas", money(despesaTotal), 248);
+  card("Custos", money(custoTotal), 347);
+  card("Saldo", money(saldo), 446, 99);
+  y -= 55;
+
+  section("Receitas", ["N Doc", "Status", "Data", "Valor", "Descricao"], receitas.map((item) => [
+    item.numeroDocumento,
+    item.status === "Outros" ? item.tipoReceitaOutros || "Outros" : item.status,
+    dateBR(alocacaoData("receita", item, item.data)),
+    money(item.valor),
+    item.descricao,
+  ]));
+  section("Despesas", ["Codigo", "Fornecedor", "Doc", "Valor", "Complemento"], despesas.map((item) => [
+    item.codigoFornecedorCliente,
+    item.fornecedorCliente,
+    item.numeroDocumento,
+    money(item.valorTotalDocumento),
+    item.complemento,
+  ]));
+  section("Impostos", ["N Doc", "Data", "Valor"], receitas.filter((item) => item.status === "Nfe").map((item) => [
+    item.numeroDocumento,
+    dateBR(alocacaoData("receita", item, item.data)),
+    money(Number(item.valor || 0) * (percent / 100)),
+  ]));
+  section("Custos", ["N Doc", "Data", "Valor", "Situacao", "Complemento"], custos.map((item) => [
+    item.numeroDocumento,
+    dateBR(alocacaoData("custo", item, item.dataEmissao)),
+    money(item.valorTotal),
+    item.situacao,
+    item.complemento,
+  ]));
+  signatureBlock();
+  pages.push(content);
+
+  return {
+    filename: `pdf-crono-${pedido.pedido}-${referenciaMes}-${new Date().toISOString().slice(0, 10)}.pdf`,
+    buffer: createPdf(pages, timbrado, assinatura, logo),
+  };
+}
+
 export function registerMedicaoPdfRoutes(app: Express) {
   const handler = async (req: Request, res: Response) => {
     const pedidoObraIdOrPedidoNum = Number(req.params.id);
@@ -303,8 +470,28 @@ export function registerMedicaoPdfRoutes(app: Express) {
       res.status(500).send(`Erro ao gerar PDF do resultado obra: ${message}`);
     }
   };
+  const cronologicoHandler = async (req: Request, res: Response) => {
+    const pedidoObraIdOrPedidoNum = Number(req.params.id);
+    const referenciaMes = String(req.params.month || "");
+    if (!Number.isFinite(pedidoObraIdOrPedidoNum)) {
+      res.status(400).send("Pedido invalido");
+      return;
+    }
+    try {
+      const pdf = await buildCronologicoPdf(pedidoObraIdOrPedidoNum, referenciaMes);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${pdf.filename}"`);
+      res.send(pdf.buffer);
+    } catch (error) {
+      console.error("[CronologicoPDF]", error);
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).send(`Erro ao gerar PDF cronologico: ${message}`);
+    }
+  };
 
   app.get("/api/medicao-obras/:id/pdf", handler);
+  app.get("/api/medicao-obras/:id/cronologico/:month/pdf", cronologicoHandler);
   const appBasePath = getAppBasePath();
   if (appBasePath) app.get(`${appBasePath}/api/medicao-obras/:id/pdf`, handler);
+  if (appBasePath) app.get(`${appBasePath}/api/medicao-obras/:id/cronologico/:month/pdf`, cronologicoHandler);
 }

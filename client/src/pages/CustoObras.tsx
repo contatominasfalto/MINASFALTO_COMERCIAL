@@ -1157,6 +1157,10 @@ export default function CustoObras() {
     const basePath = window.location.pathname.startsWith("/control_pedidos") ? "/control_pedidos" : "";
     return `${basePath}/api/medicao-obras/${pedidoNumero}/pdf`;
   };
+  const getCronologicoPdfUrl = (pedidoNumero: string | number, monthKey: string) => {
+    const basePath = window.location.pathname.startsWith("/control_pedidos") ? "/control_pedidos" : "";
+    return `${basePath}/api/medicao-obras/${pedidoNumero}/cronologico/${monthKey}/pdf`;
+  };
   const updateFinanceField = (field: keyof typeof financeForm, value: string) => {
     setFinanceForm((current) => ({ ...current, [field]: value }));
   };
@@ -2214,7 +2218,19 @@ export default function CustoObras() {
                                 <div className="cost-chronological-grid">
                                   {year.months.map((month) => (
                                     <article className="cost-chronological-month" key={month.key}>
-                                      <header>{month.label}</header>
+                                      <header>
+                                        <span>{month.label}</span>
+                                        {modalPedido ? (
+                                          <a
+                                            className="cost-chronological-pdf"
+                                            href={getCronologicoPdfUrl(modalPedido.pedido, month.key)}
+                                            title={`Extrair PDF Crono de ${month.label}`}
+                                          >
+                                            <FileText size={12} />
+                                            PDF Crono
+                                          </a>
+                                        ) : null}
+                                      </header>
                                       {(["receitas", "despesas", "impostos", "custos"] as ChronologicalGroupKey[]).map((groupKey) => {
                                         const group = month.groups[groupKey];
                                         const openKey = `${month.key}:${groupKey}`;
