@@ -15,7 +15,6 @@ type SortColumn =
   | "dataPedido"
   | "cliente"
   | "status"
-  | "qtde"
   | "totalPedido"
   | "saldo";
 
@@ -285,7 +284,7 @@ const compareText = (left: unknown, right: unknown) =>
 
 const sortValue = (pedido: any, column: SortColumn) => {
   if (column === "dataPedido") return parseDateValue(pedido[column]);
-  if (["qtde", "totalPedido", "saldo"].includes(column)) {
+  if (["totalPedido", "saldo"].includes(column)) {
     return numberValue(pedido[column]);
   }
   return pedido[column];
@@ -296,7 +295,6 @@ const tableColumns: { key: SortColumn; label: string; align?: "num" }[] = [
   { key: "dataPedido", label: "Data Ped." },
   { key: "cliente", label: "Cliente" },
   { key: "status", label: "Status" },
-  { key: "qtde", label: "Qtde", align: "num" },
   { key: "totalPedido", label: "Total (R$)", align: "num" },
   { key: "saldo", label: "Saldo (R$)", align: "num" },
 ];
@@ -621,7 +619,6 @@ export default function CustoObras() {
         "Data Ped.",
         "Cliente",
         "Status",
-        "Qtde",
         "Total (R$)",
         "Saldo (R$)",
       ];
@@ -645,7 +642,6 @@ export default function CustoObras() {
           pedido.dataPedido,
           pedido.cliente,
           pedido.status,
-          formatDecimal(pedido.qtde),
           formatCurrency(pedido.totalPedido),
           formatCurrency(pedido.saldo),
         ]),
@@ -751,12 +747,11 @@ export default function CustoObras() {
   const totals = useMemo(() => {
     return visiblePedidos.reduce(
       (acc, pedido) => {
-        acc.qtde += numberValue(pedido.qtde);
         acc.total += numberValue(pedido.totalPedido);
         acc.saldo += numberValue(pedido.saldo);
         return acc;
       },
-      { qtde: 0, total: 0, saldo: 0 }
+      { total: 0, saldo: 0 }
     );
   }, [visiblePedidos]);
 
@@ -1479,7 +1474,6 @@ export default function CustoObras() {
                     <th>Data Ped.</th>
                     <th>Cliente</th>
                     <th>Status</th>
-                    <th>Qtde</th>
                     <th>Total (R$)</th>
                     <th>Saldo (R$)</th>
                   </tr>
@@ -1487,17 +1481,17 @@ export default function CustoObras() {
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td colSpan={7} className="desktop-empty">Carregando pedidos de obras...</td>
+                      <td colSpan={6} className="desktop-empty">Carregando pedidos de obras...</td>
                     </tr>
                   ) : error ? (
                     <tr>
-                      <td colSpan={7} className="desktop-empty">
+                      <td colSpan={6} className="desktop-empty">
                         Erro ao carregar pedidos de obras: {error.message}
                       </td>
                     </tr>
                   ) : visiblePedidos.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="desktop-empty">Nenhum pedido de obras encontrado</td>
+                      <td colSpan={6} className="desktop-empty">Nenhum pedido de obras encontrado</td>
                     </tr>
                   ) : (
                     visiblePedidos.map((pedido) => {
@@ -1527,7 +1521,6 @@ export default function CustoObras() {
                           <td>{pedido.dataPedido}</td>
                           <td className="desktop-client" title={pedido.materiais || ""}>{pedido.cliente}</td>
                           <td className="desktop-status">{pedido.status}</td>
-                          <td className="num">{formatDecimal(pedido.qtde)}</td>
                           <td className="num">{formatCurrency(pedido.totalPedido)}</td>
                           <td className={`num ${isNegativeAmount(pedido.saldo) ? "negative-amount" : ""}`}>
                             {formatCurrency(pedido.saldo)}
@@ -1544,7 +1537,6 @@ export default function CustoObras() {
           <footer className="desktop-footer">
             <div className="desktop-subtotals">
               <strong>SUBTOTAL DOS PEDIDOS EXIBIDOS:</strong>
-              <span>Qtde: <b>{formatDecimal(totals.qtde, 3)}</b></span>
               <span>Total: <b>{formatCurrency(totals.total)}</b></span>
               <span>Saldo: <b>{formatCurrency(totals.saldo)}</b></span>
             </div>
