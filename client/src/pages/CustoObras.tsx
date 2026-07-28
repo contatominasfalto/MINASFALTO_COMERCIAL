@@ -1477,6 +1477,7 @@ export default function CustoObras() {
                             setDespesasGroupSearch("");
                             setImpostosGroupSearch("");
                             setModalResultTab("geral");
+                            setChronologicalOpenYears({});
                             setChronologicalOpenGroups({});
                             setModalPedido(pedido);
                           }}
@@ -1665,6 +1666,7 @@ export default function CustoObras() {
           setDespesasGroupSearch("");
           setImpostosGroupSearch("");
           setModalResultTab("geral");
+          setChronologicalOpenYears({});
           setChronologicalOpenGroups({});
           setAllocationModalOpen(false);
           setAllocationDraft({});
@@ -2104,7 +2106,7 @@ export default function CustoObras() {
                     ) : (
                       <div className="cost-chronological-years">
                         {chronologicalYears.map((year) => {
-                          const isYearOpen = chronologicalOpenYears[year.key] ?? true;
+                          const isYearOpen = chronologicalOpenYears[year.key] ?? false;
                           const yearItems = chronologicalAllocationItems.filter((item) => getYearKeyFromMonth(item.currentMonth) === year.key);
                           const hasYearRealocacoes = yearItems.some((item) => (
                             allocationMap.get(item.key) !== undefined && item.currentMonth !== item.originalMonth
