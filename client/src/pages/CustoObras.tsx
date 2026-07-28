@@ -1169,11 +1169,6 @@ export default function CustoObras() {
   const handleResetAllocations = () => {
     if (!modalPedido) return;
     setAllocationSaveMode("reset");
-    const alocacoes = chronologicalAllocationItems.map((item) => ({
-      itemTipo: item.itemTipo,
-      itemId: item.itemId,
-      mesReferencia: item.originalMonth,
-    }));
 
     setAllocationDraft(Object.fromEntries(
       chronologicalAllocationItems.map((item) => [item.key, item.originalDate || getDateInputFromMonth(item.originalMonth)]),
@@ -1182,7 +1177,7 @@ export default function CustoObras() {
     saveResultadoAlocacoes.mutate({
       pedidoObraId: modalPedido.id,
       pedidoNum: String(modalPedido.pedido),
-      alocacoes,
+      alocacoes: [],
     });
   };
 

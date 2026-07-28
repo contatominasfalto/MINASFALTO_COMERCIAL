@@ -229,7 +229,7 @@ const pedidoObraResultadoAlocacoesSchema = z.object({
     itemTipo: z.enum(["receita", "despesa", "custo"]),
     itemId: z.number().int().positive(),
     mesReferencia: z.string().regex(/^\d{4}-\d{2}$/),
-  })).min(1),
+  })),
 });
 
 export const appRouter = router({
