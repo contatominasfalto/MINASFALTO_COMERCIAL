@@ -49,6 +49,13 @@ type ChronologicalMonth = {
   groups: Record<ChronologicalGroupKey, ChronologicalGroup>;
 };
 
+type ChronologicalYear = {
+  key: string;
+  label: string;
+  order: number;
+  months: ChronologicalMonth[];
+};
+
 type ChronologicalAllocationItem = {
   key: string;
   itemTipo: "receita" | "despesa" | "custo";
@@ -267,6 +274,11 @@ const getMonthInputFromDate = (value: string) => {
   return "";
 };
 
+const getYearKeyFromMonth = (value: string) => {
+  if (/^\d{4}-\d{2}$/.test(value)) return value.slice(0, 4);
+  return "sem-data";
+};
+
 const compareText = (left: unknown, right: unknown) =>
   String(left || "").localeCompare(String(right || ""), "pt-BR", {
     numeric: true,
@@ -357,6 +369,7 @@ export default function CustoObras() {
   const [selectedPedido, setSelectedPedido] = useState<any>(null);
   const [modalPedido, setModalPedido] = useState<any>(null);
   const [modalResultTab, setModalResultTab] = useState<"geral" | "cronologico">("geral");
+  const [chronologicalOpenYears, setChronologicalOpenYears] = useState<Record<string, boolean>>({});
   const [chronologicalOpenGroups, setChronologicalOpenGroups] = useState<Record<string, boolean>>({});
   const [pedidosPage, setPedidosPage] = useState(1);
   const [pedidosPageSize, setPedidosPageSize] = useState(50);
@@ -397,6 +410,7 @@ export default function CustoObras() {
   const [manualExpenseModalOpen, setManualExpenseModalOpen] = useState(false);
   const [manualRevenueModalOpen, setManualRevenueModalOpen] = useState(false);
   const [allocationModalOpen, setAllocationModalOpen] = useState(false);
+  const [selectedAllocationYear, setSelectedAllocationYear] = useState<string | null>(null);
   const [allocationDraft, setAllocationDraft] = useState<Record<string, string>>({});
   const [allocationSaveMode, setAllocationSaveMode] = useState<"save" | "reset">("save");
   const [linkModalOpen, setLinkModalOpen] = useState(false);
@@ -918,10 +932,6 @@ export default function CustoObras() {
     });
   }, [allocationMap, modalCustos, modalDespesas, modalReceitas]);
 
-  const hasResultadoRealocacoes = useMemo(() => {
-    return chronologicalAllocationItems.some((item) => allocationMap.get(item.key) !== undefined && item.currentMonth !== item.originalMonth);
-  }, [allocationMap, chronologicalAllocationItems]);
-
   const chronologicalResults = useMemo(() => {
     const createGroups = (): Record<ChronologicalGroupKey, ChronologicalGroup> => ({
       receitas: { key: "receitas", label: "Receita", total: 0, items: [] },
@@ -1019,6 +1029,35 @@ export default function CustoObras() {
 
     return Array.from(months.values()).sort((left, right) => left.order - right.order);
   }, [allocationMap, modalCalculations.impostos, modalCustos, modalDespesas, modalReceitas]);
+
+  const chronologicalYears = useMemo<ChronologicalYear[]>(() => {
+    const years = new Map<string, ChronologicalYear>();
+
+    chronologicalResults.forEach((month) => {
+      const yearKey = getYearKeyFromMonth(month.key);
+      const currentYear = years.get(yearKey);
+      const year = currentYear || {
+        key: yearKey,
+        label: yearKey === "sem-data" ? "Sem data" : `Ano ${yearKey}`,
+        order: yearKey === "sem-data" ? 999999 : Number(yearKey),
+        months: [],
+      };
+
+      year.months.push(month);
+      years.set(yearKey, year);
+    });
+
+    years.forEach((year) => {
+      year.months.sort((left, right) => left.order - right.order);
+    });
+
+    return Array.from(years.values()).sort((left, right) => left.order - right.order);
+  }, [chronologicalResults]);
+
+  const allocationItemsForSelectedYear = useMemo(() => {
+    if (!selectedAllocationYear) return chronologicalAllocationItems;
+    return chronologicalAllocationItems.filter((item) => getYearKeyFromMonth(item.currentMonth) === selectedAllocationYear);
+  }, [chronologicalAllocationItems, selectedAllocationYear]);
 
   const filteredModalReceitas = useMemo(() => {
     return modalReceitas.filter((receita: any) => matchesSearch([
@@ -1149,22 +1188,27 @@ export default function CustoObras() {
     setManualRevenueModalOpen(true);
   };
 
-  const openAllocationModal = () => {
+  const openAllocationModal = (yearKey?: string) => {
+    const items = yearKey
+      ? chronologicalAllocationItems.filter((item) => getYearKeyFromMonth(item.currentMonth) === yearKey)
+      : chronologicalAllocationItems;
+
+    setSelectedAllocationYear(yearKey || null);
     setAllocationDraft(Object.fromEntries(
-      chronologicalAllocationItems.map((item) => [item.key, item.currentDate || getDateInputFromMonth(item.currentMonth)]),
+      items.map((item) => [item.key, item.currentDate || getDateInputFromMonth(item.currentMonth)]),
     ));
     setAllocationModalOpen(true);
   };
 
   const handleSaveAllocations = () => {
     if (!modalPedido) return;
-    if (chronologicalAllocationItems.length === 0) {
+    if (allocationItemsForSelectedYear.length === 0) {
       toast.error("Nenhum lancamento disponivel para realocar");
       return;
     }
 
     setAllocationSaveMode("save");
-    const alocacoes = chronologicalAllocationItems.map((item) => ({
+    const alocacoes = allocationItemsForSelectedYear.map((item) => ({
       itemTipo: item.itemTipo,
       itemId: item.itemId,
       mesReferencia: getMonthInputFromDate(allocationDraft[item.key] || "") || item.currentMonth,
@@ -1177,14 +1221,21 @@ export default function CustoObras() {
     });
   };
 
-  const handleResetAllocations = () => {
+  const handleResetAllocations = (yearKey?: string) => {
     if (!modalPedido) return;
-    if (chronologicalAllocationItems.length === 0) {
+    const items = yearKey
+      ? chronologicalAllocationItems.filter((item) => getYearKeyFromMonth(item.currentMonth) === yearKey)
+      : chronologicalAllocationItems;
+    const realocatedItems = items.filter((item) => (
+      allocationMap.get(item.key) !== undefined && item.currentMonth !== item.originalMonth
+    ));
+
+    if (realocatedItems.length === 0) {
       toast.error("Nenhum lancamento disponivel para resetar");
       return;
     }
 
-    const alocacoes = chronologicalAllocationItems.map((item) => ({
+    const alocacoes = realocatedItems.map((item) => ({
       itemTipo: item.itemTipo,
       itemId: item.itemId,
       mesReferencia: item.originalMonth,
@@ -1192,7 +1243,7 @@ export default function CustoObras() {
 
     setAllocationSaveMode("reset");
     setAllocationDraft(Object.fromEntries(
-      chronologicalAllocationItems.map((item) => [item.key, item.originalDate || getDateInputFromMonth(item.originalMonth)]),
+      realocatedItems.map((item) => [item.key, item.originalDate || getDateInputFromMonth(item.originalMonth)]),
     ));
 
     saveResultadoAlocacoes.mutate({
@@ -2048,106 +2099,155 @@ export default function CustoObras() {
                   </>
                 ) : (
                   <section className="cost-chronological-panel" aria-label="Result Cronologico">
-                    {chronologicalResults.length === 0 ? (
+                    {chronologicalYears.length === 0 ? (
                       <div className="cost-chronological-empty">Nenhum resultado cronologico disponivel</div>
                     ) : (
-                      <>
-                        <div className="cost-chronological-toolbar">
-                          <button
-                            type="button"
-                            onClick={handleResetAllocations}
-                            disabled={saveResultadoAlocacoes.isPending || !hasResultadoRealocacoes}
-                          >
-                            <RefreshCw size={14} />
-                            Resetar realocacoes
-                          </button>
-                          <button type="button" onClick={openAllocationModal}>
-                            <Pencil size={14} />
-                            Realocar lancamentos
-                          </button>
-                        </div>
-                        <div className="cost-chronological-grid">
-                          {chronologicalResults.map((month) => (
-                            <article className="cost-chronological-month" key={month.key}>
-                              <header>{month.label}</header>
-                              {(["receitas", "despesas", "impostos", "custos"] as ChronologicalGroupKey[]).map((groupKey) => {
-                                const group = month.groups[groupKey];
-                                const openKey = `${month.key}:${groupKey}`;
-                                const isOpen = Boolean(chronologicalOpenGroups[openKey]);
+                      <div className="cost-chronological-years">
+                        {chronologicalYears.map((year) => {
+                          const isYearOpen = chronologicalOpenYears[year.key] ?? true;
+                          const yearItems = chronologicalAllocationItems.filter((item) => getYearKeyFromMonth(item.currentMonth) === year.key);
+                          const hasYearRealocacoes = yearItems.some((item) => (
+                            allocationMap.get(item.key) !== undefined && item.currentMonth !== item.originalMonth
+                          ));
 
-                                return (
-                                  <section
-                                    key={openKey}
-                                    className={`cost-chronological-group ${isOpen ? "expanded" : "collapsed"}`}
+                          return (
+                            <section
+                              className={`cost-chronological-year ${isYearOpen ? "expanded" : "collapsed"}`}
+                              key={year.key}
+                            >
+                              <header className="cost-chronological-year-header">
+                                <div className="cost-chronological-year-title-row">
+                                  <button
+                                    type="button"
+                                    className="cost-group-toggle"
+                                    onClick={() => setChronologicalOpenYears((current) => ({
+                                      ...current,
+                                      [year.key]: !isYearOpen,
+                                    }))}
+                                    aria-expanded={isYearOpen}
+                                    title={isYearOpen ? `Recolher ${year.label}` : `Expandir ${year.label}`}
                                   >
-                                    <div className="cost-chronological-group-title-row">
-                                      <button
-                                        type="button"
-                                        className="cost-group-toggle"
-                                        onClick={() => setChronologicalOpenGroups((current) => ({
-                                          ...current,
-                                          [openKey]: !current[openKey],
-                                        }))}
-                                        aria-expanded={isOpen}
-                                        title={isOpen ? `Recolher ${group.label}` : `Expandir ${group.label}`}
-                                      >
-                                        {isOpen ? "-" : "+"}
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="cost-group-title chronological-title"
-                                        onClick={() => setChronologicalOpenGroups((current) => ({
-                                          ...current,
-                                          [openKey]: !current[openKey],
-                                        }))}
-                                        aria-expanded={isOpen}
-                                      >
-                                        <span>{group.label}</span>
-                                        <strong>{formatCurrency(group.total)}</strong>
-                                      </button>
-                                    </div>
+                                    {isYearOpen ? "-" : "+"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="cost-group-title chronological-year-title"
+                                    onClick={() => setChronologicalOpenYears((current) => ({
+                                      ...current,
+                                      [year.key]: !isYearOpen,
+                                    }))}
+                                    aria-expanded={isYearOpen}
+                                  >
+                                    <span>{year.label}</span>
+                                  </button>
+                                </div>
+                                <div className="cost-chronological-toolbar year-toolbar">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleResetAllocations(year.key)}
+                                    disabled={saveResultadoAlocacoes.isPending || !hasYearRealocacoes}
+                                  >
+                                    <RefreshCw size={14} />
+                                    Resetar realocacoes
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openAllocationModal(year.key)}
+                                    disabled={yearItems.length === 0}
+                                  >
+                                    <Pencil size={14} />
+                                    Realocar lancamentos
+                                  </button>
+                                </div>
+                              </header>
 
-                                    {isOpen ? (
-                                      <div className="cost-chronological-table-frame">
-                                        <table className="desktop-table cost-chronological-table">
-                                          <thead>
-                                            <tr>
-                                              <th>Doc</th>
-                                              <th>Data</th>
-                                              <th>Valor</th>
-                                              <th>Descricao</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {group.items.length === 0 ? (
-                                              <tr>
-                                                <td colSpan={4} className="desktop-empty">Nenhum item no periodo</td>
-                                              </tr>
-                                            ) : (
-                                              group.items.map((item) => (
-                                                <tr key={item.id}>
-                                                  <td>{item.doc}</td>
-                                                  <td>{item.date}</td>
-                                                  <td className="num">{formatCurrency(item.value)}</td>
-                                                  <td className="expense-complement" title={item.description}>{item.description}</td>
-                                                </tr>
-                                              ))
-                                            )}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    ) : null}
-                                  </section>
-                                );
-                              })}
-                              <footer className="cost-chronological-month-balance">
-                                <span>Saldo</span>
-                                <strong className={month.saldo < 0 ? "negative-amount" : ""}>{formatCurrency(month.saldo)}</strong>
-                              </footer>
-                            </article>
-                          ))}
-                        </div>
-                      </>
+                              {isYearOpen ? (
+                                <div className="cost-chronological-grid">
+                                  {year.months.map((month) => (
+                                    <article className="cost-chronological-month" key={month.key}>
+                                      <header>{month.label}</header>
+                                      {(["receitas", "despesas", "impostos", "custos"] as ChronologicalGroupKey[]).map((groupKey) => {
+                                        const group = month.groups[groupKey];
+                                        const openKey = `${month.key}:${groupKey}`;
+                                        const isOpen = Boolean(chronologicalOpenGroups[openKey]);
+
+                                        return (
+                                          <section
+                                            key={openKey}
+                                            className={`cost-chronological-group ${isOpen ? "expanded" : "collapsed"}`}
+                                          >
+                                            <div className="cost-chronological-group-title-row">
+                                              <button
+                                                type="button"
+                                                className="cost-group-toggle"
+                                                onClick={() => setChronologicalOpenGroups((current) => ({
+                                                  ...current,
+                                                  [openKey]: !current[openKey],
+                                                }))}
+                                                aria-expanded={isOpen}
+                                                title={isOpen ? `Recolher ${group.label}` : `Expandir ${group.label}`}
+                                              >
+                                                {isOpen ? "-" : "+"}
+                                              </button>
+                                              <button
+                                                type="button"
+                                                className="cost-group-title chronological-title"
+                                                onClick={() => setChronologicalOpenGroups((current) => ({
+                                                  ...current,
+                                                  [openKey]: !current[openKey],
+                                                }))}
+                                                aria-expanded={isOpen}
+                                              >
+                                                <span>{group.label}</span>
+                                                <strong>{formatCurrency(group.total)}</strong>
+                                              </button>
+                                            </div>
+
+                                            {isOpen ? (
+                                              <div className="cost-chronological-table-frame">
+                                                <table className="desktop-table cost-chronological-table">
+                                                  <thead>
+                                                    <tr>
+                                                      <th>Doc</th>
+                                                      <th>Data</th>
+                                                      <th>Valor</th>
+                                                      <th>Descricao</th>
+                                                    </tr>
+                                                  </thead>
+                                                  <tbody>
+                                                    {group.items.length === 0 ? (
+                                                      <tr>
+                                                        <td colSpan={4} className="desktop-empty">Nenhum item no periodo</td>
+                                                      </tr>
+                                                    ) : (
+                                                      group.items.map((item) => (
+                                                        <tr key={item.id}>
+                                                          <td>{item.doc}</td>
+                                                          <td>{item.date}</td>
+                                                          <td className="num">{formatCurrency(item.value)}</td>
+                                                          <td className="expense-complement" title={item.description}>{item.description}</td>
+                                                        </tr>
+                                                      ))
+                                                    )}
+                                                  </tbody>
+                                                </table>
+                                              </div>
+                                            ) : null}
+                                          </section>
+                                        );
+                                      })}
+                                      <footer className="cost-chronological-month-balance">
+                                        <span>Saldo</span>
+                                        <strong className={month.saldo < 0 ? "negative-amount" : ""}>{formatCurrency(month.saldo)}</strong>
+                                      </footer>
+                                    </article>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </section>
+                          );
+                        })}
+                      </div>
                     )}
                   </section>
                 )}
@@ -2157,11 +2257,16 @@ export default function CustoObras() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={allocationModalOpen} onOpenChange={setAllocationModalOpen}>
+      <Dialog open={allocationModalOpen} onOpenChange={(open) => {
+        setAllocationModalOpen(open);
+        if (!open) setSelectedAllocationYear(null);
+      }}>
         <DialogContent className="allocation-dialog">
           <DialogHeader>
             <DialogTitle>Realocar lancamentos</DialogTitle>
-            <DialogDescription>Pedido {modalPedido?.pedido}</DialogDescription>
+            <DialogDescription>
+              Pedido {modalPedido?.pedido}{selectedAllocationYear ? ` - ${selectedAllocationYear === "sem-data" ? "Sem data" : `Ano ${selectedAllocationYear}`}` : ""}
+            </DialogDescription>
           </DialogHeader>
 
           <section className="allocation-table-frame">
@@ -2177,12 +2282,12 @@ export default function CustoObras() {
                 </tr>
               </thead>
               <tbody>
-                {chronologicalAllocationItems.length === 0 ? (
+                {allocationItemsForSelectedYear.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="desktop-empty">Nenhum lancamento para realocar</td>
                   </tr>
                 ) : (
-                  chronologicalAllocationItems.map((item) => {
+                  allocationItemsForSelectedYear.map((item) => {
                     const currentDate = allocationDraft[item.key] || item.currentDate || getDateInputFromMonth(item.currentMonth);
                     return (
                       <tr key={item.key}>
@@ -2217,7 +2322,7 @@ export default function CustoObras() {
             <button
               type="button"
               onClick={handleSaveAllocations}
-              disabled={saveResultadoAlocacoes.isPending || chronologicalAllocationItems.length === 0}
+              disabled={saveResultadoAlocacoes.isPending || allocationItemsForSelectedYear.length === 0}
             >
               <Save size={14} />
               {saveResultadoAlocacoes.isPending ? "Salvando..." : "Salvar"}

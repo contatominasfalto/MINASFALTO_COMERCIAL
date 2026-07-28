@@ -1944,6 +1944,62 @@
   padding: 10px;
 }
 
+.cost-chronological-years {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: max-content;
+  padding: 10px;
+}
+
+.cost-chronological-year {
+  min-width: 760px;
+  border: 1px solid #8fa2b7;
+  background: #f7f9fc;
+}
+
+.cost-chronological-year-header {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 8px;
+  border-bottom: 1px solid #a8b6c6;
+  background: linear-gradient(#f8fafc, #dfe8f2);
+}
+
+.cost-chronological-year.collapsed .cost-chronological-year-header {
+  border-bottom: 0;
+}
+
+.cost-chronological-year-title-row {
+  display: grid;
+  grid-template-columns: 28px minmax(180px, 240px);
+  align-items: center;
+  min-width: 230px;
+}
+
+.cost-chronological-year-title-row .cost-group-toggle {
+  margin: 4px;
+}
+
+.chronological-year-title {
+  width: calc(100% - 8px);
+  min-width: 0;
+  margin: 4px;
+  justify-content: center;
+  text-transform: uppercase;
+}
+
+.cost-chronological-year > .cost-chronological-grid {
+  padding: 10px;
+}
+
+.cost-chronological-toolbar.year-toolbar {
+  padding: 0;
+}
+
 /* ============================================ */
 /* 🆕 ESTILOS MELHORADOS PARA O MODAL DE ALOCAÇÃO */
 /* ============================================ */
