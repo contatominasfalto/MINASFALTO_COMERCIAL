@@ -397,6 +397,7 @@ export default function CustoObras() {
   const [manualRevenueModalOpen, setManualRevenueModalOpen] = useState(false);
   const [allocationModalOpen, setAllocationModalOpen] = useState(false);
   const [allocationDraft, setAllocationDraft] = useState<Record<string, string>>({});
+  const [allocationSaveMode, setAllocationSaveMode] = useState<"save" | "reset">("save");
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [receitaGroupOpen, setReceitaGroupOpen] = useState(false);
   const [custosGroupOpen, setCustosGroupOpen] = useState(false);
@@ -538,19 +539,10 @@ export default function CustoObras() {
 
   const saveResultadoAlocacoes = trpc.pedidosObras.saveResultadoAlocacoes.useMutation({
     onSuccess: () => {
-      toast.success("Realocacoes salvas");
+      toast.success(allocationSaveMode === "reset" ? "Realocacoes resetadas" : "Realocacoes salvas");
       invalidateModal();
     },
     onError: (mutationError) => toast.error(`Erro ao salvar realocacoes: ${mutationError.message}`),
-  });
-
-  const resetResultadoAlocacoes = trpc.pedidosObras.resetResultadoAlocacoes.useMutation({
-    onSuccess: () => {
-      toast.success("Realocacoes resetadas");
-      setAllocationDraft({});
-      invalidateModal();
-    },
-    onError: (mutationError) => toast.error(`Erro ao resetar realocacoes: ${mutationError.message}`),
   });
 
   const createDespesaManual = trpc.pedidosObras.createDespesaManual.useMutation({
@@ -870,7 +862,7 @@ export default function CustoObras() {
         valor: numberValue(receita.valor),
         originalDate,
         originalMonth,
-        currentDate: allocatedMonth ? getDateInputFromMonth(allocatedMonth) : originalDate,
+        currentDate: allocatedMonth && allocatedMonth !== originalMonth ? getDateInputFromMonth(allocatedMonth) : originalDate,
         currentMonth: allocatedMonth || originalMonth,
       };
     });
@@ -891,7 +883,7 @@ export default function CustoObras() {
         valor: numberValue(despesa.valorTotalDocumento),
         originalDate,
         originalMonth,
-        currentDate: allocatedMonth ? getDateInputFromMonth(allocatedMonth) : originalDate,
+        currentDate: allocatedMonth && allocatedMonth !== originalMonth ? getDateInputFromMonth(allocatedMonth) : originalDate,
         currentMonth: allocatedMonth || originalMonth,
       };
     });
@@ -911,7 +903,7 @@ export default function CustoObras() {
         valor: numberValue(custo.valorTotal),
         originalDate,
         originalMonth,
-        currentDate: allocatedMonth ? getDateInputFromMonth(allocatedMonth) : originalDate,
+        currentDate: allocatedMonth && allocatedMonth !== originalMonth ? getDateInputFromMonth(allocatedMonth) : originalDate,
         currentMonth: allocatedMonth || originalMonth,
       };
     });
@@ -924,6 +916,10 @@ export default function CustoObras() {
       return compareText(left.doc, right.doc);
     });
   }, [allocationMap, modalCustos, modalDespesas, modalReceitas]);
+
+  const hasResultadoRealocacoes = useMemo(() => {
+    return chronologicalAllocationItems.some((item) => allocationMap.get(item.key) !== undefined && item.currentMonth !== item.originalMonth);
+  }, [allocationMap, chronologicalAllocationItems]);
 
   const chronologicalResults = useMemo(() => {
     const createGroups = (): Record<ChronologicalGroupKey, ChronologicalGroup> => ({
@@ -1156,6 +1152,7 @@ export default function CustoObras() {
 
   const handleSaveAllocations = () => {
     if (!modalPedido) return;
+    setAllocationSaveMode("save");
     const alocacoes = chronologicalAllocationItems.map((item) => ({
       itemTipo: item.itemTipo,
       itemId: item.itemId,
@@ -1171,7 +1168,22 @@ export default function CustoObras() {
 
   const handleResetAllocations = () => {
     if (!modalPedido) return;
-    resetResultadoAlocacoes.mutate({ pedidoObraId: modalPedido.id });
+    setAllocationSaveMode("reset");
+    const alocacoes = chronologicalAllocationItems.map((item) => ({
+      itemTipo: item.itemTipo,
+      itemId: item.itemId,
+      mesReferencia: item.originalMonth,
+    }));
+
+    setAllocationDraft(Object.fromEntries(
+      chronologicalAllocationItems.map((item) => [item.key, item.originalDate || getDateInputFromMonth(item.originalMonth)]),
+    ));
+
+    saveResultadoAlocacoes.mutate({
+      pedidoObraId: modalPedido.id,
+      pedidoNum: String(modalPedido.pedido),
+      alocacoes,
+    });
   };
 
   const handleSaveFinanceiro = () => {
@@ -2028,7 +2040,7 @@ export default function CustoObras() {
                           <button
                             type="button"
                             onClick={handleResetAllocations}
-                            disabled={resetResultadoAlocacoes.isPending || modalResultadoAlocacoes.length === 0}
+                            disabled={saveResultadoAlocacoes.isPending || !hasResultadoRealocacoes}
                           >
                             <RefreshCw size={14} />
                             Resetar realocacoes
