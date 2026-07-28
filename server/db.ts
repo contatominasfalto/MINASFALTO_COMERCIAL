@@ -1321,12 +1321,31 @@ export async function savePedidoObraResultadoAlocacoes(data: {
   if (!db) throw new Error("Database not available");
   if (!_pool) throw new Error("Database pool not available");
 
-  const validAlocacoes = data.alocacoes.filter((item) =>
-    ["receita", "despesa", "custo"].includes(item.itemTipo)
-    && Number.isFinite(item.itemId)
-    && /^\d{4}-\d{2}$/.test(item.mesReferencia)
-    && (!item.dataReferencia || /^\d{4}-\d{2}-\d{2}$/.test(item.dataReferencia))
-  );
+  const validAlocacoes = data.alocacoes
+    .map((item) => {
+      const dataReferencia = /^\d{4}-\d{2}-\d{2}$/.test(item.dataReferencia || "")
+        ? item.dataReferencia
+        : /^\d{4}-\d{2}-\d{2}$/.test(item.mesReferencia)
+          ? item.mesReferencia
+          : undefined;
+      const mesReferencia = dataReferencia
+        ? dataReferencia.slice(0, 7)
+        : /^\d{4}-\d{2}$/.test(item.mesReferencia)
+          ? item.mesReferencia
+          : "";
+
+      return {
+        ...item,
+        mesReferencia,
+        dataReferencia: dataReferencia || `${mesReferencia}-01`,
+      };
+    })
+    .filter((item) =>
+      ["receita", "despesa", "custo"].includes(item.itemTipo)
+      && Number.isFinite(item.itemId)
+      && /^\d{4}-\d{2}$/.test(item.mesReferencia)
+      && /^\d{4}-\d{2}-\d{2}$/.test(item.dataReferencia)
+    );
 
   if (validAlocacoes.length === 0) return { affectedRows: 0 };
 

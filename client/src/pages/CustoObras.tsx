@@ -854,9 +854,10 @@ export default function CustoObras() {
   const allocationMap = useMemo(() => {
     const map = new Map<string, { mesReferencia: string; dataReferencia: string }>();
     modalResultadoAlocacoes.forEach((item: any) => {
+      const mesReferencia = getMonthInputValue(item.mesReferencia);
       map.set(`${item.itemTipo}:${item.itemId}`, {
-        mesReferencia: item.mesReferencia,
-        dataReferencia: getDateInputValue(item.dataReferencia) || getDateInputFromMonth(item.mesReferencia),
+        mesReferencia,
+        dataReferencia: getDateInputValue(item.dataReferencia) || getDateInputValue(item.mesReferencia) || getDateInputFromMonth(mesReferencia),
       });
     });
     return map;

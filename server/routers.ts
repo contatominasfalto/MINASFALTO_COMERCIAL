@@ -228,7 +228,7 @@ const pedidoObraResultadoAlocacoesSchema = z.object({
   alocacoes: z.array(z.object({
     itemTipo: z.enum(["receita", "despesa", "custo"]),
     itemId: z.number().int().positive(),
-    mesReferencia: z.string().regex(/^\d{4}-\d{2}$/),
+    mesReferencia: z.string().regex(/^\d{4}-\d{2}(-\d{2})?$/),
     dataReferencia: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   })).min(1),
 });
