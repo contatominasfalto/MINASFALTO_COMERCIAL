@@ -1582,7 +1582,7 @@
 }
 
 .costs-table {
-  min-width: 980px;
+  min-width: 1180px;
   table-layout: fixed;
 }
 
@@ -1591,12 +1591,17 @@
   vertical-align: middle;
 }
 
-.costs-table th:nth-child(1), .costs-table td:nth-child(1) { width: 7%; text-align: center; }
-.costs-table th:nth-child(2), .costs-table td:nth-child(2) { width: 10%; text-align: center; }
-.costs-table th:nth-child(3), .costs-table td:nth-child(3) { width: 49%; text-align: left; }
-.costs-table th:nth-child(4), .costs-table td:nth-child(4) { width: 12%; text-align: center; }
-.costs-table th:nth-child(5), .costs-table td:nth-child(5) { width: 11%; text-align: right; }
-.costs-table th:nth-child(6), .costs-table td:nth-child(6) { width: 11%; text-align: right; }
+.costs-table th:nth-child(1), .costs-table td:nth-child(1) { width: 90px; text-align: center; }
+.costs-table th:nth-child(2), .costs-table td:nth-child(2) { width: 120px; text-align: center; }
+.costs-table th:nth-child(3), .costs-table td:nth-child(3) { width: calc(100% - 640px); text-align: left; }
+.costs-table th:nth-child(4), .costs-table td:nth-child(4) { width: 130px; text-align: center; }
+.costs-table th:nth-child(5), .costs-table td:nth-child(5) { width: 150px; text-align: right; }
+.costs-table th:nth-child(6), .costs-table td:nth-child(6) { width: 150px; text-align: right; }
+
+.costs-table td.desktop-status {
+  display: table-cell;
+  text-align: center;
+}
 
 .expenses-table {
   min-width: 1760px;
