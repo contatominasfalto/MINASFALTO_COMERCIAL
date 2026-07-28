@@ -544,6 +544,15 @@ export default function CustoObras() {
     onError: (mutationError) => toast.error(`Erro ao salvar realocacoes: ${mutationError.message}`),
   });
 
+  const resetResultadoAlocacoes = trpc.pedidosObras.resetResultadoAlocacoes.useMutation({
+    onSuccess: () => {
+      toast.success("Realocacoes resetadas");
+      setAllocationDraft({});
+      invalidateModal();
+    },
+    onError: (mutationError) => toast.error(`Erro ao resetar realocacoes: ${mutationError.message}`),
+  });
+
   const createDespesaManual = trpc.pedidosObras.createDespesaManual.useMutation({
     onSuccess: () => {
       toast.success("Despesa cadastrada");
@@ -1158,6 +1167,11 @@ export default function CustoObras() {
       pedidoNum: String(modalPedido.pedido),
       alocacoes,
     });
+  };
+
+  const handleResetAllocations = () => {
+    if (!modalPedido) return;
+    resetResultadoAlocacoes.mutate({ pedidoObraId: modalPedido.id });
   };
 
   const handleSaveFinanceiro = () => {
@@ -2011,6 +2025,14 @@ export default function CustoObras() {
                     ) : (
                       <>
                         <div className="cost-chronological-toolbar">
+                          <button
+                            type="button"
+                            onClick={handleResetAllocations}
+                            disabled={resetResultadoAlocacoes.isPending || modalResultadoAlocacoes.length === 0}
+                          >
+                            <RefreshCw size={14} />
+                            Resetar realocacoes
+                          </button>
                           <button type="button" onClick={openAllocationModal}>
                             <Pencil size={14} />
                             Realocar lancamentos

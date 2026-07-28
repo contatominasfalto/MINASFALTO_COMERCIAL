@@ -1361,6 +1361,19 @@ export async function savePedidoObraResultadoAlocacoes(data: {
   return result;
 }
 
+export async function resetPedidoObraResultadoAlocacoes(pedidoObraId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (!_pool) throw new Error("Database pool not available");
+
+  const [result] = await _pool.query(
+    "DELETE FROM pedido_obra_resultado_alocacoes WHERE pedidoObraId = ?",
+    [pedidoObraId],
+  );
+
+  return result;
+}
+
 export async function savePedidoObraFinanceiro(data: {
   pedidoObraId: number;
   pedidoNum: string;

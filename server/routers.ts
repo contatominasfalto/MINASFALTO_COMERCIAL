@@ -470,6 +470,12 @@ export const appRouter = router({
         criadoPor: ctx.user?.name || "Sistema",
       })),
 
+    resetResultadoAlocacoes: protectedProcedure
+      .input(z.object({
+        pedidoObraId: z.number().int().positive(),
+      }))
+      .mutation(({ input }) => db.resetPedidoObraResultadoAlocacoes(input.pedidoObraId)),
+
     createDespesaManual: protectedProcedure
       .input(pedidoObraDespesaBaseSchema.and(pedidoObraDespesaFieldsSchema))
       .mutation(({ input, ctx }) => db.createPedidoObraDespesaManual({

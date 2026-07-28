@@ -1887,6 +1887,7 @@
   flex: 0 0 auto;
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   padding: 8px 10px 0;
 }
 
@@ -1909,6 +1910,16 @@
 .cost-chronological-toolbar button:hover {
   background: linear-gradient(#fffaf0, #f4dfa8);
   border-color: #a47d1d;
+}
+
+.cost-chronological-toolbar button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.cost-chronological-toolbar button:disabled:hover {
+  border-color: #8fa2b7;
+  background: linear-gradient(#ffffff, #dce6f0);
 }
 
 .cost-chronological-empty {
