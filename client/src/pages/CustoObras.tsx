@@ -16,8 +16,6 @@ type SortColumn =
   | "cliente"
   | "status"
   | "qtde"
-  | "qtdeTapFacil"
-  | "qtdeGranel"
   | "totalPedido"
   | "saldo";
 
@@ -287,7 +285,7 @@ const compareText = (left: unknown, right: unknown) =>
 
 const sortValue = (pedido: any, column: SortColumn) => {
   if (column === "dataPedido") return parseDateValue(pedido[column]);
-  if (["qtde", "qtdeTapFacil", "qtdeGranel", "totalPedido", "saldo"].includes(column)) {
+  if (["qtde", "totalPedido", "saldo"].includes(column)) {
     return numberValue(pedido[column]);
   }
   return pedido[column];
@@ -299,8 +297,6 @@ const tableColumns: { key: SortColumn; label: string; align?: "num" }[] = [
   { key: "cliente", label: "Cliente" },
   { key: "status", label: "Status" },
   { key: "qtde", label: "Qtde", align: "num" },
-  { key: "qtdeTapFacil", label: "Tap Facil", align: "num" },
-  { key: "qtdeGranel", label: "A Granel", align: "num" },
   { key: "totalPedido", label: "Total (R$)", align: "num" },
   { key: "saldo", label: "Saldo (R$)", align: "num" },
 ];
@@ -626,8 +622,6 @@ export default function CustoObras() {
         "Cliente",
         "Status",
         "Qtde",
-        "Tap Facil",
-        "A Granel",
         "Total (R$)",
         "Saldo (R$)",
       ];
@@ -652,8 +646,6 @@ export default function CustoObras() {
           pedido.cliente,
           pedido.status,
           formatDecimal(pedido.qtde),
-          formatDecimal(pedido.qtdeTapFacil),
-          formatDecimal(pedido.qtdeGranel, 3),
           formatCurrency(pedido.totalPedido),
           formatCurrency(pedido.saldo),
         ]),
@@ -1488,8 +1480,6 @@ export default function CustoObras() {
                     <th>Cliente</th>
                     <th>Status</th>
                     <th>Qtde</th>
-                    <th>Tap Facil</th>
-                    <th>A Granel</th>
                     <th>Total (R$)</th>
                     <th>Saldo (R$)</th>
                   </tr>
@@ -1497,17 +1487,17 @@ export default function CustoObras() {
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td colSpan={9} className="desktop-empty">Carregando pedidos de obras...</td>
+                      <td colSpan={7} className="desktop-empty">Carregando pedidos de obras...</td>
                     </tr>
                   ) : error ? (
                     <tr>
-                      <td colSpan={9} className="desktop-empty">
+                      <td colSpan={7} className="desktop-empty">
                         Erro ao carregar pedidos de obras: {error.message}
                       </td>
                     </tr>
                   ) : visiblePedidos.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="desktop-empty">Nenhum pedido de obras encontrado</td>
+                      <td colSpan={7} className="desktop-empty">Nenhum pedido de obras encontrado</td>
                     </tr>
                   ) : (
                     visiblePedidos.map((pedido) => {
@@ -1538,8 +1528,6 @@ export default function CustoObras() {
                           <td className="desktop-client" title={pedido.materiais || ""}>{pedido.cliente}</td>
                           <td className="desktop-status">{pedido.status}</td>
                           <td className="num">{formatDecimal(pedido.qtde)}</td>
-                          <td className="num">{formatDecimal(pedido.qtdeTapFacil)}</td>
-                          <td className="num">{formatDecimal(pedido.qtdeGranel, 3)}</td>
                           <td className="num">{formatCurrency(pedido.totalPedido)}</td>
                           <td className={`num ${isNegativeAmount(pedido.saldo) ? "negative-amount" : ""}`}>
                             {formatCurrency(pedido.saldo)}
