@@ -1583,6 +1583,7 @@
 
 .costs-table {
   min-width: 980px;
+  table-layout: fixed;
 }
 
 .costs-table th,
@@ -1590,12 +1591,12 @@
   vertical-align: middle;
 }
 
-.costs-table th:nth-child(1), .costs-table td:nth-child(1) { width: 72px; text-align: center; }
-.costs-table th:nth-child(2), .costs-table td:nth-child(2) { width: 94px; text-align: center; }
-.costs-table th:nth-child(3), .costs-table td:nth-child(3) { width: 520px; }
-.costs-table th:nth-child(4), .costs-table td:nth-child(4) { width: 110px; }
-.costs-table th:nth-child(5), .costs-table td:nth-child(5) { width: 124px; text-align: right; }
-.costs-table th:nth-child(6), .costs-table td:nth-child(6) { width: 124px; text-align: right; }
+.costs-table th:nth-child(1), .costs-table td:nth-child(1) { width: 7%; text-align: center; }
+.costs-table th:nth-child(2), .costs-table td:nth-child(2) { width: 10%; text-align: center; }
+.costs-table th:nth-child(3), .costs-table td:nth-child(3) { width: 49%; text-align: left; }
+.costs-table th:nth-child(4), .costs-table td:nth-child(4) { width: 12%; text-align: center; }
+.costs-table th:nth-child(5), .costs-table td:nth-child(5) { width: 11%; text-align: right; }
+.costs-table th:nth-child(6), .costs-table td:nth-child(6) { width: 11%; text-align: right; }
 
 .expenses-table {
   min-width: 1760px;
