@@ -19,6 +19,11 @@ import { useEffect, useRef } from "react";
 
 const SESSION_STORAGE_KEY = "minasfalto_active_session";
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
+const HIDDEN_COST_PROFILES = new Set(["comercial", "subcomercial", "semicomercial"]);
+
+function normalizeUserKey(value: unknown) {
+  return String(value || "").trim().toLowerCase();
+}
 
 function useSessionLifecycle(isAuthenticated: boolean, loading: boolean, logout: () => Promise<void>) {
   const logoutRef = useRef(logout);
@@ -61,7 +66,7 @@ function useSessionLifecycle(isAuthenticated: boolean, loading: boolean, logout:
 }
 
 function Router() {
-  const { isAuthenticated, loading, logout } = useAuth();
+  const { user, isAuthenticated, loading, logout } = useAuth();
 
   useSessionLifecycle(isAuthenticated, loading, logout);
 
@@ -82,6 +87,10 @@ function Router() {
     );
   }
 
+  const userProfile = normalizeUserKey((user as { profile?: unknown } | null)?.profile);
+  const userName = normalizeUserKey(user?.name);
+  const canAccessCosts = !HIDDEN_COST_PROFILES.has(userProfile || userName);
+
   return (
     <Switch>
       <Route path={"/"}>
@@ -89,7 +98,9 @@ function Router() {
       </Route>
       <Route path={"/comercial"} component={Dashboard} />
       <Route path={"/custo-obras"} component={CustoObras} />
-      <Route path={"/licitacoes"} component={Licitacoes} />
+      <Route path={"/licitacoes"}>
+        {canAccessCosts ? <Licitacoes /> : <Home />}
+      </Route>
       <Route path={"/estoque"}>
         <StockProvider>
           <StockPage />

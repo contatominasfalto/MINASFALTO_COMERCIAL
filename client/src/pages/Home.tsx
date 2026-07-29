@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
 
 type HomeView = "welcome" | "costs";
-const HIDDEN_COST_PROFILES = new Set(["comercial", "subcomercial"]);
+const HIDDEN_COST_PROFILES = new Set(["comercial", "subcomercial", "semicomercial"]);
 
 function normalizeUserKey(value: unknown) {
   return String(value || "").trim().toLowerCase();

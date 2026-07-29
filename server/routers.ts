@@ -46,7 +46,7 @@ function isOAuthEnabled() {
   return Boolean(ENV.appId && ENV.oAuthServerUrl && process.env.VITE_OAUTH_PORTAL_URL);
 }
 
-const HIDDEN_COST_PROFILES = new Set(["comercial", "subcomercial"]);
+const HIDDEN_COST_PROFILES = new Set(["comercial", "subcomercial", "semicomercial"]);
 let costPanelLoginAutomationRunning = false;
 
 function normalizeUserKey(value: unknown) {
@@ -57,6 +57,15 @@ function canAccessCostPanel(value: unknown) {
   const key = normalizeUserKey(value);
   return Boolean(key) && !HIDDEN_COST_PROFILES.has(key);
 }
+
+const costAccessProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+  const profile = normalizeUserKey((ctx.user as { profile?: unknown }).profile);
+  const name = normalizeUserKey(ctx.user.name);
+  if (!canAccessCostPanel(profile || name)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Usuario sem permissao para acessar este painel." });
+  }
+  return next({ ctx });
+});
 
 function triggerCostPanelLoginAutomation(username: string) {
   if (!canAccessCostPanel(username)) return;
@@ -607,70 +616,70 @@ export const appRouter = router({
 
   // ─────────────────────────────────────────────
   licitacoes: router({
-    opcoes: protectedProcedure.query(() => db.listLicitacaoOpcoes()),
-    list: protectedProcedure
+    opcoes: costAccessProcedure.query(() => db.listLicitacaoOpcoes()),
+    list: costAccessProcedure
       .input(z.object({
         search: z.string().optional(),
         adjudicadas: z.boolean().optional(),
       }).optional())
       .query(({ input }) => db.listLicitacoes(input)),
-    create: protectedProcedure
+    create: costAccessProcedure
       .input(licitacaoSchema)
       .mutation(({ input, ctx }) => db.createLicitacao({
         ...input,
         criadoPor: ctx.user?.name || "Sistema",
       })),
-    update: protectedProcedure
+    update: costAccessProcedure
       .input(z.object({ id: z.number().int().positive(), data: licitacaoSchema }))
       .mutation(({ input }) => db.updateLicitacao(input.id, input.data)),
-    delete: protectedProcedure
+    delete: costAccessProcedure
       .input(z.number().int().positive())
       .mutation(({ input }) => db.deleteLicitacao(input)),
     status: router({
-      list: protectedProcedure.query(() => db.listLicitacaoStatus()),
-      create: protectedProcedure.input(licitacaoStatusSchema).mutation(({ input }) => db.createLicitacaoStatus(input)),
-      update: protectedProcedure
+      list: costAccessProcedure.query(() => db.listLicitacaoStatus()),
+      create: costAccessProcedure.input(licitacaoStatusSchema).mutation(({ input }) => db.createLicitacaoStatus(input)),
+      update: costAccessProcedure
         .input(z.object({ id: z.number().int().positive(), data: licitacaoStatusSchema }))
         .mutation(({ input }) => db.updateLicitacaoStatus(input.id, input.data)),
-      delete: protectedProcedure.input(z.number().int().positive()).mutation(({ input }) => db.deleteLicitacaoStatus(input)),
+      delete: costAccessProcedure.input(z.number().int().positive()).mutation(({ input }) => db.deleteLicitacaoStatus(input)),
     }),
     plataformas: router({
-      list: protectedProcedure.query(() => db.listLicitacaoPlataformas()),
-      create: protectedProcedure.input(licitacaoPlataformaSchema).mutation(({ input }) => db.createLicitacaoPlataforma(input)),
-      update: protectedProcedure
+      list: costAccessProcedure.query(() => db.listLicitacaoPlataformas()),
+      create: costAccessProcedure.input(licitacaoPlataformaSchema).mutation(({ input }) => db.createLicitacaoPlataforma(input)),
+      update: costAccessProcedure
         .input(z.object({ id: z.number().int().positive(), data: licitacaoPlataformaSchema }))
         .mutation(({ input }) => db.updateLicitacaoPlataforma(input.id, input.data)),
-      delete: protectedProcedure.input(z.number().int().positive()).mutation(({ input }) => db.deleteLicitacaoPlataforma(input)),
+      delete: costAccessProcedure.input(z.number().int().positive()).mutation(({ input }) => db.deleteLicitacaoPlataforma(input)),
     }),
     vendedores: router({
-      list: protectedProcedure.query(() => db.listLicitacaoVendedores()),
-      create: protectedProcedure.input(licitacaoVendedorSchema).mutation(({ input }) => db.createLicitacaoVendedor(input)),
-      update: protectedProcedure
+      list: costAccessProcedure.query(() => db.listLicitacaoVendedores()),
+      create: costAccessProcedure.input(licitacaoVendedorSchema).mutation(({ input }) => db.createLicitacaoVendedor(input)),
+      update: costAccessProcedure
         .input(z.object({ id: z.number().int().positive(), data: licitacaoVendedorSchema }))
         .mutation(({ input }) => db.updateLicitacaoVendedor(input.id, input.data)),
-      delete: protectedProcedure.input(z.number().int().positive()).mutation(({ input }) => db.deleteLicitacaoVendedor(input)),
+      delete: costAccessProcedure.input(z.number().int().positive()).mutation(({ input }) => db.deleteLicitacaoVendedor(input)),
     }),
     ata: router({
-      get: protectedProcedure
+      get: costAccessProcedure
         .input(z.object({ licitacaoId: z.number().int().positive() }))
         .query(({ input }) => db.getLicitacaoAta(input.licitacaoId)),
-      save: protectedProcedure.input(licitacaoAtaSchema).mutation(({ input }) => db.saveLicitacaoAta(input)),
+      save: costAccessProcedure.input(licitacaoAtaSchema).mutation(({ input }) => db.saveLicitacaoAta(input)),
     }),
     pedidosCrti: router({
-      buscar: protectedProcedure
+      buscar: costAccessProcedure
         .input(z.object({ pedidoCrti: z.string().min(1).max(50) }))
         .mutation(({ input }) => db.buscarPedidoCrtiLicitacao(input.pedidoCrti)),
-      list: protectedProcedure
+      list: costAccessProcedure
         .input(z.object({ licitacaoId: z.number().int().positive() }))
         .query(({ input }) => db.listLicitacaoPedidosCrti(input.licitacaoId)),
-      create: protectedProcedure.input(licitacaoPedidoCrtiSchema).mutation(({ input, ctx }) => db.createLicitacaoPedidoCrti({
+      create: costAccessProcedure.input(licitacaoPedidoCrtiSchema).mutation(({ input, ctx }) => db.createLicitacaoPedidoCrti({
         ...input,
         criadoPor: ctx.user?.name || "Sistema",
       })),
-      update: protectedProcedure
+      update: costAccessProcedure
         .input(z.object({ id: z.number().int().positive(), data: licitacaoPedidoCrtiSchema }))
         .mutation(({ input }) => db.updateLicitacaoPedidoCrti(input.id, input.data)),
-      delete: protectedProcedure
+      delete: costAccessProcedure
         .input(z.object({ id: z.number().int().positive(), licitacaoId: z.number().int().positive() }))
         .mutation(({ input }) => db.deleteLicitacaoPedidoCrti(input.id, input.licitacaoId)),
     }),
@@ -731,3 +740,4 @@ export const appRouter = router({
 });
 
 export type AppRouter = typeof appRouter;
+
