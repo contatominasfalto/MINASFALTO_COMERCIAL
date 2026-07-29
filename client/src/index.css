@@ -1611,6 +1611,7 @@
   flex-direction: column;
   overflow: hidden;
   padding: 10px 12px 8px;
+  text-transform: uppercase;
 }
 
 .licitacao-page .desktop-toolbar {
@@ -1755,6 +1756,7 @@
   border: 1px solid var(--sap-line);
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
   padding: 34px 24px 22px;
+  text-transform: uppercase;
 }
 
 .licitacao-modal-menu {
@@ -1766,6 +1768,35 @@
 .licitacao-modal-wide {
   width: min(1320px, calc(100vw - 52px));
   min-height: min(460px, calc(100vh - 76px));
+}
+
+.licitacao-modal-delivery {
+  width: min(1580px, calc(100vw - 70px));
+  min-height: min(720px, calc(100vh - 70px));
+  max-height: calc(100vh - 54px);
+  padding: 46px 30px 28px;
+}
+
+.licitacao-modal .desktop-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  left: auto;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--sap-line);
+  background: #ffffff;
+  color: var(--sap-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.licitacao-modal .desktop-modal-close:hover {
+  background: linear-gradient(#fff8e8, #ead28d);
+  border-color: #c69221;
 }
 
 .licitacao-modal h2 {
@@ -1790,6 +1821,7 @@
   border: 1px solid var(--sap-line);
   background: #fff;
   color: var(--sap-text);
+  text-transform: uppercase;
 }
 
 .licitacao-menu-grid button {
@@ -1876,6 +1908,9 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-height: calc(100vh - 190px);
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .licitacao-delivery-group {
@@ -1919,6 +1954,20 @@
 
 .licitacao-delivery-table {
   min-width: 1180px;
+}
+
+.licitacao-modal-delivery .licitacao-group-header {
+  height: 42px;
+  grid-template-columns: 34px 1fr 190px;
+  font-size: 15px;
+}
+
+.licitacao-modal-delivery .licitacao-form-grid-compact {
+  grid-template-columns: minmax(260px, 1fr) minmax(220px, 1fr) minmax(220px, 1fr);
+}
+
+.licitacao-modal-delivery .licitacao-list-scroll {
+  max-height: min(40vh, 420px);
 }
 
 .expenses-table {

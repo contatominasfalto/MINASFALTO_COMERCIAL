@@ -67,6 +67,15 @@ function formatDecimal(value: unknown, digits = 3) {
   return new Intl.NumberFormat("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(numberValue(value));
 }
 
+function formatDateBR(value: unknown) {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  const datePart = text.split("T")[0];
+  const match = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return text;
+  return `${match[3]}/${match[2]}/${match[1]}`;
+}
+
 function getPotencial(km: unknown) {
   const value = numberValue(km);
   if (!value) return "";
@@ -85,16 +94,18 @@ function SimpleModal({
   onClose,
   wide = false,
   menu = false,
+  delivery = false,
 }: {
   title: string;
   children: React.ReactNode;
   onClose: () => void;
   wide?: boolean;
   menu?: boolean;
+  delivery?: boolean;
 }) {
   return (
     <div className="desktop-modal-backdrop licitacao-modal-backdrop">
-      <section className={wide ? "licitacao-modal licitacao-modal-wide" : menu ? "licitacao-modal licitacao-modal-menu" : "licitacao-modal"}>
+      <section className={delivery ? "licitacao-modal licitacao-modal-delivery" : wide ? "licitacao-modal licitacao-modal-wide" : menu ? "licitacao-modal licitacao-modal-menu" : "licitacao-modal"}>
         <button type="button" className="desktop-modal-close" onClick={onClose} aria-label="Fechar">
           <X size={22} />
         </button>
@@ -384,12 +395,12 @@ export default function Licitacoes() {
                 <tr><td colSpan={panelTab === "adjudicadas" ? 19 : 16} className="desktop-empty">Nenhuma licitacao encontrada</td></tr>
               ) : rows.map((licitacao) => (
                 <tr key={licitacao.id}>
-                  <td>{licitacao.data}</td>
-                  <td title={licitacao.orgao}>{licitacao.orgao}</td>
-                  <td>{licitacao.cidade}</td>
-                  <td>{licitacao.status}</td>
-                  <td>{licitacao.item}</td>
-                  <td>{licitacao.tipo}</td>
+                  <td>{formatDateBR(licitacao.data)}</td>
+                  <td title={licitacao.orgao}>{normalizeText(licitacao.orgao)}</td>
+                  <td>{normalizeText(licitacao.cidade)}</td>
+                  <td>{normalizeText(licitacao.status)}</td>
+                  <td>{normalizeText(licitacao.item)}</td>
+                  <td>{normalizeText(licitacao.tipo)}</td>
                   <td className="num">{formatDecimal(licitacao.qtdeSc)}</td>
                   <td className="num">{formatCurrency(licitacao.valorUnit)}</td>
                   <td className="num">{formatCurrency(licitacao.lanceLimite)}</td>
@@ -397,14 +408,14 @@ export default function Licitacoes() {
                   <td className="num">{formatDecimal(licitacao.qtdeTn)}</td>
                   <td className="num">{formatCurrency(licitacao.valorInicialContrato)}</td>
                   <td className="num">{formatDecimal(licitacao.kmDistancia, 0)}</td>
-                  <td>{licitacao.potencialCliente || getPotencial(licitacao.kmDistancia)}</td>
-                  <td>{licitacao.regiao}</td>
+                  <td>{normalizeText(licitacao.potencialCliente || getPotencial(licitacao.kmDistancia))}</td>
+                  <td>{normalizeText(licitacao.regiao)}</td>
                   {panelTab === "adjudicadas" && (
                     <>
                       <td>
                         <select value={licitacao.statusContrato || "Pendente"} onChange={(event) => updateLicitacao.mutate({ id: licitacao.id, data: { ...(licitacao as any), statusContrato: event.target.value } })}>
-                          <option>Assinado</option>
-                          <option>Pendente</option>
+                          <option value="Assinado">ASSINADO</option>
+                          <option value="Pendente">PENDENTE</option>
                         </select>
                       </td>
                       <td>
@@ -419,7 +430,7 @@ export default function Licitacoes() {
                           }}
                         >
                           <option value="NA">NA</option>
-                          {vendedores.map((vendedor: any) => <option key={vendedor.id} value={vendedor.id}>{vendedor.nome}</option>)}
+                          {vendedores.map((vendedor: any) => <option key={vendedor.id} value={vendedor.id}>{normalizeText(vendedor.nome)}</option>)}
                         </select>
                       </td>
                       <td>
@@ -431,7 +442,7 @@ export default function Licitacoes() {
                   )}
                   <td>
                     <button className="mini-icon-button" onClick={() => openLicitacaoForm(licitacao)}><Pencil size={14} /></button>
-                    <button className="mini-icon-button" onClick={() => { setSelectedLicitacao(licitacao); setModal("entrega"); }}><Link2 size={14} /></button>
+                    <button className="mini-icon-button" onClick={() => { setSelectedLicitacao(licitacao); setOpenEntregaGroups({}); setModal("entrega"); }}><Link2 size={14} /></button>
                     <button className="mini-icon-button danger" onClick={() => deleteLicitacao.mutate(licitacao.id)}><Trash2 size={14} /></button>
                   </td>
                 </tr>
@@ -449,7 +460,7 @@ export default function Licitacoes() {
             <button onClick={() => setModal("plataforma")}><ExternalLink size={18} /> Cadastro Plataforma Pregao</button>
             <button onClick={() => setModal(null)}><Search size={18} /> Acesso ao Painel Principal</button>
             <button onClick={() => setModal("vendedor")}><Plus size={18} /> Cadastro Vendedor</button>
-            <button onClick={() => setModal("entrega")}><Link2 size={18} /> Vincular Pedido CRTI Controle de Entrega</button>
+            <button onClick={() => { setSelectedLicitacao(null); setOpenEntregaGroups({}); setModal("entrega"); }}><Link2 size={18} /> Vincular Pedido CRTI Controle de Entrega</button>
           </div>
         </SimpleModal>
       )}
@@ -461,12 +472,12 @@ export default function Licitacoes() {
             <TextField label="Orgao" value={licitacaoForm.orgao} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, orgao: normalizeText(value) }))} />
             <SelectField label="Cidade" value={cidadeMode === "outra" ? "Outra" : licitacaoForm.cidade} onChange={(value) => { setCidadeMode(value === "Outra" ? "outra" : "lista"); setLicitacaoForm((current: any) => ({ ...current, cidade: value === "Outra" ? "" : value })); }}>
               <option value="">Selecione</option>
-              {cidadesMg.map((cidade) => <option key={cidade} value={cidade}>{cidade}</option>)}
+              {cidadesMg.map((cidade) => <option key={cidade} value={cidade}>{normalizeText(cidade)}</option>)}
             </SelectField>
             {cidadeMode === "outra" && <TextField label="Outra cidade" value={licitacaoForm.cidade} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, cidade: normalizeText(value) }))} />}
             <SelectField label="Status" value={licitacaoForm.status} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, status: value }))}>
-              {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
-              <option value="Outro">Outro</option>
+              {statuses.map((status) => <option key={status} value={status}>{normalizeText(status)}</option>)}
+              <option value="Outro">OUTRO</option>
             </SelectField>
             {licitacaoForm.status === "Outro" && <TextField label="Outro status" value={licitacaoForm.statusOutro || ""} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, status: normalizeText(value), statusOutro: normalizeText(value) }))} />}
             <TextField label="Hora Inicio da Disputa" type="time" value={licitacaoForm.horaInicioDisputa} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, horaInicioDisputa: value }))} />
@@ -482,7 +493,7 @@ export default function Licitacoes() {
             <label className="licitacao-field licitacao-readonly"><span>Potencial</span><strong>{getPotencial(licitacaoForm.kmDistancia)}</strong></label>
             <SelectField label="Regiao" value={licitacaoForm.regiao} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, regiao: value }))}>
               <option value="">Selecione</option>
-              {regioesMg.map((regiao) => <option key={regiao} value={regiao}>{regiao}</option>)}
+              {regioesMg.map((regiao) => <option key={regiao} value={regiao}>{normalizeText(regiao)}</option>)}
             </SelectField>
           </section>
           <footer className="licitacao-modal-actions">
@@ -504,7 +515,7 @@ export default function Licitacoes() {
               setAtaForm((current: any) => ({ ...current, vendedorId: vendedor?.id || null, vendedorNome: vendedor?.nome || "NA" }));
             }}>
               <option value="NA">NA</option>
-              {vendedores.map((vendedor: any) => <option key={vendedor.id} value={vendedor.id}>{vendedor.nome}</option>)}
+              {vendedores.map((vendedor: any) => <option key={vendedor.id} value={vendedor.id}>{normalizeText(vendedor.nome)}</option>)}
             </SelectField>
             <TextField label="Validade Ata" type="date" value={ataForm.validadeAta || ata.data?.validadeAta || ""} onChange={(value) => setAtaForm((current: any) => ({ ...current, validadeAta: value }))} />
             <TextField label="Quantidade Original" type="number" value={ataForm.quantidadeOriginal} onChange={(value) => setAtaForm((current: any) => ({ ...current, quantidadeOriginal: Number(value) }))} />
@@ -522,16 +533,16 @@ export default function Licitacoes() {
       )}
 
       {modal === "entrega" && (
-        <SimpleModal title="Vincular Pedido CRTI Controle de Entrega" onClose={() => setModal(null)} wide>
+        <SimpleModal title="Vincular Pedido CRTI Controle de Entrega" onClose={() => setModal(null)} delivery>
           <section className="licitacao-delivery-list">
             {(adjudicadas.data || []).map((licitacao: any) => {
-              const isOpen = openEntregaGroups[licitacao.id] || selectedLicitacao?.id === licitacao.id;
+              const isOpen = Boolean(openEntregaGroups[licitacao.id]);
               const isSelected = selectedLicitacao?.id === licitacao.id;
               return (
                 <article className="licitacao-delivery-group" key={licitacao.id}>
                   <button type="button" className="licitacao-group-header" onClick={() => { setSelectedLicitacao(licitacao); setOpenEntregaGroups((current) => ({ ...current, [licitacao.id]: !isOpen })); }}>
                     <span>{isOpen ? "-" : "+"}</span>
-                    <strong>{licitacao.orgao}</strong>
+                    <strong>{normalizeText(licitacao.orgao)}</strong>
                     <b>Qtde: {formatDecimal(licitacao.qtdeSc)}</b>
                   </button>
                   {isOpen && (
@@ -571,9 +582,9 @@ export default function Licitacoes() {
                               {(pedidosCrti.data?.items || []).map((pedido: any) => (
                                 <tr key={pedido.id}>
                                   <td>{pedido.pedidoCrti}</td>
-                                  <td>{pedido.cliente}</td>
-                                  <td>{pedido.dataPedido}</td>
-                                  <td>{pedido.statusPedido}</td>
+                                  <td>{normalizeText(pedido.cliente)}</td>
+                                  <td>{formatDateBR(pedido.dataPedido)}</td>
+                                  <td>{normalizeText(pedido.statusPedido)}</td>
                                   <td className="num">{formatDecimal(pedido.quantidade)}</td>
                                   <td className="num">{formatCurrency(pedido.valorTotal)}</td>
                                   <td className="num">{formatDecimal(pedidosCrti.data?.saldoEntrega || 0)}</td>
