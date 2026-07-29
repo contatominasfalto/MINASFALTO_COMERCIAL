@@ -66,6 +66,10 @@ function formatDecimal(value: unknown, digits = 3) {
   return new Intl.NumberFormat("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(numberValue(value));
 }
 
+function formatSaldoEntrega(value: unknown) {
+  return formatDecimal(value, 2);
+}
+
 function formatDateBR(value: unknown) {
   const text = String(value ?? "").trim();
   if (!text) return "";
@@ -544,6 +548,15 @@ export default function Licitacoes() {
       {modal === "entrega" && (
         <SimpleModal title="Vincular Pedido CRTI Controle de Entrega" onClose={() => setModal(null)} delivery>
           <section className="licitacao-delivery-list">
+            <div className="licitacao-delivery-columns" aria-hidden="true">
+              <span></span>
+              <strong>Órgão</strong>
+              <strong>Cidade</strong>
+              <strong>Item</strong>
+              <strong>Tipo</strong>
+              <strong>Status</strong>
+              <strong>Saldo</strong>
+            </div>
             {(adjudicadas.data || []).map((licitacao: any) => {
               const isOpen = Boolean(openEntregaGroups[licitacao.id]);
               const isSelected = selectedLicitacao?.id === licitacao.id;
@@ -557,9 +570,10 @@ export default function Licitacoes() {
                       <em>{normalizeText(licitacao.orgao)}</em>
                       <i>{normalizeText(licitacao.cidade)}</i>
                       <span className="licitacao-group-item">{normalizeText(licitacao.item)}</span>
+                      <span className="licitacao-group-type">{normalizeText(licitacao.tipo)}</span>
                       <small>{statusEntrega}</small>
                     </strong>
-                    <b>Saldo: {formatDecimal(saldoEntrega)}</b>
+                    <b>Saldo: {formatSaldoEntrega(saldoEntrega)}</b>
                   </button>
                   {isOpen && (
                     <div className="licitacao-group-body">
@@ -596,7 +610,7 @@ export default function Licitacoes() {
                                   <td>{normalizeText(pedido.statusPedido)}</td>
                                   <td className="num">{formatDecimal(pedido.quantidade)}</td>
                                   <td className="num">{formatCurrency(pedido.valorTotal)}</td>
-                                  <td className="num">{formatDecimal(pedidosCrti.data?.saldoEntrega || 0)}</td>
+                                  <td className="num">{formatSaldoEntrega(pedidosCrti.data?.saldoEntrega || 0)}</td>
                                   <td>
                                     <button className="mini-icon-button" onClick={() => { setPedidoEdit(pedido); setPedidoForm(pedido); }}><Pencil size={14} /></button>
                                     <button className="mini-icon-button danger" onClick={() => deletePedido.mutate({ id: pedido.id, licitacaoId: licitacao.id })}><Trash2 size={14} /></button>

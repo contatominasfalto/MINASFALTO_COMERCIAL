@@ -1930,6 +1930,32 @@
   background: #fff;
 }
 
+.licitacao-delivery-columns {
+  display: grid;
+  grid-template-columns: 28px minmax(180px, 2.2fr) minmax(120px, 1.1fr) minmax(90px, 0.8fr) minmax(120px, 1fr) minmax(190px, 1.45fr) minmax(150px, 1.05fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--sap-line);
+  background: linear-gradient(#f9fbfd, #d8e3ef);
+  color: var(--sap-text);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.licitacao-delivery-columns strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.licitacao-delivery-columns strong:last-child {
+  text-align: right;
+}
+
 .licitacao-group-header {
   width: 100%;
   height: 34px;
@@ -1968,6 +1994,7 @@
 .licitacao-group-header strong em,
 .licitacao-group-header strong i,
 .licitacao-group-header .licitacao-group-item,
+.licitacao-group-header .licitacao-group-type,
 .licitacao-group-header strong small {
   min-width: 0;
   overflow: hidden;
@@ -1979,19 +2006,26 @@
 }
 
 .licitacao-group-header strong em {
-  flex: 1 1 38%;
+  flex: 2.2 1 0;
 }
 
 .licitacao-group-header strong i {
-  flex: 0 1 20%;
+  flex: 1.1 1 0;
 }
 
 .licitacao-group-header .licitacao-group-item {
-  flex: 0 1 18%;
+  flex: 0.8 1 0;
+  text-align: center;
+}
+
+.licitacao-group-header .licitacao-group-type {
+  flex: 1 1 0;
+  text-align: center;
 }
 
 .licitacao-group-header strong small {
-  flex: 0 1 24%;
+  flex: 1.45 1 0;
+  text-align: center;
 }
 
 .licitacao-group-header b {
@@ -2057,8 +2091,20 @@
 
 .licitacao-modal-delivery .licitacao-group-header {
   height: 42px;
-  grid-template-columns: 34px 1fr 190px;
+  grid-template-columns: 28px minmax(180px, 2.2fr) minmax(120px, 1.1fr) minmax(90px, 0.8fr) minmax(120px, 1fr) minmax(190px, 1.45fr) minmax(150px, 1.05fr);
   font-size: 15px;
+  padding: 0 10px;
+}
+
+.licitacao-modal-delivery .licitacao-group-header strong {
+  display: contents;
+}
+
+.licitacao-modal-delivery .licitacao-group-header b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .licitacao-modal-delivery .licitacao-form-grid-compact {
