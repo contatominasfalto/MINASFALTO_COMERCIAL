@@ -2529,7 +2529,25 @@ export async function listLicitacaoPedidosCrti(licitacaoId: number) {
   const [licitacaoRows] = await pool.query<mysql.RowDataPacket[]>("SELECT qtdeSc FROM licitacoes WHERE id = ? LIMIT 1", [licitacaoId]);
   const quantidadeBase = Number(licitacaoRows[0]?.qtdeSc) || 0;
   const [rows] = await pool.query<mysql.RowDataPacket[]>(
-    "SELECT * FROM licitacao_pedidos_crti WHERE licitacaoId = ? ORDER BY id DESC",
+    `SELECT
+      lp.id,
+      lp.licitacaoId,
+      lp.pedidoCrti,
+      COALESCE(NULLIF(lp.cliente, ''), p.cliente, '') AS cliente,
+      COALESCE(NULLIF(lp.dataPedido, ''), p.dataPedido, '') AS dataPedido,
+      COALESCE(NULLIF(lp.statusPedido, ''), NULLIF(p.status, ''), NULLIF(p.situacao, ''), '') AS statusPedido,
+      COALESCE(NULLIF(lp.quantidade, 0), p.qtde, 0) AS quantidade,
+      COALESCE(NULLIF(lp.valorTotal, 0), p.totalPedido, 0) AS valorTotal,
+      lp.saldoEntrega,
+      lp.observacoes,
+      lp.criadoPor,
+      lp.criadoEm,
+      lp.atualizadoEm
+    FROM licitacao_pedidos_crti lp
+    LEFT JOIN pedidos p
+      ON TRIM(CAST(p.pedido AS CHAR)) = TRIM(CAST(lp.pedidoCrti AS CHAR))
+    WHERE lp.licitacaoId = ?
+    ORDER BY lp.id DESC`,
     [licitacaoId],
   );
   const entregue = rows.reduce((acc, row) => acc + (Number(row.quantidade) || 0), 0);
