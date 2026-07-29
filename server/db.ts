@@ -1,6 +1,7 @@
 import { eq, and, or, like, desc, asc, isNull, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
+import { Client, type ClientConfig } from "pg";
 import {
   InsertUser,
   users,
@@ -19,6 +20,50 @@ import { ENV } from './_core/env';
 let _db: any = null;
 let _dbUrl: string | null = null;
 let _pool: mysql.Pool | null = null;
+
+function envFlag(name: string, defaultValue: boolean) {
+  const value = process.env[name];
+  if (value === undefined || value === "") return defaultValue;
+  return ["1", "true", "yes", "sim", "on"].includes(value.toLowerCase());
+}
+
+function quoteCrtiIdentifierPath(identifierPath: string) {
+  const parts = identifierPath.split(".").map((part) => part.trim()).filter(Boolean);
+  if (parts.length === 0) throw new Error("Nome de tabela CRTI invalido.");
+  return parts.map((part) => {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(part)) {
+      throw new Error(`Nome de tabela CRTI invalido: ${identifierPath}`);
+    }
+    return `"${part}"`;
+  }).join(".");
+}
+
+async function withCrtiLicitacaoClient<T>(callback: (client: Client) => Promise<T>) {
+  if (!process.env.CRTI_PASSWORD) {
+    throw new Error("Credenciais CRTI nao configuradas.");
+  }
+
+  const config: ClientConfig = {
+    host: process.env.CRTI_HOST || "minasfaltocrtierp.postgres.database.azure.com",
+    port: Number.parseInt(process.env.CRTI_PORT || "5432", 10),
+    database: process.env.CRTI_DATABASE || "postgres",
+    user: process.env.CRTI_USER || "minasfaltocrtierpadmin",
+    password: process.env.CRTI_PASSWORD,
+    connectionTimeoutMillis: 15000,
+  };
+
+  if (envFlag("CRTI_SSL", true)) {
+    config.ssl = { rejectUnauthorized: envFlag("CRTI_SSL_REJECT_UNAUTHORIZED", false) };
+  }
+
+  const client = new Client(config);
+  await client.connect();
+  try {
+    return await callback(client);
+  } finally {
+    await client.end().catch(() => undefined);
+  }
+}
 
 export async function getDb() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -2471,6 +2516,33 @@ export async function buscarPedidoCrtiLicitacao(pedidoCrti: string) {
   const pool = await ensureMysqlPool();
   const codigo = String(pedidoCrti || "").trim();
   if (!codigo) return null;
+
+  try {
+    const crtiPedido = await withCrtiLicitacaoClient(async (client) => {
+      const table = quoteCrtiIdentifierPath(process.env.CRTI_TABLE_APROVADOS || "public.pedidos_venda_material");
+      const query = `
+        SELECT
+          pedidos.numeropedido::text AS pedido,
+          MAX(pedidos.nomecliente) AS cliente,
+          MIN(pedidos.datapedido) AS "dataPedido",
+          MAX(pedidos.situacaopedido) AS status,
+          SUM(COALESCE(pedidos.quantidadepedido, 0)) AS qtde,
+          SUM(COALESCE(pedidos.valortotalitem, 0)) AS "totalPedido"
+        FROM ${table} pedidos
+        WHERE TRIM(pedidos.numeropedido::text) = $1
+        GROUP BY pedidos.numeropedido
+        LIMIT 1
+      `;
+      const { rows } = await client.query(query, [codigo]);
+      return rows[0] || null;
+    });
+
+    if (crtiPedido) {
+      return crtiPedido;
+    }
+  } catch (error) {
+    console.warn(`[Licitacoes] Falha ao buscar pedido ${codigo} diretamente no CRTI, usando fallback local:`, error);
+  }
 
   const [rows] = await pool.query<mysql.RowDataPacket[]>(
     `SELECT
