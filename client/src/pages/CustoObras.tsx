@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileSpreadsheet, FileText, Flag, Link2, Pencil, Plus, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileSpreadsheet, FileText, Flag, Link2, Pencil, Plus, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -407,6 +407,7 @@ export default function CustoObras() {
   const [selectedAllocationYear, setSelectedAllocationYear] = useState<string | null>(null);
   const [allocationDraft, setAllocationDraft] = useState<Record<string, string>>({});
   const [allocationSaveMode, setAllocationSaveMode] = useState<"save" | "reset">("save");
+  const [resetAllocationConfirm, setResetAllocationConfirm] = useState<{ step: 1 | 2; yearKey?: string } | null>(null);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [receitaGroupOpen, setReceitaGroupOpen] = useState(false);
   const [custosGroupOpen, setCustosGroupOpen] = useState(false);
@@ -1258,17 +1259,33 @@ export default function CustoObras() {
     });
   };
 
-  const handleResetAllocations = (yearKey?: string) => {
-    if (!modalPedido) return;
+  const getResetableAllocationItems = (yearKey?: string) => {
     const items = yearKey
       ? chronologicalAllocationItems.filter((item) => getYearKeyFromMonth(item.currentMonth) === yearKey)
       : chronologicalAllocationItems;
-    const realocatedItems = items.filter((item) => (
+    return items.filter((item) => (
       allocationMap.get(item.key) !== undefined && item.currentMonth !== item.originalMonth
     ));
+  };
+
+  const openResetAllocationConfirm = (yearKey?: string) => {
+    const realocatedItems = getResetableAllocationItems(yearKey);
 
     if (realocatedItems.length === 0) {
       toast.error("Nenhum lancamento disponivel para resetar");
+      return;
+    }
+
+    setResetAllocationConfirm({ step: 1, yearKey });
+  };
+
+  const handleResetAllocations = (yearKey?: string) => {
+    if (!modalPedido) return;
+    const realocatedItems = getResetableAllocationItems(yearKey);
+
+    if (realocatedItems.length === 0) {
+      toast.error("Nenhum lancamento disponivel para resetar");
+      setResetAllocationConfirm(null);
       return;
     }
 
@@ -1289,6 +1306,7 @@ export default function CustoObras() {
       pedidoNum: String(modalPedido.pedido),
       alocacoes,
     });
+    setResetAllocationConfirm(null);
   };
 
   const handleSaveFinanceiro = () => {
@@ -2177,7 +2195,7 @@ export default function CustoObras() {
                                 <div className="cost-chronological-toolbar year-toolbar">
                                   <button
                                     type="button"
-                                    onClick={() => handleResetAllocations(year.key)}
+                                    onClick={() => openResetAllocationConfirm(year.key)}
                                     disabled={saveResultadoAlocacoes.isPending || !hasYearRealocacoes}
                                   >
                                     <RefreshCw size={14} />
@@ -2299,6 +2317,70 @@ export default function CustoObras() {
               </>
             )}
           </section>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(resetAllocationConfirm)} onOpenChange={(open) => {
+        if (!open) setResetAllocationConfirm(null);
+      }}>
+        <DialogContent className="sap-confirm-dialog">
+          <DialogHeader>
+            <DialogTitle>
+              <AlertTriangle size={22} />
+              Confirmar reset de realocacoes
+            </DialogTitle>
+            <DialogDescription>
+              {resetAllocationConfirm?.step === 1
+                ? "Esta acao vai retornar as realocacoes deste grupo para a data original."
+                : "Confirmacao final: depois de continuar, as realocacoes selecionadas serao resetadas."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <section className="sap-confirm-body">
+            <div className="sap-confirm-info">
+              <span>Pedido</span>
+              <strong>{modalPedido?.pedido ?? "-"}</strong>
+            </div>
+            <div className="sap-confirm-info">
+              <span>Grupo</span>
+              <strong>
+                {resetAllocationConfirm?.yearKey
+                  ? resetAllocationConfirm.yearKey === "sem-data" ? "Sem data" : `Ano ${resetAllocationConfirm.yearKey}`
+                  : "Todos"}
+              </strong>
+            </div>
+            <div className="sap-confirm-info">
+              <span>Lancamentos</span>
+              <strong>{resetAllocationConfirm ? getResetableAllocationItems(resetAllocationConfirm.yearKey).length : 0}</strong>
+            </div>
+          </section>
+
+          <footer className="sap-confirm-actions">
+            <button type="button" onClick={() => setResetAllocationConfirm(null)}>
+              Cancelar
+            </button>
+            {resetAllocationConfirm?.step === 1 ? (
+              <button
+                type="button"
+                className="sap-confirm-primary"
+                onClick={() => setResetAllocationConfirm((current) => (
+                  current ? { ...current, step: 2 } : current
+                ))}
+              >
+                Continuar
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="sap-confirm-danger"
+                onClick={() => handleResetAllocations(resetAllocationConfirm?.yearKey)}
+                disabled={saveResultadoAlocacoes.isPending}
+              >
+                <RefreshCw size={14} />
+                {saveResultadoAlocacoes.isPending ? "Resetando..." : "Confirmar reset"}
+              </button>
+            )}
+          </footer>
         </DialogContent>
       </Dialog>
 

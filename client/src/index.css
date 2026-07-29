@@ -2608,6 +2608,140 @@
   background: #eef4fb;
 }
 
+[data-slot="dialog-content"].sap-confirm-dialog {
+  width: min(520px, calc(100vw - 48px));
+  max-width: none;
+  padding: 16px;
+  border: 1px solid #7f95ad;
+  border-radius: 3px;
+  background: var(--sap-panel);
+  color: #001b34;
+  box-shadow: 0 18px 48px rgba(20, 37, 56, .38);
+}
+
+.sap-confirm-dialog [data-slot="dialog-header"] {
+  padding-right: 42px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #b5c4d3;
+}
+
+.sap-confirm-dialog [data-slot="dialog-title"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #001b34;
+  font-size: 17px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.sap-confirm-dialog [data-slot="dialog-title"] svg {
+  color: #a26a00;
+}
+
+.sap-confirm-dialog [data-slot="dialog-description"] {
+  margin-top: 8px;
+  color: #304861;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.sap-confirm-dialog [data-slot="dialog-close"] {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  left: auto;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #aab7c5;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #1f2933;
+  opacity: 1;
+}
+
+.sap-confirm-dialog [data-slot="dialog-close"]:hover {
+  background: #eef4fb;
+}
+
+.sap-confirm-body {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 14px 0;
+}
+
+.sap-confirm-info {
+  min-height: 58px;
+  padding: 8px 10px;
+  border: 1px solid #9eb2c8;
+  background: linear-gradient(#ffffff, #e4edf5);
+}
+
+.sap-confirm-info span,
+.sap-confirm-info strong {
+  display: block;
+}
+
+.sap-confirm-info span {
+  color: #5b6c7d;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.sap-confirm-info strong {
+  margin-top: 6px;
+  color: #001b34;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.sap-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #c9d4df;
+}
+
+.sap-confirm-actions button {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 16px;
+  border: 1px solid #0b294d;
+  border-radius: 2px;
+  background: #ffffff;
+  color: #001b34;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sap-confirm-actions button:hover {
+  background: #eef4fb;
+}
+
+.sap-confirm-actions button:disabled {
+  cursor: not-allowed;
+  opacity: .65;
+}
+
+.sap-confirm-actions .sap-confirm-primary {
+  background: linear-gradient(#ffffff, #dce6f0);
+}
+
+.sap-confirm-actions .sap-confirm-danger {
+  border-color: #7b1d1d;
+  background: linear-gradient(#fff6f6, #f5caca);
+  color: #7b1d1d;
+}
+
 .allocation-export-toolbar {
   display: flex;
   justify-content: flex-end;
