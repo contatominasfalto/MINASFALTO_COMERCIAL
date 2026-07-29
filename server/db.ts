@@ -2472,24 +2472,21 @@ export async function buscarPedidoCrtiLicitacao(pedidoCrti: string) {
   const codigo = String(pedidoCrti || "").trim();
   if (!codigo) return null;
 
-  const findPedido = async (tableName: "pedidos" | "pedidos_obras") => {
-    const [rows] = await pool.query<mysql.RowDataPacket[]>(
-      `SELECT
-        pedido,
-        cliente,
-        dataPedido,
-        COALESCE(NULLIF(status, ''), NULLIF(situacao, ''), '') AS status,
-        qtde,
-        totalPedido
-      FROM ${tableName}
-      WHERE TRIM(CAST(pedido AS CHAR)) = ?
-      LIMIT 1`,
-      [codigo],
-    );
-    return rows[0] || null;
-  };
+  const [rows] = await pool.query<mysql.RowDataPacket[]>(
+    `SELECT
+      pedido,
+      cliente,
+      dataPedido,
+      COALESCE(NULLIF(status, ''), NULLIF(situacao, ''), '') AS status,
+      qtde,
+      totalPedido
+    FROM pedidos
+    WHERE TRIM(CAST(pedido AS CHAR)) = ?
+    LIMIT 1`,
+    [codigo],
+  );
 
-  return (await findPedido("pedidos")) || (await findPedido("pedidos_obras"));
+  return rows[0] || null;
 }
 
 function formatLicitacaoDate(value: unknown) {
@@ -2512,17 +2509,18 @@ async function hydratePedidoCrtiLicitacao(data: {
   valorTotal?: number;
 }) {
   const pedido = await buscarPedidoCrtiLicitacao(data.pedidoCrti);
-  const hasQuantidade = data.quantidade !== undefined && data.quantidade !== null && Number(data.quantidade) !== 0;
-  const hasValorTotal = data.valorTotal !== undefined && data.valorTotal !== null && Number(data.valorTotal) !== 0;
+  if (!pedido) {
+    throw new Error("Pedido CRTI nao encontrado na tabela comercial de pedidos.");
+  }
 
   return {
     ...data,
-    pedidoCrti: String(pedido?.pedido || data.pedidoCrti || "").trim(),
-    cliente: data.cliente || String(pedido?.cliente || ""),
-    dataPedido: data.dataPedido || formatLicitacaoDate(pedido?.dataPedido),
-    statusPedido: data.statusPedido || String(pedido?.status || ""),
-    quantidade: hasQuantidade ? data.quantidade : normalizeMoney(pedido?.qtde),
-    valorTotal: hasValorTotal ? data.valorTotal : normalizeMoney(pedido?.totalPedido),
+    pedidoCrti: String(pedido.pedido || data.pedidoCrti || "").trim(),
+    cliente: String(pedido.cliente || ""),
+    dataPedido: formatLicitacaoDate(pedido.dataPedido),
+    statusPedido: String(pedido.status || ""),
+    quantidade: normalizeMoney(pedido.qtde),
+    valorTotal: normalizeMoney(pedido.totalPedido),
   };
 }
 

@@ -7,7 +7,6 @@ import {
   Link2,
   Pencil,
   Plus,
-  RefreshCw,
   Save,
   Search,
   Trash2,
@@ -168,10 +167,6 @@ export default function Licitacoes() {
     { licitacaoId: selectedLicitacao?.id || 0 },
     { enabled: modal === "ata" && Boolean(selectedLicitacao?.id) },
   );
-  const buscarPedido = trpc.licitacoes.pedidosCrti.buscar.useMutation({
-    onError: (error) => toast.error(`Erro ao buscar pedido CRTI: ${error.message}`),
-  });
-
   const invalidateAll = () => {
     void utils.licitacoes.list.invalidate();
     void utils.licitacoes.opcoes.invalidate();
@@ -222,8 +217,22 @@ export default function Licitacoes() {
     },
     onError: (error) => toast.error(`Erro ao salvar ata: ${error.message}`),
   });
-  const createPedido = trpc.licitacoes.pedidosCrti.create.useMutation({ onSuccess: () => { toast.success("Pedido vinculado."); setPedidoForm({ pedidoCrti: "", cliente: "", dataPedido: "", statusPedido: "", quantidade: 0, valorTotal: 0, observacoes: "" }); invalidateAll(); } });
-  const updatePedido = trpc.licitacoes.pedidosCrti.update.useMutation({ onSuccess: () => { toast.success("Pedido atualizado."); setPedidoEdit(null); invalidateAll(); } });
+  const createPedido = trpc.licitacoes.pedidosCrti.create.useMutation({
+    onSuccess: () => {
+      toast.success("Pedido vinculado.");
+      setPedidoForm({ pedidoCrti: "", cliente: "", dataPedido: "", statusPedido: "", quantidade: 0, valorTotal: 0, observacoes: "" });
+      invalidateAll();
+    },
+    onError: (error) => toast.error(`Erro ao vincular pedido: ${error.message}`),
+  });
+  const updatePedido = trpc.licitacoes.pedidosCrti.update.useMutation({
+    onSuccess: () => {
+      toast.success("Pedido atualizado.");
+      setPedidoEdit(null);
+      invalidateAll();
+    },
+    onError: (error) => toast.error(`Erro ao atualizar pedido: ${error.message}`),
+  });
   const deletePedido = trpc.licitacoes.pedidosCrti.delete.useMutation({ onSuccess: () => { toast.success("Pedido removido."); invalidateAll(); } });
 
   const statuses = [...defaultStatus, ...(opcoes.data?.status || []).map((item: any) => item.nome)].filter((value, index, arr) => value && arr.indexOf(value) === index);
@@ -554,29 +563,13 @@ export default function Licitacoes() {
                     <div className="licitacao-group-body">
                       <section className="licitacao-form-grid licitacao-form-grid-compact">
                         <TextField label="Codigo Pedido CRTI" value={pedidoForm.pedidoCrti} onChange={(value) => setPedidoForm((current: any) => ({ ...current, pedidoCrti: value }))} />
-                        <button className="desktop-action" onClick={async () => {
+                        <button className="desktop-action primary" onClick={() => {
                           const codigoPedido = String(pedidoForm.pedidoCrti || "").trim();
                           if (!codigoPedido) {
                             toast.error("Informe o codigo do pedido CRTI.");
                             return;
                           }
-                          const found = await buscarPedido.mutateAsync({ pedidoCrti: codigoPedido }) as any;
-                          if (!found) {
-                            toast.error("Pedido CRTI nao encontrado nas bases locais.");
-                            return;
-                          }
-                          setPedidoForm((current: any) => ({
-                            ...current,
-                            pedidoCrti: String(found.pedido || codigoPedido),
-                            cliente: found.cliente || "",
-                            dataPedido: formatDateBR(found.dataPedido),
-                            statusPedido: found.status || "",
-                            quantidade: Number(found.qtde) || 0,
-                            valorTotal: Number(found.totalPedido) || 0,
-                          }));
-                        }} disabled={buscarPedido.isPending}><RefreshCw size={14} /> Atualizar Pedido</button>
-                        <button className="desktop-action primary" onClick={() => {
-                          const payload = { ...pedidoForm, licitacaoId: licitacao.id, cliente: normalizeText(pedidoForm.cliente), observacoes: normalizeText(pedidoForm.observacoes) };
+                          const payload = { ...pedidoForm, pedidoCrti: codigoPedido, licitacaoId: licitacao.id, cliente: normalizeText(pedidoForm.cliente), observacoes: normalizeText(pedidoForm.observacoes) };
                           if (pedidoEdit) updatePedido.mutate({ id: pedidoEdit.id, data: payload });
                           else createPedido.mutate(payload);
                           setSelectedLicitacao(licitacao);
