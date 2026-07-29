@@ -659,7 +659,7 @@ export const appRouter = router({
     pedidosCrti: router({
       buscar: protectedProcedure
         .input(z.object({ pedidoCrti: z.string().min(1).max(50) }))
-        .query(({ input }) => db.buscarPedidoCrtiLicitacao(input.pedidoCrti)),
+        .mutation(({ input }) => db.buscarPedidoCrtiLicitacao(input.pedidoCrti)),
       list: protectedProcedure
         .input(z.object({ licitacaoId: z.number().int().positive() }))
         .query(({ input }) => db.listLicitacaoPedidosCrti(input.licitacaoId)),

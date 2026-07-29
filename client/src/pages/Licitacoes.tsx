@@ -168,10 +168,9 @@ export default function Licitacoes() {
     { licitacaoId: selectedLicitacao?.id || 0 },
     { enabled: modal === "ata" && Boolean(selectedLicitacao?.id) },
   );
-  const buscarPedido = trpc.licitacoes.pedidosCrti.buscar.useQuery(
-    { pedidoCrti: pedidoForm.pedidoCrti },
-    { enabled: false },
-  );
+  const buscarPedido = trpc.licitacoes.pedidosCrti.buscar.useMutation({
+    onError: (error) => toast.error(`Erro ao buscar pedido CRTI: ${error.message}`),
+  });
 
   const invalidateAll = () => {
     void utils.licitacoes.list.invalidate();
@@ -556,21 +555,26 @@ export default function Licitacoes() {
                       <section className="licitacao-form-grid licitacao-form-grid-compact">
                         <TextField label="Codigo Pedido CRTI" value={pedidoForm.pedidoCrti} onChange={(value) => setPedidoForm((current: any) => ({ ...current, pedidoCrti: value }))} />
                         <button className="desktop-action" onClick={async () => {
-                          const result = await buscarPedido.refetch();
-                          const found = result.data as any;
+                          const codigoPedido = String(pedidoForm.pedidoCrti || "").trim();
+                          if (!codigoPedido) {
+                            toast.error("Informe o codigo do pedido CRTI.");
+                            return;
+                          }
+                          const found = await buscarPedido.mutateAsync({ pedidoCrti: codigoPedido }) as any;
                           if (!found) {
                             toast.error("Pedido CRTI nao encontrado nas bases locais.");
                             return;
                           }
                           setPedidoForm((current: any) => ({
                             ...current,
+                            pedidoCrti: String(found.pedido || codigoPedido),
                             cliente: found.cliente || "",
-                            dataPedido: found.dataPedido || "",
+                            dataPedido: formatDateBR(found.dataPedido),
                             statusPedido: found.status || "",
                             quantidade: Number(found.qtde) || 0,
                             valorTotal: Number(found.totalPedido) || 0,
                           }));
-                        }}><RefreshCw size={14} /> Atualizar Pedido</button>
+                        }} disabled={buscarPedido.isPending}><RefreshCw size={14} /> Atualizar Pedido</button>
                         <button className="desktop-action primary" onClick={() => {
                           const payload = { ...pedidoForm, licitacaoId: licitacao.id, cliente: normalizeText(pedidoForm.cliente), observacoes: normalizeText(pedidoForm.observacoes) };
                           if (pedidoEdit) updatePedido.mutate({ id: pedidoEdit.id, data: payload });
