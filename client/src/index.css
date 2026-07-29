@@ -1607,10 +1607,90 @@
   min-height: 100vh;
   background: var(--sap-bg);
   color: var(--sap-text);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 10px 12px 8px;
+}
+
+.licitacao-page .desktop-toolbar {
+  grid-template-columns: 220px 220px minmax(320px, 1fr);
+  align-items: center;
+  min-height: 32px;
+  padding: 5px 8px;
+  border: 1px solid var(--sap-line);
+  border-top: 0;
+}
+
+.licitacao-page .desktop-tabs {
+  flex: 0 0 auto;
+  padding: 0 4px;
+  margin-top: 4px;
 }
 
 .licitacao-grid-frame {
-  min-height: calc(100vh - 190px);
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid var(--sap-line);
+  border-top: 0;
+}
+
+.licitacao-header {
+  flex: 0 0 auto;
+  min-height: 68px;
+  padding: 9px 12px;
+  border: 1px solid var(--sap-line);
+  background: linear-gradient(#eef5fb, #d9e5f0);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: inset 0 1px 0 #ffffff;
+}
+
+.licitacao-header .desktop-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.licitacao-header .desktop-title img {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid #d9e2eb;
+}
+
+.licitacao-header .desktop-title h1 {
+  font-size: 19px;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.licitacao-header .desktop-title span {
+  font-size: 12px;
+}
+
+.licitacao-header .desktop-back {
+  height: 28px;
+  min-width: 76px;
+  border: 1px solid #9eafc1;
+  background: linear-gradient(#ffffff, #dce6f0);
+  color: var(--sap-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.licitacao-page .desktop-table-scroll {
+  border: 0;
 }
 
 .licitacao-table {
@@ -1639,6 +1719,17 @@
 .licitacao-table th:nth-child(15), .licitacao-table td:nth-child(15) { width: 150px; text-align: center; }
 .licitacao-table th:last-child, .licitacao-table td:last-child { width: 110px; text-align: center; }
 
+.licitacao-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(0, 18, 36, 0.22);
+}
+
 .licitacao-modal {
   position: relative;
   width: min(620px, calc(100vw - 32px));
@@ -1650,14 +1741,19 @@
   padding: 28px 18px 18px;
 }
 
+.licitacao-modal-menu {
+  width: min(560px, calc(100vw - 36px));
+  padding: 24px 16px 16px;
+}
+
 .licitacao-modal-wide {
   width: min(1180px, calc(100vw - 32px));
 }
 
 .licitacao-modal h2 {
-  margin: 0 42px 18px;
+  margin: 0 42px 14px;
   text-align: center;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 800;
   color: var(--sap-text);
   text-transform: uppercase;
@@ -1679,7 +1775,7 @@
 }
 
 .licitacao-menu-grid button {
-  min-height: 58px;
+  min-height: 42px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1687,6 +1783,7 @@
   font-weight: 800;
   text-transform: uppercase;
   box-shadow: inset 1px 1px 0 #fff;
+  font-size: 12px;
 }
 
 .licitacao-form-grid {

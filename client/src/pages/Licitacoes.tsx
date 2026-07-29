@@ -84,15 +84,17 @@ function SimpleModal({
   children,
   onClose,
   wide = false,
+  menu = false,
 }: {
   title: string;
   children: React.ReactNode;
   onClose: () => void;
   wide?: boolean;
+  menu?: boolean;
 }) {
   return (
-    <div className="desktop-modal-backdrop">
-      <section className={wide ? "licitacao-modal licitacao-modal-wide" : "licitacao-modal"}>
+    <div className="desktop-modal-backdrop licitacao-modal-backdrop">
+      <section className={wide ? "licitacao-modal licitacao-modal-wide" : menu ? "licitacao-modal licitacao-modal-menu" : "licitacao-modal"}>
         <button type="button" className="desktop-modal-close" onClick={onClose} aria-label="Fechar">
           <X size={22} />
         </button>
@@ -316,7 +318,7 @@ export default function Licitacoes() {
 
   return (
     <main className="desktop-page licitacao-page">
-      <header className="desktop-header">
+      <header className="desktop-header licitacao-header">
         <div className="desktop-title">
           <img src={minasfaltoLogo} alt="Minasfalto" />
           <div>
@@ -440,7 +442,7 @@ export default function Licitacoes() {
       </section>
 
       {modal === "menu" && (
-        <SimpleModal title="Licitações" onClose={() => setModal(null)}>
+        <SimpleModal title="Licitações" onClose={() => setModal(null)} menu>
           <div className="licitacao-menu-grid">
             <button onClick={() => openLicitacaoForm()}><Plus size={18} /> Cadastro Licitacao</button>
             <button onClick={() => setModal("status")}><Plus size={18} /> Cadastro status</button>
