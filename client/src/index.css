@@ -1771,6 +1771,7 @@
 }
 
 .licitacao-modal-delivery {
+  --delivery-columns: 30px minmax(260px, 2.35fr) minmax(160px, 1.2fr) minmax(130px, 1fr) minmax(170px, 1.2fr) minmax(250px, 1.65fr) minmax(150px, 0.9fr);
   width: min(1580px, calc(100vw - 70px));
   min-height: min(720px, calc(100vh - 70px));
   max-height: calc(100vh - 54px);
@@ -1932,15 +1933,15 @@
 
 .licitacao-delivery-columns {
   display: grid;
-  grid-template-columns: 28px minmax(180px, 2.2fr) minmax(120px, 1.1fr) minmax(90px, 0.8fr) minmax(120px, 1fr) minmax(190px, 1.45fr) minmax(150px, 1.05fr);
+  grid-template-columns: var(--delivery-columns);
   align-items: center;
-  gap: 8px;
+  column-gap: 10px;
   min-height: 28px;
-  padding: 0 10px;
+  padding: 0 8px;
   border: 1px solid var(--sap-line);
   background: linear-gradient(#f9fbfd, #d8e3ef);
   color: var(--sap-text);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -1962,7 +1963,7 @@
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) 190px;
   align-items: center;
-  gap: 8px;
+  column-gap: 10px;
   border: 0;
   border-bottom: 1px solid var(--sap-line);
   background: linear-gradient(#f9fbfd, #d8e3ef);
@@ -1986,7 +1987,7 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 22px;
+  gap: 10px;
   overflow: hidden;
   font-style: normal;
 }
@@ -2014,12 +2015,12 @@
 }
 
 .licitacao-group-header .licitacao-group-item {
-  flex: 0.8 1 0;
+  flex: 1 1 0;
   text-align: center;
 }
 
 .licitacao-group-header .licitacao-group-type {
-  flex: 1 1 0;
+  flex: 1.2 1 0;
   text-align: center;
 }
 
@@ -2091,9 +2092,9 @@
 
 .licitacao-modal-delivery .licitacao-group-header {
   height: 42px;
-  grid-template-columns: 28px minmax(180px, 2.2fr) minmax(120px, 1.1fr) minmax(90px, 0.8fr) minmax(120px, 1fr) minmax(190px, 1.45fr) minmax(150px, 1.05fr);
-  font-size: 15px;
-  padding: 0 10px;
+  grid-template-columns: var(--delivery-columns);
+  font-size: 14px;
+  padding: 0 8px;
 }
 
 .licitacao-modal-delivery .licitacao-group-header strong {

@@ -550,7 +550,7 @@ export default function Licitacoes() {
           <section className="licitacao-delivery-list">
             <div className="licitacao-delivery-columns" aria-hidden="true">
               <span></span>
-              <strong>Órgão</strong>
+              <strong>ORGAO</strong>
               <strong>Cidade</strong>
               <strong>Item</strong>
               <strong>Tipo</strong>
