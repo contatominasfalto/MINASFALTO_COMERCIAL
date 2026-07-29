@@ -1614,12 +1614,27 @@
 }
 
 .licitacao-page .desktop-toolbar {
-  grid-template-columns: 220px 220px minmax(320px, 1fr);
+  grid-template-columns: 260px 260px minmax(360px, 1fr);
   align-items: center;
-  min-height: 32px;
-  padding: 5px 8px;
+  min-height: 38px;
+  padding: 6px 9px;
   border: 1px solid var(--sap-line);
   border-top: 0;
+}
+
+.licitacao-page .desktop-action {
+  height: 30px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.licitacao-page .desktop-search {
+  height: 30px;
+  font-size: 12px;
+}
+
+.licitacao-page .desktop-search input {
+  height: 24px;
 }
 
 .licitacao-page .desktop-tabs {
@@ -1726,34 +1741,37 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 18px;
+  padding: 22px;
   background: rgba(0, 18, 36, 0.22);
 }
 
 .licitacao-modal {
   position: relative;
-  width: min(620px, calc(100vw - 32px));
-  max-height: calc(100vh - 40px);
+  width: min(1180px, calc(100vw - 52px));
+  min-height: min(430px, calc(100vh - 80px));
+  max-height: calc(100vh - 56px);
   overflow: auto;
   background: #f4f7fb;
   border: 1px solid var(--sap-line);
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
-  padding: 28px 18px 18px;
+  padding: 34px 24px 22px;
 }
 
 .licitacao-modal-menu {
-  width: min(560px, calc(100vw - 36px));
-  padding: 24px 16px 16px;
+  width: min(1040px, calc(100vw - 70px));
+  min-height: min(360px, calc(100vh - 90px));
+  padding: 34px 28px 28px;
 }
 
 .licitacao-modal-wide {
-  width: min(1180px, calc(100vw - 32px));
+  width: min(1320px, calc(100vw - 52px));
+  min-height: min(460px, calc(100vh - 76px));
 }
 
 .licitacao-modal h2 {
-  margin: 0 42px 14px;
+  margin: 0 46px 22px;
   text-align: center;
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 800;
   color: var(--sap-text);
   text-transform: uppercase;
@@ -1762,7 +1780,7 @@
 .licitacao-menu-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 14px;
 }
 
 .licitacao-menu-grid button,
@@ -1775,21 +1793,22 @@
 }
 
 .licitacao-menu-grid button {
-  min-height: 42px;
+  min-height: 58px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   justify-content: center;
   font-weight: 800;
   text-transform: uppercase;
   box-shadow: inset 1px 1px 0 #fff;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.15;
 }
 
 .licitacao-form-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 14px 12px;
 }
 
 .licitacao-form-grid-compact {
@@ -1809,14 +1828,14 @@
 
 .licitacao-field input,
 .licitacao-field select {
-  height: 28px;
-  padding: 0 7px;
+  height: 32px;
+  padding: 0 8px;
   font-size: 12px;
   font-weight: 600;
 }
 
 .licitacao-field textarea {
-  min-height: 76px;
+  min-height: 92px;
   padding: 7px;
   font-size: 12px;
   resize: vertical;
@@ -1837,7 +1856,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: 20px;
 }
 
 .desktop-action.primary {
@@ -1845,8 +1864,8 @@
 }
 
 .licitacao-list-scroll {
-  max-height: 360px;
-  margin-top: 12px;
+  max-height: min(42vh, 470px);
+  margin-top: 16px;
 }
 
 .licitacao-simple-table {
