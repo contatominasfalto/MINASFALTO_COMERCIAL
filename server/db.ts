@@ -2169,6 +2169,397 @@ export async function createEstoqueMovimentacao(data: {
   });
 }
 
+async function ensureMysqlPool() {
+  await getDb();
+  if (!_pool) throw new Error("Database pool not available");
+  return _pool;
+}
+
+function getLicitacaoPotencial(kmDistancia: unknown) {
+  const km = Number(kmDistancia) || 0;
+  if (km <= 0) return "";
+  if (km <= 200) return "Cliente potencial";
+  if (km <= 300) return "Medio potencial";
+  return "Cliente distante / fraco potencial";
+}
+
+function normalizeLicitacaoStatus(value: unknown) {
+  const text = String(value || "").trim();
+  if (!text) return "Pendente";
+  if (text.toLowerCase() === "adjucado") return "Adjudicado";
+  return text;
+}
+
+function normalizeMoney(value: unknown) {
+  return Number(value) || 0;
+}
+
+export async function listLicitacaoOpcoes() {
+  const pool = await ensureMysqlPool();
+  const [status] = await pool.query<mysql.RowDataPacket[]>("SELECT * FROM licitacao_status ORDER BY nome");
+  const [plataformas] = await pool.query<mysql.RowDataPacket[]>("SELECT * FROM licitacao_plataformas ORDER BY nome");
+  const [vendedores] = await pool.query<mysql.RowDataPacket[]>("SELECT * FROM licitacao_vendedores ORDER BY nome");
+  return { status, plataformas, vendedores };
+}
+
+export async function listLicitacaoStatus() {
+  const pool = await ensureMysqlPool();
+  const [rows] = await pool.query<mysql.RowDataPacket[]>("SELECT * FROM licitacao_status ORDER BY nome");
+  return rows;
+}
+
+export async function createLicitacaoStatus(data: { nome: string }) {
+  const pool = await ensureMysqlPool();
+  const nome = data.nome.trim();
+  await pool.query("INSERT IGNORE INTO licitacao_status (nome) VALUES (?)", [nome]);
+  return listLicitacaoStatus();
+}
+
+export async function updateLicitacaoStatus(id: number, data: { nome: string }) {
+  const pool = await ensureMysqlPool();
+  await pool.query("UPDATE licitacao_status SET nome = ? WHERE id = ?", [data.nome.trim(), id]);
+  return listLicitacaoStatus();
+}
+
+export async function deleteLicitacaoStatus(id: number) {
+  const pool = await ensureMysqlPool();
+  await pool.query("DELETE FROM licitacao_status WHERE id = ?", [id]);
+  return listLicitacaoStatus();
+}
+
+export async function listLicitacaoPlataformas() {
+  const pool = await ensureMysqlPool();
+  const [rows] = await pool.query<mysql.RowDataPacket[]>("SELECT * FROM licitacao_plataformas ORDER BY nome");
+  return rows;
+}
+
+export async function createLicitacaoPlataforma(data: { nome: string; link?: string }) {
+  const pool = await ensureMysqlPool();
+  await pool.query("INSERT INTO licitacao_plataformas (nome, link) VALUES (?, ?)", [data.nome.trim(), data.link || ""]);
+  return listLicitacaoPlataformas();
+}
+
+export async function updateLicitacaoPlataforma(id: number, data: { nome: string; link?: string }) {
+  const pool = await ensureMysqlPool();
+  await pool.query("UPDATE licitacao_plataformas SET nome = ?, link = ? WHERE id = ?", [data.nome.trim(), data.link || "", id]);
+  return listLicitacaoPlataformas();
+}
+
+export async function deleteLicitacaoPlataforma(id: number) {
+  const pool = await ensureMysqlPool();
+  await pool.query("DELETE FROM licitacao_plataformas WHERE id = ?", [id]);
+  return listLicitacaoPlataformas();
+}
+
+export async function listLicitacaoVendedores() {
+  const pool = await ensureMysqlPool();
+  const [rows] = await pool.query<mysql.RowDataPacket[]>("SELECT * FROM licitacao_vendedores ORDER BY nome");
+  return rows;
+}
+
+export async function createLicitacaoVendedor(data: { nome: string }) {
+  const pool = await ensureMysqlPool();
+  await pool.query("INSERT IGNORE INTO licitacao_vendedores (nome) VALUES (?)", [data.nome.trim()]);
+  return listLicitacaoVendedores();
+}
+
+export async function updateLicitacaoVendedor(id: number, data: { nome: string }) {
+  const pool = await ensureMysqlPool();
+  await pool.query("UPDATE licitacao_vendedores SET nome = ? WHERE id = ?", [data.nome.trim(), id]);
+  return listLicitacaoVendedores();
+}
+
+export async function deleteLicitacaoVendedor(id: number) {
+  const pool = await ensureMysqlPool();
+  await pool.query("DELETE FROM licitacao_vendedores WHERE id = ?", [id]);
+  return listLicitacaoVendedores();
+}
+
+export type LicitacaoInput = {
+  data?: string;
+  orgao: string;
+  cidade?: string;
+  status?: string;
+  horaInicioDisputa?: string;
+  item?: string;
+  tipo?: string;
+  qtdeSc?: number;
+  valorUnit?: number;
+  lanceLimite?: number;
+  valorAdjudicado?: number;
+  qtdeTn?: number;
+  valorInicialContrato?: number;
+  kmDistancia?: number;
+  regiao?: string;
+  statusContrato?: string;
+  ataVendedorId?: number | null;
+  ataVendedorNome?: string;
+};
+
+export async function listLicitacoes(filters?: { search?: string; adjudicadas?: boolean }) {
+  const pool = await ensureMysqlPool();
+  const where: string[] = [];
+  const params: unknown[] = [];
+  if (filters?.adjudicadas) {
+    where.push("LOWER(status) = 'adjudicado'");
+  } else if (filters?.adjudicadas === false) {
+    where.push("LOWER(status) <> 'adjudicado'");
+  }
+  if (filters?.search?.trim()) {
+    const likeValue = `%${filters.search.trim()}%`;
+    where.push("(orgao LIKE ? OR cidade LIKE ? OR status LIKE ? OR item LIKE ? OR tipo LIKE ? OR regiao LIKE ?)");
+    params.push(likeValue, likeValue, likeValue, likeValue, likeValue, likeValue);
+  }
+  const sql = `
+    SELECT *
+    FROM licitacoes
+    ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+    ORDER BY data DESC, id DESC
+  `;
+  const [rows] = await pool.query<mysql.RowDataPacket[]>(sql, params);
+  return rows;
+}
+
+export async function createLicitacao(data: LicitacaoInput & { criadoPor?: string }) {
+  const pool = await ensureMysqlPool();
+  const status = normalizeLicitacaoStatus(data.status);
+  const potencial = getLicitacaoPotencial(data.kmDistancia);
+  const [result] = await pool.query<mysql.ResultSetHeader>(
+    `INSERT INTO licitacoes (
+      data, orgao, cidade, status, horaInicioDisputa, item, tipo, qtdeSc, valorUnit,
+      lanceLimite, valorAdjudicado, qtdeTn, valorInicialContrato, kmDistancia,
+      potencialCliente, regiao, statusContrato, ataVendedorId, ataVendedorNome, criadoPor
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      data.data || "",
+      data.orgao.trim(),
+      data.cidade || "",
+      status,
+      data.horaInicioDisputa || "",
+      data.item || "",
+      data.tipo || "",
+      normalizeMoney(data.qtdeSc),
+      normalizeMoney(data.valorUnit),
+      normalizeMoney(data.lanceLimite),
+      normalizeMoney(data.valorAdjudicado),
+      normalizeMoney(data.qtdeTn),
+      normalizeMoney(data.valorInicialContrato),
+      normalizeMoney(data.kmDistancia),
+      potencial,
+      data.regiao || "",
+      data.statusContrato || "Pendente",
+      data.ataVendedorId || null,
+      data.ataVendedorNome || "NA",
+      data.criadoPor || "Sistema",
+    ],
+  );
+  return { id: result.insertId };
+}
+
+export async function updateLicitacao(id: number, data: LicitacaoInput) {
+  const pool = await ensureMysqlPool();
+  const status = normalizeLicitacaoStatus(data.status);
+  await pool.query(
+    `UPDATE licitacoes SET
+      data = ?, orgao = ?, cidade = ?, status = ?, horaInicioDisputa = ?, item = ?, tipo = ?,
+      qtdeSc = ?, valorUnit = ?, lanceLimite = ?, valorAdjudicado = ?, qtdeTn = ?,
+      valorInicialContrato = ?, kmDistancia = ?, potencialCliente = ?, regiao = ?,
+      statusContrato = ?, ataVendedorId = ?, ataVendedorNome = ?
+    WHERE id = ?`,
+    [
+      data.data || "",
+      data.orgao.trim(),
+      data.cidade || "",
+      status,
+      data.horaInicioDisputa || "",
+      data.item || "",
+      data.tipo || "",
+      normalizeMoney(data.qtdeSc),
+      normalizeMoney(data.valorUnit),
+      normalizeMoney(data.lanceLimite),
+      normalizeMoney(data.valorAdjudicado),
+      normalizeMoney(data.qtdeTn),
+      normalizeMoney(data.valorInicialContrato),
+      normalizeMoney(data.kmDistancia),
+      getLicitacaoPotencial(data.kmDistancia),
+      data.regiao || "",
+      data.statusContrato || "Pendente",
+      data.ataVendedorId || null,
+      data.ataVendedorNome || "NA",
+      id,
+    ],
+  );
+  return { success: true };
+}
+
+export async function deleteLicitacao(id: number) {
+  const pool = await ensureMysqlPool();
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    await connection.query("DELETE FROM licitacao_pedidos_crti WHERE licitacaoId = ?", [id]);
+    await connection.query("DELETE FROM licitacao_atas WHERE licitacaoId = ?", [id]);
+    await connection.query("DELETE FROM licitacoes WHERE id = ?", [id]);
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+  return { success: true };
+}
+
+export async function getLicitacaoAta(licitacaoId: number) {
+  const pool = await ensureMysqlPool();
+  const [rows] = await pool.query<mysql.RowDataPacket[]>("SELECT * FROM licitacao_atas WHERE licitacaoId = ? LIMIT 1", [licitacaoId]);
+  return rows[0] || null;
+}
+
+export async function saveLicitacaoAta(data: {
+  licitacaoId: number;
+  vendedorId?: number | null;
+  vendedorNome?: string;
+  validadeAta?: string;
+  quantidadeOriginal?: number;
+  observacoes?: string;
+}) {
+  const pool = await ensureMysqlPool();
+  const quantidadeOriginal = normalizeMoney(data.quantidadeOriginal);
+  const limiteIndividual = quantidadeOriginal * 0.5;
+  const limiteColetivo = quantidadeOriginal * 2;
+  const values = [
+    data.vendedorId || null,
+    data.vendedorNome || "NA",
+    data.validadeAta || "",
+    quantidadeOriginal,
+    limiteIndividual,
+    limiteColetivo,
+    data.observacoes || "",
+  ];
+  const existing = await getLicitacaoAta(data.licitacaoId);
+  if (existing) {
+    await pool.query(
+      `UPDATE licitacao_atas SET
+        vendedorId = ?,
+        vendedorNome = ?,
+        validadeAta = ?,
+        quantidadeOriginal = ?,
+        limiteIndividual = ?,
+        limiteColetivo = ?,
+        observacoes = ?
+      WHERE licitacaoId = ?`,
+      [...values, data.licitacaoId],
+    );
+  } else {
+    await pool.query(
+      `INSERT INTO licitacao_atas (
+        vendedorId, vendedorNome, validadeAta, quantidadeOriginal, limiteIndividual, limiteColetivo, observacoes, licitacaoId
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [...values, data.licitacaoId],
+    );
+  }
+  return getLicitacaoAta(data.licitacaoId);
+}
+
+export async function buscarPedidoCrtiLicitacao(pedidoCrti: string) {
+  const pool = await ensureMysqlPool();
+  const codigo = String(pedidoCrti || "").trim();
+  const [comercial] = await pool.query<mysql.RowDataPacket[]>(
+    "SELECT pedido, cliente, dataPedido, status, qtde, totalPedido FROM pedidos WHERE pedido = ? LIMIT 1",
+    [codigo],
+  );
+  if (comercial[0]) return comercial[0];
+  const [obras] = await pool.query<mysql.RowDataPacket[]>(
+    "SELECT pedido, cliente, dataPedido, status, qtde, totalPedido FROM pedidos_obras WHERE pedido = ? LIMIT 1",
+    [codigo],
+  );
+  return obras[0] || null;
+}
+
+export async function listLicitacaoPedidosCrti(licitacaoId: number) {
+  const pool = await ensureMysqlPool();
+  const [licitacaoRows] = await pool.query<mysql.RowDataPacket[]>("SELECT qtdeSc FROM licitacoes WHERE id = ? LIMIT 1", [licitacaoId]);
+  const quantidadeBase = Number(licitacaoRows[0]?.qtdeSc) || 0;
+  const [rows] = await pool.query<mysql.RowDataPacket[]>(
+    "SELECT * FROM licitacao_pedidos_crti WHERE licitacaoId = ? ORDER BY id DESC",
+    [licitacaoId],
+  );
+  const entregue = rows.reduce((acc, row) => acc + (Number(row.quantidade) || 0), 0);
+  return {
+    items: rows,
+    quantidadeBase,
+    entregue,
+    saldoEntrega: quantidadeBase - entregue,
+  };
+}
+
+export async function createLicitacaoPedidoCrti(data: {
+  licitacaoId: number;
+  pedidoCrti: string;
+  cliente?: string;
+  dataPedido?: string;
+  statusPedido?: string;
+  quantidade?: number;
+  valorTotal?: number;
+  observacoes?: string;
+  criadoPor?: string;
+}) {
+  const pool = await ensureMysqlPool();
+  await pool.query(
+    `INSERT INTO licitacao_pedidos_crti (
+      licitacaoId, pedidoCrti, cliente, dataPedido, statusPedido, quantidade, valorTotal, saldoEntrega, observacoes, criadoPor
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+    [
+      data.licitacaoId,
+      data.pedidoCrti.trim(),
+      data.cliente || "",
+      data.dataPedido || "",
+      data.statusPedido || "",
+      normalizeMoney(data.quantidade),
+      normalizeMoney(data.valorTotal),
+      data.observacoes || "",
+      data.criadoPor || "Sistema",
+    ],
+  );
+  return listLicitacaoPedidosCrti(data.licitacaoId);
+}
+
+export async function updateLicitacaoPedidoCrti(id: number, data: {
+  licitacaoId: number;
+  pedidoCrti: string;
+  cliente?: string;
+  dataPedido?: string;
+  statusPedido?: string;
+  quantidade?: number;
+  valorTotal?: number;
+  observacoes?: string;
+}) {
+  const pool = await ensureMysqlPool();
+  await pool.query(
+    `UPDATE licitacao_pedidos_crti SET
+      pedidoCrti = ?, cliente = ?, dataPedido = ?, statusPedido = ?, quantidade = ?, valorTotal = ?, observacoes = ?
+    WHERE id = ?`,
+    [
+      data.pedidoCrti.trim(),
+      data.cliente || "",
+      data.dataPedido || "",
+      data.statusPedido || "",
+      normalizeMoney(data.quantidade),
+      normalizeMoney(data.valorTotal),
+      data.observacoes || "",
+      id,
+    ],
+  );
+  return listLicitacaoPedidosCrti(data.licitacaoId);
+}
+
+export async function deleteLicitacaoPedidoCrti(id: number, licitacaoId: number) {
+  const pool = await ensureMysqlPool();
+  await pool.query("DELETE FROM licitacao_pedidos_crti WHERE id = ?", [id]);
+  return listLicitacaoPedidosCrti(licitacaoId);
+}
+
 export async function updateEstoqueMovimentacao(
   id: number,
   data: {

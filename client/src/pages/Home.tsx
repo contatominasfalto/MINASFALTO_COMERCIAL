@@ -5,6 +5,7 @@ import {
   Briefcase,
   Calculator,
   ChevronDown,
+  FileText,
   LogOut,
   Menu,
   UserCircle,
@@ -106,6 +107,18 @@ export default function Home({ view = "welcome" }: { view?: HomeView }) {
                     Painel de Custos
                   </button>
                 </div>
+              )}
+
+              {!collapsed && (
+                <button
+                  type="button"
+                  className="home-menu-trigger"
+                  onClick={() => navigate("/licitacoes")}
+                  title="Licitacoes"
+                >
+                  <FileText size={22} />
+                  <span>Licitacoes</span>
+                </button>
               )}
             </>
           )}

@@ -233,6 +233,60 @@ const pedidoObraResultadoAlocacoesSchema = z.object({
   })).min(1),
 });
 
+const licitacaoStatusSchema = z.object({
+  nome: z.string().min(1).max(120),
+});
+
+const licitacaoPlataformaSchema = z.object({
+  nome: z.string().min(1).max(180),
+  link: z.string().max(1000).optional(),
+});
+
+const licitacaoVendedorSchema = z.object({
+  nome: z.string().min(1).max(180),
+});
+
+const licitacaoSchema = z.object({
+  data: z.string().max(10).optional(),
+  orgao: z.string().min(1).max(255),
+  cidade: z.string().max(120).optional(),
+  status: z.string().max(120).optional(),
+  horaInicioDisputa: z.string().max(8).optional(),
+  item: z.string().max(120).optional(),
+  tipo: z.string().max(120).optional(),
+  qtdeSc: z.coerce.number().nonnegative().optional(),
+  valorUnit: z.coerce.number().nonnegative().optional(),
+  lanceLimite: z.coerce.number().nonnegative().optional(),
+  valorAdjudicado: z.coerce.number().nonnegative().optional(),
+  qtdeTn: z.coerce.number().nonnegative().optional(),
+  valorInicialContrato: z.coerce.number().nonnegative().optional(),
+  kmDistancia: z.coerce.number().nonnegative().optional(),
+  regiao: z.string().max(120).optional(),
+  statusContrato: z.string().max(80).optional(),
+  ataVendedorId: z.number().int().positive().nullable().optional(),
+  ataVendedorNome: z.string().max(180).optional(),
+});
+
+const licitacaoAtaSchema = z.object({
+  licitacaoId: z.number().int().positive(),
+  vendedorId: z.number().int().positive().nullable().optional(),
+  vendedorNome: z.string().max(180).optional(),
+  validadeAta: z.string().max(10).optional(),
+  quantidadeOriginal: z.coerce.number().nonnegative().optional(),
+  observacoes: z.string().max(5000).optional(),
+});
+
+const licitacaoPedidoCrtiSchema = z.object({
+  licitacaoId: z.number().int().positive(),
+  pedidoCrti: z.string().min(1).max(50),
+  cliente: z.string().max(255).optional(),
+  dataPedido: z.string().max(10).optional(),
+  statusPedido: z.string().max(80).optional(),
+  quantidade: z.coerce.number().nonnegative().optional(),
+  valorTotal: z.coerce.number().nonnegative().optional(),
+  observacoes: z.string().max(5000).optional(),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -552,6 +606,76 @@ export const appRouter = router({
   }),
 
   // ─────────────────────────────────────────────
+  licitacoes: router({
+    opcoes: protectedProcedure.query(() => db.listLicitacaoOpcoes()),
+    list: protectedProcedure
+      .input(z.object({
+        search: z.string().optional(),
+        adjudicadas: z.boolean().optional(),
+      }).optional())
+      .query(({ input }) => db.listLicitacoes(input)),
+    create: protectedProcedure
+      .input(licitacaoSchema)
+      .mutation(({ input, ctx }) => db.createLicitacao({
+        ...input,
+        criadoPor: ctx.user?.name || "Sistema",
+      })),
+    update: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), data: licitacaoSchema }))
+      .mutation(({ input }) => db.updateLicitacao(input.id, input.data)),
+    delete: protectedProcedure
+      .input(z.number().int().positive())
+      .mutation(({ input }) => db.deleteLicitacao(input)),
+    status: router({
+      list: protectedProcedure.query(() => db.listLicitacaoStatus()),
+      create: protectedProcedure.input(licitacaoStatusSchema).mutation(({ input }) => db.createLicitacaoStatus(input)),
+      update: protectedProcedure
+        .input(z.object({ id: z.number().int().positive(), data: licitacaoStatusSchema }))
+        .mutation(({ input }) => db.updateLicitacaoStatus(input.id, input.data)),
+      delete: protectedProcedure.input(z.number().int().positive()).mutation(({ input }) => db.deleteLicitacaoStatus(input)),
+    }),
+    plataformas: router({
+      list: protectedProcedure.query(() => db.listLicitacaoPlataformas()),
+      create: protectedProcedure.input(licitacaoPlataformaSchema).mutation(({ input }) => db.createLicitacaoPlataforma(input)),
+      update: protectedProcedure
+        .input(z.object({ id: z.number().int().positive(), data: licitacaoPlataformaSchema }))
+        .mutation(({ input }) => db.updateLicitacaoPlataforma(input.id, input.data)),
+      delete: protectedProcedure.input(z.number().int().positive()).mutation(({ input }) => db.deleteLicitacaoPlataforma(input)),
+    }),
+    vendedores: router({
+      list: protectedProcedure.query(() => db.listLicitacaoVendedores()),
+      create: protectedProcedure.input(licitacaoVendedorSchema).mutation(({ input }) => db.createLicitacaoVendedor(input)),
+      update: protectedProcedure
+        .input(z.object({ id: z.number().int().positive(), data: licitacaoVendedorSchema }))
+        .mutation(({ input }) => db.updateLicitacaoVendedor(input.id, input.data)),
+      delete: protectedProcedure.input(z.number().int().positive()).mutation(({ input }) => db.deleteLicitacaoVendedor(input)),
+    }),
+    ata: router({
+      get: protectedProcedure
+        .input(z.object({ licitacaoId: z.number().int().positive() }))
+        .query(({ input }) => db.getLicitacaoAta(input.licitacaoId)),
+      save: protectedProcedure.input(licitacaoAtaSchema).mutation(({ input }) => db.saveLicitacaoAta(input)),
+    }),
+    pedidosCrti: router({
+      buscar: protectedProcedure
+        .input(z.object({ pedidoCrti: z.string().min(1).max(50) }))
+        .query(({ input }) => db.buscarPedidoCrtiLicitacao(input.pedidoCrti)),
+      list: protectedProcedure
+        .input(z.object({ licitacaoId: z.number().int().positive() }))
+        .query(({ input }) => db.listLicitacaoPedidosCrti(input.licitacaoId)),
+      create: protectedProcedure.input(licitacaoPedidoCrtiSchema).mutation(({ input, ctx }) => db.createLicitacaoPedidoCrti({
+        ...input,
+        criadoPor: ctx.user?.name || "Sistema",
+      })),
+      update: protectedProcedure
+        .input(z.object({ id: z.number().int().positive(), data: licitacaoPedidoCrtiSchema }))
+        .mutation(({ input }) => db.updateLicitacaoPedidoCrti(input.id, input.data)),
+      delete: protectedProcedure
+        .input(z.object({ id: z.number().int().positive(), licitacaoId: z.number().int().positive() }))
+        .mutation(({ input }) => db.deleteLicitacaoPedidoCrti(input.id, input.licitacaoId)),
+    }),
+  }),
+
   // INDICADORES
   // ─────────────────────────────────────────────
   indicadores: router({

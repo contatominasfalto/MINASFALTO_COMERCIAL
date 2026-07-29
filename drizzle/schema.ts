@@ -235,6 +235,118 @@ export const pedidoObraResultadoAlocacoes = mysqlTable("pedido_obra_resultado_al
 export type PedidoObraResultadoAlocacao = typeof pedidoObraResultadoAlocacoes.$inferSelect;
 export type InsertPedidoObraResultadoAlocacao = typeof pedidoObraResultadoAlocacoes.$inferInsert;
 
+export const licitacaoStatus = mysqlTable("licitacao_status", {
+  id: int("id").autoincrement().primaryKey(),
+  nome: varchar("nome", { length: 120 }).notNull().unique(),
+  criadoEm: timestamp("criadoEm").defaultNow(),
+  atualizadoEm: timestamp("atualizadoEm").defaultNow().onUpdateNow(),
+}, (table) => ({
+  nomeIdx: index("licitacao_status_nome_idx").on(table.nome),
+}));
+
+export type LicitacaoStatus = typeof licitacaoStatus.$inferSelect;
+export type InsertLicitacaoStatus = typeof licitacaoStatus.$inferInsert;
+
+export const licitacaoPlataformas = mysqlTable("licitacao_plataformas", {
+  id: int("id").autoincrement().primaryKey(),
+  nome: varchar("nome", { length: 180 }).notNull(),
+  link: text("link").default(""),
+  criadoEm: timestamp("criadoEm").defaultNow(),
+  atualizadoEm: timestamp("atualizadoEm").defaultNow().onUpdateNow(),
+}, (table) => ({
+  nomeIdx: index("licitacao_plataformas_nome_idx").on(table.nome),
+}));
+
+export type LicitacaoPlataforma = typeof licitacaoPlataformas.$inferSelect;
+export type InsertLicitacaoPlataforma = typeof licitacaoPlataformas.$inferInsert;
+
+export const licitacaoVendedores = mysqlTable("licitacao_vendedores", {
+  id: int("id").autoincrement().primaryKey(),
+  nome: varchar("nome", { length: 180 }).notNull().unique(),
+  criadoEm: timestamp("criadoEm").defaultNow(),
+  atualizadoEm: timestamp("atualizadoEm").defaultNow().onUpdateNow(),
+}, (table) => ({
+  nomeIdx: index("licitacao_vendedores_nome_idx").on(table.nome),
+}));
+
+export type LicitacaoVendedor = typeof licitacaoVendedores.$inferSelect;
+export type InsertLicitacaoVendedor = typeof licitacaoVendedores.$inferInsert;
+
+export const licitacoes = mysqlTable("licitacoes", {
+  id: int("id").autoincrement().primaryKey(),
+  data: varchar("data", { length: 10 }),
+  orgao: varchar("orgao", { length: 255 }).notNull(),
+  cidade: varchar("cidade", { length: 120 }),
+  status: varchar("status", { length: 120 }).default("Pendente"),
+  horaInicioDisputa: varchar("horaInicioDisputa", { length: 8 }),
+  item: varchar("item", { length: 120 }),
+  tipo: varchar("tipo", { length: 120 }),
+  qtdeSc: decimal("qtdeSc", { precision: 18, scale: 3 }).default("0"),
+  valorUnit: decimal("valorUnit", { precision: 18, scale: 2 }).default("0"),
+  lanceLimite: decimal("lanceLimite", { precision: 18, scale: 2 }).default("0"),
+  valorAdjudicado: decimal("valorAdjudicado", { precision: 18, scale: 2 }).default("0"),
+  qtdeTn: decimal("qtdeTn", { precision: 18, scale: 3 }).default("0"),
+  valorInicialContrato: decimal("valorInicialContrato", { precision: 18, scale: 2 }).default("0"),
+  kmDistancia: decimal("kmDistancia", { precision: 18, scale: 2 }).default("0"),
+  potencialCliente: varchar("potencialCliente", { length: 80 }),
+  regiao: varchar("regiao", { length: 120 }),
+  statusContrato: varchar("statusContrato", { length: 80 }).default("Pendente"),
+  ataVendedorId: int("ataVendedorId"),
+  ataVendedorNome: varchar("ataVendedorNome", { length: 180 }).default("NA"),
+  criadoPor: varchar("criadoPor", { length: 100 }).default("Sistema"),
+  criadoEm: timestamp("criadoEm").defaultNow(),
+  atualizadoEm: timestamp("atualizadoEm").defaultNow().onUpdateNow(),
+}, (table) => ({
+  dataIdx: index("licitacoes_data_idx").on(table.data),
+  orgaoIdx: index("licitacoes_orgao_idx").on(table.orgao),
+  statusIdx: index("licitacoes_status_idx").on(table.status),
+}));
+
+export type Licitacao = typeof licitacoes.$inferSelect;
+export type InsertLicitacao = typeof licitacoes.$inferInsert;
+
+export const licitacaoAtas = mysqlTable("licitacao_atas", {
+  id: int("id").autoincrement().primaryKey(),
+  licitacaoId: int("licitacaoId").notNull(),
+  vendedorId: int("vendedorId"),
+  vendedorNome: varchar("vendedorNome", { length: 180 }).default("NA"),
+  validadeAta: varchar("validadeAta", { length: 10 }),
+  quantidadeOriginal: decimal("quantidadeOriginal", { precision: 18, scale: 3 }).default("0"),
+  limiteIndividual: decimal("limiteIndividual", { precision: 18, scale: 3 }).default("0"),
+  limiteColetivo: decimal("limiteColetivo", { precision: 18, scale: 3 }).default("0"),
+  observacoes: text("observacoes").default(""),
+  criadoEm: timestamp("criadoEm").defaultNow(),
+  atualizadoEm: timestamp("atualizadoEm").defaultNow().onUpdateNow(),
+}, (table) => ({
+  licitacaoIdx: index("licitacao_atas_licitacao_idx").on(table.licitacaoId),
+  vendedorIdx: index("licitacao_atas_vendedor_idx").on(table.vendedorId),
+}));
+
+export type LicitacaoAta = typeof licitacaoAtas.$inferSelect;
+export type InsertLicitacaoAta = typeof licitacaoAtas.$inferInsert;
+
+export const licitacaoPedidosCrti = mysqlTable("licitacao_pedidos_crti", {
+  id: int("id").autoincrement().primaryKey(),
+  licitacaoId: int("licitacaoId").notNull(),
+  pedidoCrti: varchar("pedidoCrti", { length: 50 }).notNull(),
+  cliente: varchar("cliente", { length: 255 }),
+  dataPedido: varchar("dataPedido", { length: 10 }),
+  statusPedido: varchar("statusPedido", { length: 80 }),
+  quantidade: decimal("quantidade", { precision: 18, scale: 3 }).default("0"),
+  valorTotal: decimal("valorTotal", { precision: 18, scale: 2 }).default("0"),
+  saldoEntrega: decimal("saldoEntrega", { precision: 18, scale: 3 }).default("0"),
+  observacoes: text("observacoes").default(""),
+  criadoPor: varchar("criadoPor", { length: 100 }).default("Sistema"),
+  criadoEm: timestamp("criadoEm").defaultNow(),
+  atualizadoEm: timestamp("atualizadoEm").defaultNow().onUpdateNow(),
+}, (table) => ({
+  licitacaoIdx: index("licitacao_pedidos_crti_licitacao_idx").on(table.licitacaoId),
+  pedidoIdx: index("licitacao_pedidos_crti_pedido_idx").on(table.pedidoCrti),
+}));
+
+export type LicitacaoPedidoCrti = typeof licitacaoPedidosCrti.$inferSelect;
+export type InsertLicitacaoPedidoCrti = typeof licitacaoPedidosCrti.$inferInsert;
+
 /**
  * Tabela de histórico de alterações
  */
