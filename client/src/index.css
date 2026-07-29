@@ -1973,7 +1973,7 @@
   text-transform: uppercase;
 }
 
-.licitacao-group-header span {
+.licitacao-group-header > span {
   width: 20px;
   height: 20px;
   display: inline-flex;
