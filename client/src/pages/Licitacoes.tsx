@@ -105,6 +105,7 @@ function SimpleModal({
   return (
     <div className="desktop-modal-backdrop licitacao-modal-backdrop">
       <section className={delivery ? "licitacao-modal licitacao-modal-delivery" : wide ? "licitacao-modal licitacao-modal-wide" : menu ? "licitacao-modal licitacao-modal-menu" : "licitacao-modal"}>
+        {delivery && <img className="licitacao-modal-logo" src={minasfaltoLogo} alt="Minasfalto" />}
         <button type="button" className="desktop-modal-close" onClick={onClose} aria-label="Fechar">
           <X size={22} />
         </button>
@@ -555,6 +556,7 @@ export default function Licitacoes() {
                     <strong>
                       <em>{normalizeText(licitacao.orgao)}</em>
                       <i>{normalizeText(licitacao.cidade)}</i>
+                      <span className="licitacao-group-item">{normalizeText(licitacao.item)}</span>
                       <small>{statusEntrega}</small>
                     </strong>
                     <b>Saldo: {formatDecimal(saldoEntrega)}</b>

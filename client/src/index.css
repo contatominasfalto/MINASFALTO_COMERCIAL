@@ -1774,7 +1774,19 @@
   width: min(1580px, calc(100vw - 70px));
   min-height: min(720px, calc(100vh - 70px));
   max-height: calc(100vh - 54px);
-  padding: 46px 30px 28px;
+  padding: 54px 30px 28px;
+}
+
+.licitacao-modal-logo {
+  position: absolute;
+  top: 18px;
+  left: 28px;
+  width: 58px;
+  height: 42px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid #d7e0ea;
+  padding: 4px;
 }
 
 .licitacao-modal .desktop-modal-close {
@@ -1955,6 +1967,7 @@
 
 .licitacao-group-header strong em,
 .licitacao-group-header strong i,
+.licitacao-group-header .licitacao-group-item,
 .licitacao-group-header strong small {
   min-width: 0;
   overflow: hidden;
@@ -1966,15 +1979,19 @@
 }
 
 .licitacao-group-header strong em {
-  flex: 1 1 45%;
+  flex: 1 1 38%;
 }
 
 .licitacao-group-header strong i {
-  flex: 0 1 24%;
+  flex: 0 1 20%;
+}
+
+.licitacao-group-header .licitacao-group-item {
+  flex: 0 1 18%;
 }
 
 .licitacao-group-header strong small {
-  flex: 0 1 28%;
+  flex: 0 1 24%;
 }
 
 .licitacao-group-header b {
