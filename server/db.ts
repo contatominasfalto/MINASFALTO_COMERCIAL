@@ -2524,6 +2524,38 @@ async function hydratePedidoCrtiLicitacao(data: {
   };
 }
 
+async function assertPedidoCrtiDisponivel(pool: mysql.Pool, pedidoCrti: string, currentId?: number) {
+  const codigo = String(pedidoCrti || "").trim();
+  const params: Array<string | number> = [codigo];
+  let currentFilter = "";
+
+  if (currentId) {
+    currentFilter = " AND lp.id <> ?";
+    params.push(currentId);
+  }
+
+  const [rows] = await pool.query<mysql.RowDataPacket[]>(
+    `SELECT
+      lp.id,
+      lp.licitacaoId,
+      l.orgao,
+      l.cidade
+    FROM licitacao_pedidos_crti lp
+    LEFT JOIN licitacoes l ON l.id = lp.licitacaoId
+    WHERE TRIM(CAST(lp.pedidoCrti AS CHAR)) = ?${currentFilter}
+    LIMIT 1`,
+    params,
+  );
+
+  const existing = rows[0];
+  if (!existing) return;
+
+  const orgao = String(existing.orgao || "licitacao").trim();
+  const cidade = String(existing.cidade || "").trim();
+  const destino = cidade ? `${orgao} - ${cidade}` : orgao;
+  throw new Error(`Pedido CRTI ${codigo} ja esta vinculado na licitacao ${destino}.`);
+}
+
 export async function listLicitacaoPedidosCrti(licitacaoId: number) {
   const pool = await ensureMysqlPool();
   const [licitacaoRows] = await pool.query<mysql.RowDataPacket[]>("SELECT qtdeSc FROM licitacoes WHERE id = ? LIMIT 1", [licitacaoId]);
@@ -2572,6 +2604,7 @@ export async function createLicitacaoPedidoCrti(data: {
 }) {
   const pool = await ensureMysqlPool();
   const enriched = await hydratePedidoCrtiLicitacao(data);
+  await assertPedidoCrtiDisponivel(pool, enriched.pedidoCrti);
   await pool.query(
     `INSERT INTO licitacao_pedidos_crti (
       licitacaoId, pedidoCrti, cliente, dataPedido, statusPedido, quantidade, valorTotal, saldoEntrega, observacoes, criadoPor
@@ -2603,6 +2636,7 @@ export async function updateLicitacaoPedidoCrti(id: number, data: {
 }) {
   const pool = await ensureMysqlPool();
   const enriched = await hydratePedidoCrtiLicitacao(data);
+  await assertPedidoCrtiDisponivel(pool, enriched.pedidoCrti, id);
   await pool.query(
     `UPDATE licitacao_pedidos_crti SET
       pedidoCrti = ?, cliente = ?, dataPedido = ?, statusPedido = ?, quantidade = ?, valorTotal = ?, observacoes = ?
