@@ -1492,7 +1492,7 @@ export default function CustoObras() {
                     <th>Data Ped.</th>
                     <th>Cliente</th>
                     <th>Status</th>
-                    <th>Total (R$)</th>
+                    <th>Receita (R$)</th>
                     <th>Saldo (R$)</th>
                   </tr>
                 </thead>
