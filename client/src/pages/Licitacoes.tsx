@@ -538,12 +538,18 @@ export default function Licitacoes() {
             {(adjudicadas.data || []).map((licitacao: any) => {
               const isOpen = Boolean(openEntregaGroups[licitacao.id]);
               const isSelected = selectedLicitacao?.id === licitacao.id;
+              const saldoEntrega = numberValue(licitacao.saldoEntrega);
+              const statusEntrega = Math.abs(saldoEntrega) < 0.001 ? "PEDIDO ENTREGUE" : "ENTREGA TOTAL PENDENTE";
               return (
                 <article className="licitacao-delivery-group" key={licitacao.id}>
                   <button type="button" className="licitacao-group-header" onClick={() => { setSelectedLicitacao(licitacao); setOpenEntregaGroups((current) => ({ ...current, [licitacao.id]: !isOpen })); }}>
                     <span>{isOpen ? "-" : "+"}</span>
-                    <strong>{normalizeText(licitacao.orgao)}</strong>
-                    <b>Qtde: {formatDecimal(licitacao.qtdeSc)}</b>
+                    <strong>
+                      <em>{normalizeText(licitacao.orgao)}</em>
+                      <i>{normalizeText(licitacao.cidade)}</i>
+                      <small>{statusEntrega}</small>
+                    </strong>
+                    <b>Saldo: {formatDecimal(saldoEntrega)}</b>
                   </button>
                   {isOpen && (
                     <div className="licitacao-group-body">

@@ -2301,20 +2301,25 @@ export async function listLicitacoes(filters?: { search?: string; adjudicadas?: 
   const where: string[] = [];
   const params: unknown[] = [];
   if (filters?.adjudicadas) {
-    where.push("LOWER(status) = 'adjudicado'");
+    where.push("LOWER(l.status) = 'adjudicado'");
   } else if (filters?.adjudicadas === false) {
-    where.push("LOWER(status) <> 'adjudicado'");
+    where.push("LOWER(l.status) <> 'adjudicado'");
   }
   if (filters?.search?.trim()) {
     const likeValue = `%${filters.search.trim()}%`;
-    where.push("(orgao LIKE ? OR cidade LIKE ? OR status LIKE ? OR item LIKE ? OR tipo LIKE ? OR regiao LIKE ?)");
+    where.push("(l.orgao LIKE ? OR l.cidade LIKE ? OR l.status LIKE ? OR l.item LIKE ? OR l.tipo LIKE ? OR l.regiao LIKE ?)");
     params.push(likeValue, likeValue, likeValue, likeValue, likeValue, likeValue);
   }
   const sql = `
-    SELECT *
-    FROM licitacoes
+    SELECT
+      l.*,
+      COALESCE(SUM(p.quantidade), 0) AS quantidadeVinculada,
+      (l.qtdeSc - COALESCE(SUM(p.quantidade), 0)) AS saldoEntrega
+    FROM licitacoes l
+    LEFT JOIN licitacao_pedidos_crti p ON p.licitacaoId = l.id
     ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
-    ORDER BY data DESC, id DESC
+    GROUP BY l.id
+    ORDER BY l.data DESC, l.id DESC
   `;
   const [rows] = await pool.query<mysql.RowDataPacket[]>(sql, params);
   return rows;

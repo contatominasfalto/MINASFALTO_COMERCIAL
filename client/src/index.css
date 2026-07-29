@@ -1922,7 +1922,7 @@
   width: 100%;
   height: 34px;
   display: grid;
-  grid-template-columns: 28px 1fr 170px;
+  grid-template-columns: 28px minmax(0, 1fr) 190px;
   align-items: center;
   gap: 8px;
   border: 0;
@@ -1942,6 +1942,39 @@
   justify-content: center;
   border: 1px solid var(--sap-line);
   background: #fff;
+}
+
+.licitacao-group-header strong {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  overflow: hidden;
+  font-style: normal;
+}
+
+.licitacao-group-header strong em,
+.licitacao-group-header strong i,
+.licitacao-group-header strong small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  font-size: inherit;
+  font-weight: 800;
+}
+
+.licitacao-group-header strong em {
+  flex: 1 1 45%;
+}
+
+.licitacao-group-header strong i {
+  flex: 0 1 24%;
+}
+
+.licitacao-group-header strong small {
+  flex: 0 1 28%;
 }
 
 .licitacao-group-header b {
