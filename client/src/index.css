@@ -1986,7 +1986,56 @@
 }
 
 .licitacao-delivery-table {
-  min-width: 1180px;
+  min-width: 1030px;
+  table-layout: fixed;
+}
+
+.licitacao-delivery-table th:nth-child(1),
+.licitacao-delivery-table td:nth-child(1) {
+  width: 92px;
+  text-align: center;
+}
+
+.licitacao-delivery-table th:nth-child(2),
+.licitacao-delivery-table td:nth-child(2) {
+  width: 300px;
+  text-align: left;
+}
+
+.licitacao-delivery-table th:nth-child(3),
+.licitacao-delivery-table td:nth-child(3) {
+  width: 118px;
+  text-align: center;
+}
+
+.licitacao-delivery-table th:nth-child(4),
+.licitacao-delivery-table td:nth-child(4) {
+  width: 132px;
+  text-align: center;
+}
+
+.licitacao-delivery-table th:nth-child(5),
+.licitacao-delivery-table td:nth-child(5) {
+  width: 110px;
+  text-align: right;
+}
+
+.licitacao-delivery-table th:nth-child(6),
+.licitacao-delivery-table td:nth-child(6) {
+  width: 132px;
+  text-align: right;
+}
+
+.licitacao-delivery-table th:nth-child(7),
+.licitacao-delivery-table td:nth-child(7) {
+  width: 132px;
+  text-align: right;
+}
+
+.licitacao-delivery-table th:nth-child(8),
+.licitacao-delivery-table td:nth-child(8) {
+  width: 82px;
+  text-align: center;
 }
 
 .licitacao-modal-delivery .licitacao-group-header {
@@ -1997,6 +2046,42 @@
 
 .licitacao-modal-delivery .licitacao-form-grid-compact {
   grid-template-columns: minmax(260px, 1fr) minmax(220px, 1fr) minmax(220px, 1fr);
+}
+
+.licitacao-delivery-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 440px) minmax(160px, 360px) max-content;
+  align-items: end;
+  gap: 12px;
+}
+
+.licitacao-delivery-form .desktop-action {
+  min-width: 0;
+  width: 100%;
+}
+
+.licitacao-delivery-quantity {
+  min-width: 190px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 10px;
+  border: 1px solid var(--sap-line);
+  background: linear-gradient(#f9fbfd, #d8e3ef);
+  color: var(--sap-text);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.licitacao-delivery-quantity span {
+  white-space: nowrap;
+}
+
+.licitacao-delivery-quantity strong {
+  font-size: 13px;
 }
 
 .licitacao-modal-delivery .licitacao-list-scroll {

@@ -561,7 +561,7 @@ export default function Licitacoes() {
                   </button>
                   {isOpen && (
                     <div className="licitacao-group-body">
-                      <section className="licitacao-form-grid licitacao-form-grid-compact">
+                      <section className="licitacao-delivery-form">
                         <TextField label="Codigo Pedido CRTI" value={pedidoForm.pedidoCrti} onChange={(value) => setPedidoForm((current: any) => ({ ...current, pedidoCrti: value }))} />
                         <button className="desktop-action primary" onClick={() => {
                           const codigoPedido = String(pedidoForm.pedidoCrti || "").trim();
@@ -574,6 +574,10 @@ export default function Licitacoes() {
                           else createPedido.mutate(payload);
                           setSelectedLicitacao(licitacao);
                         }}><Save size={14} /> Salvar</button>
+                        <div className="licitacao-delivery-quantity">
+                          <span>Quantidade Licitacao</span>
+                          <strong>{formatDecimal(licitacao.qtdeSc)}</strong>
+                        </div>
                       </section>
                       {isSelected && (
                         <div className="desktop-table-scroll licitacao-list-scroll">
