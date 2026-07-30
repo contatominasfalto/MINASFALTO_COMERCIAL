@@ -2409,7 +2409,7 @@ function getLicitacaoPotencial(kmDistancia: unknown) {
 function normalizeLicitacaoStatus(value: unknown) {
   const text = String(value || "").trim();
   if (!text) return "Pendente";
-  if (text.toLowerCase() === "adjucado") return "Adjudicado";
+  if (["adjucado", "adjudicado"].includes(text.toLowerCase())) return "Adjucado";
   return text;
 }
 
@@ -2523,10 +2523,11 @@ export async function listLicitacoes(filters?: { search?: string; adjudicadas?: 
   const pool = await ensureMysqlPool();
   const where: string[] = [];
   const params: unknown[] = [];
+  const adjucadoCondition = "(LOWER(l.status) LIKE 'adjucado%' OR LOWER(l.status) LIKE 'adjudicado%')";
   if (filters?.adjudicadas) {
-    where.push("LOWER(l.status) = 'adjudicado'");
+    where.push(adjucadoCondition);
   } else if (filters?.adjudicadas === false) {
-    where.push("LOWER(l.status) <> 'adjudicado'");
+    where.push(`NOT ${adjucadoCondition}`);
   }
   if (filters?.search?.trim()) {
     const likeValue = `%${filters.search.trim()}%`;

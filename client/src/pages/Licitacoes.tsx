@@ -16,7 +16,7 @@ import {
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-const defaultStatus = ["Pendente", "Encerrado", "Documentacao Separada", "Adjudicado"];
+const defaultStatus = ["Pendente", "Encerrado", "Documentacao Separada", "Adjucado"];
 const regioesMg = ["Norte", "Sul", "Leste", "Oeste", "Triangulo", "Central", "Metropolitana", "Zona da Mata", "Vale do Aco", "Vale do Rio Doce", "Alto Paranaiba", "Noroeste", "Jequitinhonha", "Mucuri", "Campo das Vertentes"];
 const cidadesMg = [
   "Belo Horizonte", "Contagem", "Betim", "Ribeirao das Neves", "Santa Luzia", "Ibirite", "Sabara", "Nova Lima",
@@ -100,6 +100,24 @@ function getPotencial(km: unknown) {
 
 function normalizeText(value: unknown) {
   return String(value ?? "").toUpperCase();
+}
+
+function normalizeLicitacaoStatusLabel(value: unknown) {
+  const text = normalizeText(value);
+  if (text.includes("ADJUDICADO")) return text.replaceAll("ADJUDICADO", "ADJUCADO");
+  return text;
+}
+
+function isAdjucadoStatus(value: unknown) {
+  const text = normalizeText(value);
+  return text.includes("ADJUCADO") || text.includes("ADJUDICADO");
+}
+
+function getLicitacaoStatusDisplay(licitacao: Licitacao) {
+  if (isAdjucadoStatus(licitacao?.status) && Math.abs(numberValue(licitacao?.saldoEntrega)) < 0.001) {
+    return "ADJUCADO/ENTREGUE";
+  }
+  return normalizeLicitacaoStatusLabel(licitacao?.status);
 }
 
 function SimpleModal({
@@ -252,7 +270,8 @@ export default function Licitacoes() {
     onError: (error) => toast.error(`Erro ao desvincular pedido: ${error.message}`),
   });
 
-  const statuses = [...defaultStatus, ...(opcoes.data?.status || []).map((item: any) => item.nome)].filter((value, index, arr) => value && arr.indexOf(value) === index);
+  const statuses = [...defaultStatus, ...(opcoes.data?.status || []).map((item: any) => normalizeLicitacaoStatusLabel(item.nome))]
+    .filter((value, index, arr) => value && arr.indexOf(value) === index);
   const vendedores = opcoes.data?.vendedores || [];
   const plataformas = opcoes.data?.plataformas || [];
   const rows = useMemo(() => {
@@ -264,6 +283,10 @@ export default function Licitacoes() {
       return sortDirection === "asc" ? result : -result;
     });
   }, [licitacoes.data, sortKey, sortDirection]);
+  const adjudicadasPendentes = useMemo(
+    () => (adjudicadas.data || []).filter((licitacao: any) => Math.abs(numberValue(licitacao.saldoEntrega)) >= 0.001),
+    [adjudicadas.data],
+  );
 
   const sortBy = (key: string) => {
     if (sortKey === key) setSortDirection((current) => current === "asc" ? "desc" : "asc");
@@ -275,7 +298,7 @@ export default function Licitacoes() {
 
   const openLicitacaoForm = (licitacao?: Licitacao) => {
     setEditingLicitacao(licitacao || null);
-    setLicitacaoForm(licitacao ? { ...emptyLicitacao, ...licitacao } : emptyLicitacao);
+    setLicitacaoForm(licitacao ? { ...emptyLicitacao, ...licitacao, status: normalizeLicitacaoStatusLabel(licitacao.status) } : emptyLicitacao);
     setCidadeMode(licitacao?.cidade && !cidadesMg.includes(licitacao.cidade) ? "outra" : "lista");
     setModal("licitacao");
   };
@@ -285,6 +308,7 @@ export default function Licitacoes() {
       ...licitacaoForm,
       orgao: normalizeText(licitacaoForm.orgao),
       cidade: normalizeText(licitacaoForm.cidade),
+      status: normalizeLicitacaoStatusLabel(licitacaoForm.status),
       item: normalizeText(licitacaoForm.item),
       tipo: normalizeText(licitacaoForm.tipo),
       regiao: normalizeText(licitacaoForm.regiao),
@@ -397,7 +421,7 @@ export default function Licitacoes() {
 
       <section className="desktop-tabs">
         <button className={panelTab === "geral" ? "active" : ""} onClick={() => setPanelTab("geral")}>PAINEL PRINCIPAL</button>
-        <button className={panelTab === "adjudicadas" ? "active" : ""} onClick={() => setPanelTab("adjudicadas")}>ADJUDICADOS</button>
+        <button className={panelTab === "adjudicadas" ? "active" : ""} onClick={() => setPanelTab("adjudicadas")}>ADJUCADOS</button>
       </section>
 
       <section className="desktop-grid-frame licitacao-grid-frame">
@@ -415,7 +439,7 @@ export default function Licitacoes() {
                   ["qtdeSc", "Qtde SC"],
                   ["valorUnit", "Valor Unit"],
                   ["lanceLimite", "Lance Limite"],
-                  ["valorAdjudicado", "Valor Adjudicado"],
+                  ["valorAdjudicado", "Valor Adjucado"],
                   ["qtdeTn", "Qtde TN"],
                   ["valorInicialContrato", "Valor Inicial Contrato"],
                   ["kmDistancia", "KM"],
@@ -442,7 +466,7 @@ export default function Licitacoes() {
                   <td>{formatDateBR(licitacao.data)}</td>
                   <td title={licitacao.orgao}>{normalizeText(licitacao.orgao)}</td>
                   <td>{normalizeText(licitacao.cidade)}</td>
-                  <td>{normalizeText(licitacao.status)}</td>
+                  <td>{getLicitacaoStatusDisplay(licitacao)}</td>
                   <td>{normalizeText(licitacao.item)}</td>
                   <td>{normalizeText(licitacao.tipo)}</td>
                   <td className="num">{formatDecimal(licitacao.qtdeSc)}</td>
@@ -530,7 +554,7 @@ export default function Licitacoes() {
             <TextField label="Qtde SC" type="number" value={licitacaoForm.qtdeSc} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, qtdeSc: Number(value) }))} />
             <TextField label="Valor Unit" type="number" value={licitacaoForm.valorUnit} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, valorUnit: Number(value) }))} />
             <TextField label="Lance Limite" type="number" value={licitacaoForm.lanceLimite} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, lanceLimite: Number(value) }))} />
-            <TextField label="Valor Adjudicado" type="number" value={licitacaoForm.valorAdjudicado} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, valorAdjudicado: Number(value) }))} />
+            <TextField label="Valor Adjucado" type="number" value={licitacaoForm.valorAdjudicado} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, valorAdjudicado: Number(value) }))} />
             <TextField label="Qtde TN" type="number" value={licitacaoForm.qtdeTn} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, qtdeTn: Number(value) }))} />
             <TextField label="Valor Inicial Contrato" type="number" value={licitacaoForm.valorInicialContrato} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, valorInicialContrato: Number(value) }))} />
             <TextField label="KM distancia" type="number" value={licitacaoForm.kmDistancia} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, kmDistancia: Number(value) }))} />
@@ -588,7 +612,9 @@ export default function Licitacoes() {
               <strong>Status</strong>
               <strong>Saldo</strong>
             </div>
-            {(adjudicadas.data || []).map((licitacao: any) => {
+            {adjudicadasPendentes.length === 0 ? (
+              <div className="desktop-empty">Nenhuma licitacao adjucada com saldo pendente.</div>
+            ) : adjudicadasPendentes.map((licitacao: any) => {
               const isOpen = Boolean(openEntregaGroups[licitacao.id]);
               const isSelected = selectedLicitacao?.id === licitacao.id;
               const saldoEntrega = numberValue(licitacao.saldoEntrega);
