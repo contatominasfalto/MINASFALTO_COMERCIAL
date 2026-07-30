@@ -7,6 +7,7 @@ import ContatoForm from "@/components/ContatoForm";
 import CSVImportForm from "@/components/CSVImportForm";
 import HistoricoModal from "@/components/HistoricoModal";
 import PedidoForm from "@/components/PedidoForm";
+import SapDoubleConfirmDialog from "@/components/SapDoubleConfirmDialog";
 import { ArrowLeft, Edit2, FileText, Phone, RefreshCw, Search, Trash2, Warehouse, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
@@ -130,7 +131,7 @@ export default function Dashboard() {
   });
   const { data: ultimaAtualizacao } = trpc.crti.ultimaAtualizacao.useQuery();
 
-  const { mutate: deletePedido } = trpc.pedidos.delete.useMutation({
+  const { mutate: deletePedido, isPending: isDeletingPedido } = trpc.pedidos.delete.useMutation({
     onSuccess: () => {
       setDeleteTarget(null);
       setSelectedPedido(null);
@@ -456,7 +457,7 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      <Dialog open={false && Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent className="desktop-dialog confirm-window">
           <DialogHeader>
             <DialogTitle>Confirmar Exclusão</DialogTitle>
@@ -474,6 +475,25 @@ export default function Dashboard() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <SapDoubleConfirmDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="Confirmar exclusao de pedido"
+        description="Esta acao vai excluir o pedido selecionado do painel comercial."
+        finalDescription="Confirmacao final: depois de continuar, o pedido sera excluido."
+        details={[
+          { label: "Pedido", value: deleteTarget?.pedido ?? "-" },
+          { label: "Cliente", value: deleteTarget?.cliente ?? "-" },
+          { label: "Total", value: formatCurrency(deleteTarget?.totalPedido) },
+        ]}
+        isPending={isDeletingPedido}
+        onConfirm={() => {
+          if (deleteTarget?.id) deletePedido(deleteTarget.id);
+        }}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { withAppBase } from "@/lib/app-base";
+import SapDoubleConfirmDialog from "@/components/SapDoubleConfirmDialog";
 import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
 import {
   ArrowLeft,
@@ -157,6 +158,9 @@ export default function Licitacoes() {
   const [pedidoEdit, setPedidoEdit] = useState<any>(null);
   const [openEntregaGroups, setOpenEntregaGroups] = useState<Record<number, boolean>>({});
   const [ataForm, setAtaForm] = useState<any>({ vendedorId: null, vendedorNome: "NA", validadeAta: "", quantidadeOriginal: 0, observacoes: "" });
+  const [deleteLicitacaoTarget, setDeleteLicitacaoTarget] = useState<Licitacao | null>(null);
+  const [deleteSimpleTarget, setDeleteSimpleTarget] = useState<{ kind: "status" | "plataforma" | "vendedor"; item: any; remove: any } | null>(null);
+  const [deletePedidoTarget, setDeletePedidoTarget] = useState<{ pedido: any; licitacao: Licitacao } | null>(null);
 
   const opcoes = trpc.licitacoes.opcoes.useQuery();
   const licitacoes = trpc.licitacoes.list.useQuery({
@@ -329,7 +333,7 @@ export default function Licitacoes() {
                   {isPlataforma && <td>{item.link ? <a href={item.link} target="_blank" rel="noreferrer">{item.link}</a> : ""}</td>}
                   <td>
                     <button className="mini-icon-button" onClick={() => { setSimpleEdit(item); setSimpleForm({ nome: item.nome, link: item.link || "" }); }}><Pencil size={14} /></button>
-                    <button className="mini-icon-button danger" onClick={() => remove.mutate(item.id)}><Trash2 size={14} /></button>
+                    <button className="mini-icon-button danger" onClick={() => setDeleteSimpleTarget({ kind, item, remove })}><Trash2 size={14} /></button>
                   </td>
                 </tr>
               ))}
@@ -456,7 +460,7 @@ export default function Licitacoes() {
                   <td>
                     <button className="mini-icon-button" onClick={() => openLicitacaoForm(licitacao)}><Pencil size={14} /></button>
                     <button className="mini-icon-button" onClick={() => { setSelectedLicitacao(licitacao); setOpenEntregaGroups({}); setModal("entrega"); }}><Link2 size={14} /></button>
-                    <button className="mini-icon-button danger" onClick={() => deleteLicitacao.mutate(licitacao.id)}><Trash2 size={14} /></button>
+                    <button className="mini-icon-button danger" onClick={() => setDeleteLicitacaoTarget(licitacao)}><Trash2 size={14} /></button>
                   </td>
                 </tr>
               ))}
@@ -613,7 +617,7 @@ export default function Licitacoes() {
                                   <td className="num">{formatSaldoEntrega(pedidosCrti.data?.saldoEntrega || 0)}</td>
                                   <td>
                                     <button className="mini-icon-button" onClick={() => { setPedidoEdit(pedido); setPedidoForm(pedido); }}><Pencil size={14} /></button>
-                                    <button className="mini-icon-button danger" onClick={() => deletePedido.mutate({ id: pedido.id, licitacaoId: licitacao.id })}><Trash2 size={14} /></button>
+                                    <button className="mini-icon-button danger" onClick={() => setDeletePedidoTarget({ pedido, licitacao })}><Trash2 size={14} /></button>
                                   </td>
                                 </tr>
                               ))}
@@ -629,6 +633,68 @@ export default function Licitacoes() {
           </section>
         </SimpleModal>
       )}
+
+      <SapDoubleConfirmDialog
+        open={Boolean(deleteLicitacaoTarget)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteLicitacaoTarget(null);
+        }}
+        title="Confirmar exclusao de licitacao"
+        description="Esta acao vai excluir a licitacao selecionada."
+        finalDescription="Confirmacao final: depois de continuar, a licitacao sera excluida."
+        details={[
+          { label: "Orgao", value: normalizeText(deleteLicitacaoTarget?.orgao) || "-" },
+          { label: "Cidade", value: normalizeText(deleteLicitacaoTarget?.cidade) || "-" },
+          { label: "Status", value: normalizeText(deleteLicitacaoTarget?.status) || "-" },
+        ]}
+        isPending={deleteLicitacao.isPending}
+        onConfirm={() => {
+          if (!deleteLicitacaoTarget?.id) return;
+          deleteLicitacao.mutate(deleteLicitacaoTarget.id, { onSettled: () => setDeleteLicitacaoTarget(null) });
+        }}
+      />
+
+      <SapDoubleConfirmDialog
+        open={Boolean(deleteSimpleTarget)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteSimpleTarget(null);
+        }}
+        title="Confirmar exclusao"
+        description="Esta acao vai excluir o cadastro selecionado."
+        finalDescription="Confirmacao final: depois de continuar, o cadastro sera excluido."
+        details={[
+          { label: "Tipo", value: deleteSimpleTarget?.kind ? normalizeText(deleteSimpleTarget.kind) : "-" },
+          { label: "Nome", value: normalizeText(deleteSimpleTarget?.item?.nome) || "-" },
+        ]}
+        isPending={Boolean(deleteSimpleTarget?.remove?.isPending)}
+        onConfirm={() => {
+          if (!deleteSimpleTarget?.item?.id) return;
+          deleteSimpleTarget.remove.mutate(deleteSimpleTarget.item.id, { onSettled: () => setDeleteSimpleTarget(null) });
+        }}
+      />
+
+      <SapDoubleConfirmDialog
+        open={Boolean(deletePedidoTarget)}
+        onOpenChange={(open) => {
+          if (!open) setDeletePedidoTarget(null);
+        }}
+        title="Confirmar exclusao de pedido CRTI"
+        description="Esta acao vai remover o pedido vinculado ao controle de entrega."
+        finalDescription="Confirmacao final: depois de continuar, o pedido CRTI sera removido desta licitacao."
+        details={[
+          { label: "Licitacao", value: normalizeText(deletePedidoTarget?.licitacao?.orgao) || "-" },
+          { label: "Pedido", value: deletePedidoTarget?.pedido?.pedidoCrti ?? "-" },
+          { label: "Cliente", value: normalizeText(deletePedidoTarget?.pedido?.cliente) || "-" },
+        ]}
+        isPending={deletePedido.isPending}
+        onConfirm={() => {
+          if (!deletePedidoTarget?.pedido?.id || !deletePedidoTarget?.licitacao?.id) return;
+          deletePedido.mutate(
+            { id: deletePedidoTarget.pedido.id, licitacaoId: deletePedidoTarget.licitacao.id },
+            { onSettled: () => setDeletePedidoTarget(null) },
+          );
+        }}
+      />
     </main>
   );
 }

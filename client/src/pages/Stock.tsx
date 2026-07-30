@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import SapDoubleConfirmDialog from "@/components/SapDoubleConfirmDialog";
 import { StockModal } from "@/components/StockModal";
 import { useStock } from "@/contexts/StockContext";
 import {
@@ -37,21 +38,22 @@ export default function StockPage() {
   const { movements, deleteMovement, isLoading, getTotalByPeriod } = useStock();
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
   const handleEdit = (id: string) => {
     setEditId(id);
     setModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Tem certeza que deseja excluir esta movimentacao?")) {
-      try {
-        await deleteMovement(id);
-        toast.success("Movimentacao excluida com sucesso!");
-      } catch (error) {
-        console.error(error);
-        toast.error("Erro ao excluir movimentacao.");
-      }
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteMovement(deleteTarget.id);
+      toast.success("Movimentacao excluida com sucesso!");
+      setDeleteTarget(null);
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao excluir movimentacao.");
     }
   };
 
@@ -375,7 +377,7 @@ export default function StockPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(item.id)}
+                            onClick={() => setDeleteTarget(item)}
                             className="h-8 w-8 text-red-500 hover:text-red-700 stock-icon-button"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -399,6 +401,22 @@ export default function StockPage() {
         }}
         onSuccess={handleModalSuccess}
         editId={editId}
+      />
+
+      <SapDoubleConfirmDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="Confirmar exclusao de movimentacao"
+        description="Esta acao vai excluir a movimentacao selecionada do estoque."
+        finalDescription="Confirmacao final: depois de continuar, a movimentacao sera excluida."
+        details={[
+          { label: "Data", value: deleteTarget?.date ? format(new Date(deleteTarget.date), "dd/MM/yyyy", { locale: ptBR }) : "-" },
+          { label: "Producao", value: deleteTarget?.production?.toFixed ? deleteTarget.production.toFixed(2) : "-" },
+          { label: "Saidas", value: deleteTarget?.outputs?.toFixed ? deleteTarget.outputs.toFixed(2) : "-" },
+        ]}
+        onConfirm={confirmDelete}
       />
     </div>
   );

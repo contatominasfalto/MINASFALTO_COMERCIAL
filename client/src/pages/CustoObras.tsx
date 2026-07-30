@@ -2,6 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import SapDoubleConfirmDialog from "@/components/SapDoubleConfirmDialog";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileSpreadsheet, FileText, Flag, Link2, Pencil, Plus, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -420,6 +421,7 @@ export default function CustoObras() {
   const [allocationDraft, setAllocationDraft] = useState<Record<string, string>>({});
   const [allocationSaveMode, setAllocationSaveMode] = useState<"save" | "reset">("save");
   const [resetAllocationConfirm, setResetAllocationConfirm] = useState<{ step: 1 | 2; yearKey?: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: "receita" | "despesa"; item: any } | null>(null);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [receitaGroupOpen, setReceitaGroupOpen] = useState(false);
   const [custosGroupOpen, setCustosGroupOpen] = useState(false);
@@ -1554,6 +1556,23 @@ export default function CustoObras() {
     });
   };
 
+  const handleConfirmDeleteModalItem = () => {
+    if (!modalPedido || !deleteConfirm) return;
+
+    if (deleteConfirm.type === "receita") {
+      deleteReceita.mutate(
+        { id: deleteConfirm.item.id, pedidoObraId: modalPedido.id },
+        { onSettled: () => setDeleteConfirm(null) },
+      );
+      return;
+    }
+
+    deleteDespesa.mutate(
+      { id: deleteConfirm.item.id, pedidoObraId: modalPedido.id },
+      { onSettled: () => setDeleteConfirm(null) },
+    );
+  };
+
   return (
     <div className="desktop-shell costs-shell">
       <header className="desktop-titlebar">
@@ -1873,6 +1892,7 @@ export default function CustoObras() {
           setChronologicalOpenGroups({});
           setAllocationModalOpen(false);
           setAllocationDraft({});
+          setDeleteConfirm(null);
           setModalPedido(null);
         }
       }}>
@@ -2014,7 +2034,7 @@ export default function CustoObras() {
                                       <button
                                         type="button"
                                         className="table-icon-button danger"
-                                        onClick={() => deleteReceita.mutate({ id: receita.id, pedidoObraId: modalPedido.id })}
+                                        onClick={() => setDeleteConfirm({ type: "receita", item: receita })}
                                         title="Excluir"
                                       >
                                         <Trash2 size={15} />
@@ -2130,7 +2150,7 @@ export default function CustoObras() {
                                       <button
                                         type="button"
                                         className="table-icon-button danger"
-                                        onClick={() => deleteDespesa.mutate({ id: despesa.id, pedidoObraId: modalPedido.id })}
+                                        onClick={() => setDeleteConfirm({ type: "despesa", item: despesa })}
                                         title={despesa.origem === "vinculada" ? "Desvincular" : "Excluir"}
                                       >
                                         <Trash2 size={15} />
@@ -2483,6 +2503,36 @@ export default function CustoObras() {
           </section>
         </DialogContent>
       </Dialog>
+
+      <SapDoubleConfirmDialog
+        open={Boolean(deleteConfirm)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteConfirm(null);
+        }}
+        title={deleteConfirm?.type === "receita" ? "Confirmar exclusao de receita" : deleteConfirm?.item?.origem === "vinculada" ? "Confirmar desvinculacao" : "Confirmar exclusao de despesa"}
+        description="Esta acao precisa de confirmacao antes de remover o lancamento do pedido."
+        finalDescription="Confirmacao final: depois de continuar, o lancamento sera removido do pedido."
+        details={[
+          { label: "Pedido", value: modalPedido?.pedido ?? "-" },
+          {
+            label: "Lancamento",
+            value: deleteConfirm?.type === "receita"
+              ? `${deleteConfirm?.item?.numeroDocumento || "-"} - ${getReceitaStatusLabel(deleteConfirm?.item || {})}`
+              : `${deleteConfirm?.item?.numeroDocumento || "-"} - ${deleteConfirm?.item?.categoria || "-"}`,
+          },
+          {
+            label: "Valor",
+            value: formatCurrency(
+              deleteConfirm?.type === "receita"
+                ? getReceitaValor(deleteConfirm?.item || {})
+                : deleteConfirm?.item?.valorTotalDocumento,
+            ),
+          },
+        ]}
+        finalConfirmLabel={deleteConfirm?.type === "receita" ? "Confirmar exclusao" : deleteConfirm?.item?.origem === "vinculada" ? "Confirmar desvinculacao" : "Confirmar exclusao"}
+        isPending={deleteReceita.isPending || deleteDespesa.isPending}
+        onConfirm={handleConfirmDeleteModalItem}
+      />
 
       <Dialog open={Boolean(resetAllocationConfirm)} onOpenChange={(open) => {
         if (!open) setResetAllocationConfirm(null);
