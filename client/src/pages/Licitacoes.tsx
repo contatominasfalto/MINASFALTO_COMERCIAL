@@ -34,6 +34,16 @@ type ActiveModal = "menu" | "licitacao" | "status" | "plataforma" | "vendedor" |
 type PanelTab = "geral" | "adjudicadas";
 type SortDirection = "asc" | "desc";
 
+const emptyPedidoCrtiForm = {
+  pedidoCrti: "",
+  cliente: "",
+  dataPedido: "",
+  statusPedido: "",
+  quantidade: 0,
+  valorTotal: 0,
+  observacoes: "",
+};
+
 const emptyLicitacao = {
   data: "",
   orgao: "",
@@ -154,7 +164,7 @@ export default function Licitacoes() {
   const [simpleEdit, setSimpleEdit] = useState<any>(null);
   const [simpleForm, setSimpleForm] = useState<any>({ nome: "", link: "" });
   const [selectedLicitacao, setSelectedLicitacao] = useState<Licitacao | null>(null);
-  const [pedidoForm, setPedidoForm] = useState<any>({ pedidoCrti: "", cliente: "", dataPedido: "", statusPedido: "", quantidade: 0, valorTotal: 0, observacoes: "" });
+  const [pedidoForm, setPedidoForm] = useState<any>(emptyPedidoCrtiForm);
   const [pedidoEdit, setPedidoEdit] = useState<any>(null);
   const [openEntregaGroups, setOpenEntregaGroups] = useState<Record<number, boolean>>({});
   const [ataForm, setAtaForm] = useState<any>({ vendedorId: null, vendedorNome: "NA", validadeAta: "", quantidadeOriginal: 0, observacoes: "" });
@@ -229,7 +239,7 @@ export default function Licitacoes() {
   const createPedido = trpc.licitacoes.pedidosCrti.create.useMutation({
     onSuccess: () => {
       toast.success("Pedido vinculado.");
-      setPedidoForm({ pedidoCrti: "", cliente: "", dataPedido: "", statusPedido: "", quantidade: 0, valorTotal: 0, observacoes: "" });
+      setPedidoForm(emptyPedidoCrtiForm);
       invalidateAll();
     },
     onError: (error) => toast.error(`Erro ao vincular pedido: ${error.message}`),
@@ -238,11 +248,20 @@ export default function Licitacoes() {
     onSuccess: () => {
       toast.success("Pedido atualizado.");
       setPedidoEdit(null);
+      setPedidoForm(emptyPedidoCrtiForm);
       invalidateAll();
     },
     onError: (error) => toast.error(`Erro ao atualizar pedido: ${error.message}`),
   });
-  const deletePedido = trpc.licitacoes.pedidosCrti.delete.useMutation({ onSuccess: () => { toast.success("Pedido removido."); invalidateAll(); } });
+  const deletePedido = trpc.licitacoes.pedidosCrti.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Pedido removido.");
+      setPedidoEdit(null);
+      setPedidoForm(emptyPedidoCrtiForm);
+      invalidateAll();
+    },
+    onError: (error) => toast.error(`Erro ao remover pedido: ${error.message}`),
+  });
 
   const statuses = [...defaultStatus, ...(opcoes.data?.status || []).map((item: any) => item.nome)].filter((value, index, arr) => value && arr.indexOf(value) === index);
   const vendedores = opcoes.data?.vendedores || [];
@@ -295,6 +314,44 @@ export default function Licitacoes() {
       observacoes: "",
     });
     setModal("ata");
+  };
+
+  const startPedidoEdit = (licitacao: Licitacao, pedido: any) => {
+    setSelectedLicitacao(licitacao);
+    setPedidoEdit(pedido);
+    setPedidoForm({
+      pedidoCrti: pedido.pedidoCrti || "",
+      cliente: pedido.cliente || "",
+      dataPedido: pedido.dataPedido || "",
+      statusPedido: pedido.statusPedido || "",
+      quantidade: numberValue(pedido.quantidade),
+      valorTotal: numberValue(pedido.valorTotal),
+      observacoes: pedido.observacoes || "",
+    });
+  };
+
+  const submitPedidoCrti = (licitacao: Licitacao) => {
+    const codigoPedido = String(pedidoForm.pedidoCrti || "").trim();
+    if (!codigoPedido) {
+      toast.error("Informe o codigo do pedido CRTI.");
+      return;
+    }
+
+    setSelectedLicitacao(licitacao);
+    const payload = {
+      ...pedidoForm,
+      pedidoCrti: codigoPedido,
+      licitacaoId: licitacao.id,
+      cliente: normalizeText(pedidoForm.cliente),
+      observacoes: normalizeText(pedidoForm.observacoes),
+    };
+
+    if (pedidoEdit?.id && Number(pedidoEdit.licitacaoId) === Number(licitacao.id)) {
+      updatePedido.mutate({ id: pedidoEdit.id, data: payload });
+      return;
+    }
+
+    createPedido.mutate(payload);
   };
 
   const renderAuxCadastro = (kind: "status" | "plataforma" | "vendedor") => {
@@ -583,17 +640,25 @@ export default function Licitacoes() {
                     <div className="licitacao-group-body">
                       <section className="licitacao-delivery-form">
                         <TextField label="Codigo Pedido CRTI" value={pedidoForm.pedidoCrti} onChange={(value) => setPedidoForm((current: any) => ({ ...current, pedidoCrti: value }))} />
-                        <button className="desktop-action primary" onClick={() => {
-                          const codigoPedido = String(pedidoForm.pedidoCrti || "").trim();
-                          if (!codigoPedido) {
-                            toast.error("Informe o codigo do pedido CRTI.");
-                            return;
-                          }
-                          const payload = { ...pedidoForm, pedidoCrti: codigoPedido, licitacaoId: licitacao.id, cliente: normalizeText(pedidoForm.cliente), observacoes: normalizeText(pedidoForm.observacoes) };
-                          if (pedidoEdit) updatePedido.mutate({ id: pedidoEdit.id, data: payload });
-                          else createPedido.mutate(payload);
-                          setSelectedLicitacao(licitacao);
-                        }}><Save size={14} /> Salvar</button>
+                        <button
+                          type="button"
+                          className="desktop-action primary"
+                          onClick={() => submitPedidoCrti(licitacao)}
+                        >
+                          <Save size={14} /> {pedidoEdit?.id && Number(pedidoEdit.licitacaoId) === Number(licitacao.id) ? "Atualizar" : "Salvar"}
+                        </button>
+                        {pedidoEdit?.id && Number(pedidoEdit.licitacaoId) === Number(licitacao.id) && (
+                          <button
+                            type="button"
+                            className="desktop-action"
+                            onClick={() => {
+                              setPedidoEdit(null);
+                              setPedidoForm(emptyPedidoCrtiForm);
+                            }}
+                          >
+                            Cancelar edicao
+                          </button>
+                        )}
                         <div className="licitacao-delivery-quantity">
                           <span>Quantidade Licitacao</span>
                           <strong>{formatDecimal(licitacao.qtdeSc)}</strong>
@@ -616,8 +681,25 @@ export default function Licitacoes() {
                                   <td className="num">{formatCurrency(pedido.valorTotal)}</td>
                                   <td className="num">{formatSaldoEntrega(pedidosCrti.data?.saldoEntrega || 0)}</td>
                                   <td>
-                                    <button className="mini-icon-button" onClick={() => { setPedidoEdit(pedido); setPedidoForm(pedido); }}><Pencil size={14} /></button>
-                                    <button className="mini-icon-button danger" onClick={() => setDeletePedidoTarget({ pedido, licitacao })}><Trash2 size={14} /></button>
+                                    <button
+                                      type="button"
+                                      className="mini-icon-button"
+                                      onClick={() => startPedidoEdit(licitacao, pedido)}
+                                      title="Editar pedido vinculado"
+                                    >
+                                      <Pencil size={14} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="mini-icon-button danger"
+                                      onClick={() => {
+                                        setSelectedLicitacao(licitacao);
+                                        setDeletePedidoTarget({ pedido, licitacao });
+                                      }}
+                                      title="Excluir pedido vinculado"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
                                   </td>
                                 </tr>
                               ))}
