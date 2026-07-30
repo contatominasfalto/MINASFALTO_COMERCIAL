@@ -86,6 +86,10 @@ function formatSaldoEntrega(value: unknown) {
   return formatDecimal(value, 2);
 }
 
+function formatSaldoEntregaResumo(value: unknown) {
+  return new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 3 }).format(numberValue(value));
+}
+
 function formatDateBR(value: unknown) {
   const text = String(value ?? "").trim();
   if (!text) return "";
@@ -834,7 +838,7 @@ export default function Licitacoes() {
                       <span className="licitacao-group-type">{normalizeText(licitacao.tipo)}</span>
                       <small>{statusEntrega}</small>
                     </strong>
-                    <b>Saldo: {formatSaldoEntrega(saldoEntrega)}</b>
+                    <b>{formatSaldoEntregaResumo(saldoEntrega)}</b>
                   </button>
                   {isOpen && (
                     <div className="licitacao-group-body">
