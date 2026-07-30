@@ -2613,6 +2613,14 @@
   background: #eef4fb;
 }
 
+[data-slot="dialog-overlay"] {
+  z-index: 130;
+}
+
+[data-slot="dialog-content"] {
+  z-index: 140;
+}
+
 [data-slot="dialog-content"].sap-confirm-dialog {
   width: min(520px, calc(100vw - 48px));
   max-width: none;

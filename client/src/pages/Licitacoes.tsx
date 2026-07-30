@@ -723,13 +723,16 @@ export default function Licitacoes() {
         ]}
         isPending={deletePedido.isPending}
         onConfirm={() => {
-          if (!deletePedidoTarget?.pedido?.id || !deletePedidoTarget?.licitacao?.id) {
+          const pedidoId = Number(deletePedidoTarget?.pedido?.id);
+          const licitacaoId = Number(deletePedidoTarget?.licitacao?.id);
+
+          if (!pedidoId || !licitacaoId) {
             toast.error("Não foi possível identificar o pedido para desvincular.");
             return;
           }
-          setSelectedLicitacao(deletePedidoTarget.licitacao);
+
           deletePedido.mutate(
-            { id: deletePedidoTarget.pedido.id, licitacaoId: deletePedidoTarget.licitacao.id },
+            { id: pedidoId, licitacaoId },
             { onSuccess: () => setDeletePedidoTarget(null) },
           );
         }}
