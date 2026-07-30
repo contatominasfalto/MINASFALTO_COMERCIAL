@@ -4,6 +4,10 @@ import SapDoubleConfirmDialog from "@/components/SapDoubleConfirmDialog";
 import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
 import {
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   ExternalLink,
   Link2,
   Pencil,
@@ -13,7 +17,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 const defaultStatus = ["Pendente", "Encerrado", "Documentacao Separada", "Adjucado"];
@@ -169,6 +173,54 @@ function SelectField({ label, value, onChange, children }: { label: string; valu
   );
 }
 
+function LicitacaoPagination({
+  page,
+  pageSize,
+  total,
+  totalPages,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+}) {
+  const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const end = Math.min(total, page * pageSize);
+
+  return (
+    <div className="cost-pagination licitacao-pagination" aria-label="Paginacao">
+      <span className="cost-page-range">{start}-{end} de {total}</span>
+      <select
+        className="cost-page-size"
+        value={pageSize}
+        onChange={(event) => onPageSizeChange(Number(event.target.value))}
+        aria-label="Registros por pagina"
+      >
+        {[25, 50, 100, 200].map((option) => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
+      <button type="button" onClick={() => onPageChange(1)} disabled={page <= 1} aria-label="Primeira pagina">
+        <ChevronsLeft size={15} />
+      </button>
+      <button type="button" onClick={() => onPageChange(Math.max(1, page - 1))} disabled={page <= 1} aria-label="Pagina anterior">
+        <ChevronLeft size={15} />
+      </button>
+      <span className="cost-page-label">Pagina {page} de {totalPages}</span>
+      <button type="button" onClick={() => onPageChange(Math.min(totalPages, page + 1))} disabled={page >= totalPages} aria-label="Proxima pagina">
+        <ChevronRight size={15} />
+      </button>
+      <button type="button" onClick={() => onPageChange(totalPages)} disabled={page >= totalPages} aria-label="Ultima pagina">
+        <ChevronsRight size={15} />
+      </button>
+    </div>
+  );
+}
+
 export default function Licitacoes() {
   const utils = trpc.useUtils();
   const [modal, setModal] = useState<ActiveModal>("menu");
@@ -176,6 +228,9 @@ export default function Licitacoes() {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState("data");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [licitacaoPage, setLicitacaoPage] = useState(1);
+  const [licitacaoPageSize, setLicitacaoPageSize] = useState(50);
+  const [selectedTableLicitacaoId, setSelectedTableLicitacaoId] = useState<number | null>(null);
   const [editingLicitacao, setEditingLicitacao] = useState<Licitacao | null>(null);
   const [licitacaoForm, setLicitacaoForm] = useState<any>(emptyLicitacao);
   const [cidadeMode, setCidadeMode] = useState("lista");
@@ -283,10 +338,46 @@ export default function Licitacoes() {
       return sortDirection === "asc" ? result : -result;
     });
   }, [licitacoes.data, sortKey, sortDirection]);
+  const licitacaoTotal = rows.length;
+  const licitacaoTotalPages = Math.max(1, Math.ceil(licitacaoTotal / licitacaoPageSize));
+  const visibleLicitacoes = useMemo(
+    () => rows.slice((licitacaoPage - 1) * licitacaoPageSize, licitacaoPage * licitacaoPageSize),
+    [rows, licitacaoPage, licitacaoPageSize],
+  );
+  const currentTableLicitacao = useMemo(
+    () => visibleLicitacoes.find((licitacao) => licitacao.id === selectedTableLicitacaoId) || visibleLicitacoes[0] || null,
+    [visibleLicitacoes, selectedTableLicitacaoId],
+  );
   const adjudicadasPendentes = useMemo(
     () => (adjudicadas.data || []).filter((licitacao: any) => Math.abs(numberValue(licitacao.saldoEntrega)) >= 0.001),
     [adjudicadas.data],
   );
+
+  useEffect(() => {
+    setLicitacaoPage(1);
+  }, [search, panelTab, licitacaoPageSize]);
+
+  useEffect(() => {
+    if (licitacaoPage > licitacaoTotalPages) setLicitacaoPage(licitacaoTotalPages);
+  }, [licitacaoPage, licitacaoTotalPages]);
+
+  useEffect(() => {
+    if (!visibleLicitacoes.length) {
+      if (selectedTableLicitacaoId !== null) setSelectedTableLicitacaoId(null);
+      return;
+    }
+
+    if (!selectedTableLicitacaoId || !visibleLicitacoes.some((licitacao) => licitacao.id === selectedTableLicitacaoId)) {
+      setSelectedTableLicitacaoId(visibleLicitacoes[0].id);
+    }
+  }, [visibleLicitacoes, selectedTableLicitacaoId]);
+
+  const scrollSelectedLicitacaoIntoView = () => {
+    window.requestAnimationFrame(() => {
+      const selectedRow = document.querySelector(".licitacao-grid-frame tbody tr.selected") as HTMLElement | null;
+      selectedRow?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    });
+  };
 
   const sortBy = (key: string) => {
     if (sortKey === key) setSortDirection((current) => current === "asc" ? "desc" : "asc");
@@ -294,6 +385,41 @@ export default function Licitacoes() {
       setSortKey(key);
       setSortDirection("asc");
     }
+  };
+
+  const handleLicitacoesTableKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.shiftKey && event.key === "ArrowRight") {
+      event.preventDefault();
+      setLicitacaoPage((current) => Math.min(licitacaoTotalPages, current + 1));
+      return;
+    }
+
+    if (event.shiftKey && event.key === "ArrowLeft") {
+      event.preventDefault();
+      setLicitacaoPage((current) => Math.max(1, current - 1));
+      return;
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (currentTableLicitacao) openLicitacaoForm(currentTableLicitacao);
+      return;
+    }
+
+    if (!["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) return;
+    event.preventDefault();
+    if (!visibleLicitacoes.length) return;
+
+    const currentIndex = Math.max(
+      0,
+      visibleLicitacoes.findIndex((licitacao) => licitacao.id === currentTableLicitacao?.id),
+    );
+    const nextIndex = event.key === "ArrowDown" || event.key === "ArrowRight"
+      ? Math.min(visibleLicitacoes.length - 1, currentIndex + 1)
+      : Math.max(0, currentIndex - 1);
+
+    setSelectedTableLicitacaoId(visibleLicitacoes[nextIndex].id);
+    scrollSelectedLicitacaoIntoView();
   };
 
   const openLicitacaoForm = (licitacao?: Licitacao) => {
@@ -419,13 +545,19 @@ export default function Licitacoes() {
         </label>
       </section>
 
-      <section className="desktop-tabs">
+      <section className="desktop-tabs licitacao-tabs">
         <button className={panelTab === "geral" ? "active" : ""} onClick={() => setPanelTab("geral")}>PAINEL PRINCIPAL</button>
         <button className={panelTab === "adjudicadas" ? "active" : ""} onClick={() => setPanelTab("adjudicadas")}>ADJUCADOS</button>
       </section>
 
       <section className="desktop-grid-frame licitacao-grid-frame">
-        <div className="desktop-table-scroll">
+        <div
+          className="desktop-table-scroll keyboard-table-scroll"
+          tabIndex={0}
+          role="grid"
+          aria-label="Licitacoes"
+          onKeyDown={handleLicitacoesTableKeyDown}
+        >
           <table className="desktop-table licitacao-table">
             <thead>
               <tr>
@@ -459,10 +591,15 @@ export default function Licitacoes() {
             <tbody>
               {licitacoes.isLoading ? (
                 <tr><td colSpan={panelTab === "adjudicadas" ? 19 : 16} className="desktop-empty">Carregando licitacoes...</td></tr>
-              ) : rows.length === 0 ? (
+              ) : visibleLicitacoes.length === 0 ? (
                 <tr><td colSpan={panelTab === "adjudicadas" ? 19 : 16} className="desktop-empty">Nenhuma licitacao encontrada</td></tr>
-              ) : rows.map((licitacao) => (
-                <tr key={licitacao.id}>
+              ) : visibleLicitacoes.map((licitacao) => (
+                <tr
+                  key={licitacao.id}
+                  className={currentTableLicitacao?.id === licitacao.id ? "selected" : ""}
+                  onClick={() => setSelectedTableLicitacaoId(licitacao.id)}
+                  onDoubleClick={() => openLicitacaoForm(licitacao)}
+                >
                   <td>{formatDateBR(licitacao.data)}</td>
                   <td title={licitacao.orgao}>{normalizeText(licitacao.orgao)}</td>
                   <td>{normalizeText(licitacao.cidade)}</td>
@@ -518,6 +655,17 @@ export default function Licitacoes() {
             </tbody>
           </table>
         </div>
+        <footer className="licitacao-grid-footer">
+          <LicitacaoPagination
+            page={licitacaoPage}
+            pageSize={licitacaoPageSize}
+            total={licitacaoTotal}
+            totalPages={licitacaoTotalPages}
+            onPageChange={setLicitacaoPage}
+            onPageSizeChange={setLicitacaoPageSize}
+          />
+          <span>{visibleLicitacoes.length} licitacao(s) nesta pagina</span>
+        </footer>
       </section>
 
       {modal === "menu" && (

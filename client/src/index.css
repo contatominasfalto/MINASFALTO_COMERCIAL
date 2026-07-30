@@ -1643,10 +1643,37 @@
   height: 24px;
 }
 
-.licitacao-page .desktop-tabs {
+.licitacao-page .desktop-tabs,
+.licitacao-page .licitacao-tabs {
   flex: 0 0 auto;
-  padding: 0 4px;
-  margin-top: 4px;
+  display: flex;
+  gap: 1px;
+  padding: 8px 12px 0;
+  margin-top: 0;
+  background: linear-gradient(#f6f8fb, #e4edf6);
+  border-bottom: 1px solid var(--sap-line);
+}
+
+.licitacao-page .desktop-tabs button,
+.licitacao-page .licitacao-tabs button {
+  height: 29px;
+  min-width: 220px;
+  border: 1px solid #8fa2b7;
+  border-bottom: 0;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(#ffffff, #dce6f0);
+  color: var(--sap-text);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.licitacao-page .desktop-tabs button.active,
+.licitacao-page .licitacao-tabs button.active {
+  background: linear-gradient(#fffaf0, #f4dfa8);
+  border-color: #9f7b22;
+  box-shadow: inset 0 3px 0 var(--sap-yellow);
 }
 
 .licitacao-grid-frame {
@@ -1656,6 +1683,8 @@
   padding: 0;
   border: 1px solid var(--sap-line);
   border-top: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .licitacao-header {
@@ -1712,6 +1741,29 @@
 
 .licitacao-page .desktop-table-scroll {
   border: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.licitacao-grid-footer {
+  flex: 0 0 auto;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 3px 10px;
+  border-top: 1px solid var(--sap-line);
+  background: #eef4f9;
+  color: var(--sap-text);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.licitacao-pagination {
+  grid-column: auto;
+  grid-row: auto;
 }
 
 .licitacao-table {
