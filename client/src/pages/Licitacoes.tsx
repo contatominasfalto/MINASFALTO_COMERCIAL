@@ -165,7 +165,6 @@ export default function Licitacoes() {
   const [simpleForm, setSimpleForm] = useState<any>({ nome: "", link: "" });
   const [selectedLicitacao, setSelectedLicitacao] = useState<Licitacao | null>(null);
   const [pedidoForm, setPedidoForm] = useState<any>(emptyPedidoCrtiForm);
-  const [pedidoEdit, setPedidoEdit] = useState<any>(null);
   const [openEntregaGroups, setOpenEntregaGroups] = useState<Record<number, boolean>>({});
   const [ataForm, setAtaForm] = useState<any>({ vendedorId: null, vendedorNome: "NA", validadeAta: "", quantidadeOriginal: 0, observacoes: "" });
   const [deleteLicitacaoTarget, setDeleteLicitacaoTarget] = useState<Licitacao | null>(null);
@@ -244,23 +243,13 @@ export default function Licitacoes() {
     },
     onError: (error) => toast.error(`Erro ao vincular pedido: ${error.message}`),
   });
-  const updatePedido = trpc.licitacoes.pedidosCrti.update.useMutation({
-    onSuccess: () => {
-      toast.success("Pedido atualizado.");
-      setPedidoEdit(null);
-      setPedidoForm(emptyPedidoCrtiForm);
-      invalidateAll();
-    },
-    onError: (error) => toast.error(`Erro ao atualizar pedido: ${error.message}`),
-  });
   const deletePedido = trpc.licitacoes.pedidosCrti.delete.useMutation({
     onSuccess: () => {
-      toast.success("Pedido removido.");
-      setPedidoEdit(null);
+      toast.success("Pedido desvinculado.");
       setPedidoForm(emptyPedidoCrtiForm);
       invalidateAll();
     },
-    onError: (error) => toast.error(`Erro ao remover pedido: ${error.message}`),
+    onError: (error) => toast.error(`Erro ao desvincular pedido: ${error.message}`),
   });
 
   const statuses = [...defaultStatus, ...(opcoes.data?.status || []).map((item: any) => item.nome)].filter((value, index, arr) => value && arr.indexOf(value) === index);
@@ -316,20 +305,6 @@ export default function Licitacoes() {
     setModal("ata");
   };
 
-  const startPedidoEdit = (licitacao: Licitacao, pedido: any) => {
-    setSelectedLicitacao(licitacao);
-    setPedidoEdit(pedido);
-    setPedidoForm({
-      pedidoCrti: pedido.pedidoCrti || "",
-      cliente: pedido.cliente || "",
-      dataPedido: pedido.dataPedido || "",
-      statusPedido: pedido.statusPedido || "",
-      quantidade: numberValue(pedido.quantidade),
-      valorTotal: numberValue(pedido.valorTotal),
-      observacoes: pedido.observacoes || "",
-    });
-  };
-
   const submitPedidoCrti = (licitacao: Licitacao) => {
     const codigoPedido = String(pedidoForm.pedidoCrti || "").trim();
     if (!codigoPedido) {
@@ -345,11 +320,6 @@ export default function Licitacoes() {
       cliente: normalizeText(pedidoForm.cliente),
       observacoes: normalizeText(pedidoForm.observacoes),
     };
-
-    if (pedidoEdit?.id && Number(pedidoEdit.licitacaoId) === Number(licitacao.id)) {
-      updatePedido.mutate({ id: pedidoEdit.id, data: payload });
-      return;
-    }
 
     createPedido.mutate(payload);
   };
@@ -645,20 +615,8 @@ export default function Licitacoes() {
                           className="desktop-action primary"
                           onClick={() => submitPedidoCrti(licitacao)}
                         >
-                          <Save size={14} /> {pedidoEdit?.id && Number(pedidoEdit.licitacaoId) === Number(licitacao.id) ? "Atualizar" : "Salvar"}
+                          <Save size={14} /> Salvar
                         </button>
-                        {pedidoEdit?.id && Number(pedidoEdit.licitacaoId) === Number(licitacao.id) && (
-                          <button
-                            type="button"
-                            className="desktop-action"
-                            onClick={() => {
-                              setPedidoEdit(null);
-                              setPedidoForm(emptyPedidoCrtiForm);
-                            }}
-                          >
-                            Cancelar edicao
-                          </button>
-                        )}
                         <div className="licitacao-delivery-quantity">
                           <span>Quantidade Licitacao</span>
                           <strong>{formatDecimal(licitacao.qtdeSc)}</strong>
@@ -683,20 +641,14 @@ export default function Licitacoes() {
                                   <td>
                                     <button
                                       type="button"
-                                      className="mini-icon-button"
-                                      onClick={() => startPedidoEdit(licitacao, pedido)}
-                                      title="Editar pedido vinculado"
-                                    >
-                                      <Pencil size={14} />
-                                    </button>
-                                    <button
-                                      type="button"
                                       className="mini-icon-button danger"
-                                      onClick={() => {
+                                      onClick={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
                                         setSelectedLicitacao(licitacao);
                                         setDeletePedidoTarget({ pedido, licitacao });
                                       }}
-                                      title="Excluir pedido vinculado"
+                                      title="Desvincular pedido"
                                     >
                                       <Trash2 size={14} />
                                     </button>
@@ -760,9 +712,10 @@ export default function Licitacoes() {
         onOpenChange={(open) => {
           if (!open) setDeletePedidoTarget(null);
         }}
-        title="Confirmar exclusão de pedido CRTI"
-        description="Esta ação vai remover o pedido vinculado ao controle de entrega."
-        finalDescription="Confirmação final: depois de continuar, o pedido CRTI será removido desta licitação."
+        title="Confirmar desvínculo de pedido CRTI"
+        description="Esta ação vai desvincular o pedido do controle de entrega."
+        finalDescription="Confirmação final: depois de continuar, o pedido CRTI será desvinculado desta licitação."
+        finalConfirmLabel="Desvincular pedido"
         details={[
           { label: "Licitação", value: normalizeText(deletePedidoTarget?.licitacao?.orgao) || "-" },
           { label: "Pedido", value: deletePedidoTarget?.pedido?.pedidoCrti ?? "-" },
@@ -770,10 +723,14 @@ export default function Licitacoes() {
         ]}
         isPending={deletePedido.isPending}
         onConfirm={() => {
-          if (!deletePedidoTarget?.pedido?.id || !deletePedidoTarget?.licitacao?.id) return;
+          if (!deletePedidoTarget?.pedido?.id || !deletePedidoTarget?.licitacao?.id) {
+            toast.error("Não foi possível identificar o pedido para desvincular.");
+            return;
+          }
+          setSelectedLicitacao(deletePedidoTarget.licitacao);
           deletePedido.mutate(
             { id: deletePedidoTarget.pedido.id, licitacaoId: deletePedidoTarget.licitacao.id },
-            { onSettled: () => setDeletePedidoTarget(null) },
+            { onSuccess: () => setDeletePedidoTarget(null) },
           );
         }}
       />
