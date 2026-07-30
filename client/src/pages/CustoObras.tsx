@@ -102,6 +102,10 @@ const formatCurrencyOrBlank = (value: unknown) => {
   if (value === null || value === undefined || value === "") return "";
   return formatCurrency(value);
 };
+const getReceitaValor = (receita: any) => numberValue(receita?.valorTotalDocumento ?? receita?.valor);
+const getReceitaDate = (receita: any) => receita?.dataVencimento || receita?.dataEmissao || receita?.data || "";
+const getReceitaStatusLabel = (receita: any) =>
+  receita?.status === "Outros" ? receita?.tipoReceitaOutros || "Outros" : receita?.status || "";
 const escapeExcelValue = (value: unknown) => String(value ?? "")
   .replace(/&/g, "&amp;")
   .replace(/</g, "&lt;")
@@ -394,9 +398,16 @@ export default function CustoObras() {
   });
   const [manualRevenue, setManualRevenue] = useState({
     id: null as number | null,
+    codigoFornecedorCliente: "",
+    fornecedorCliente: "",
     numeroDocumento: "",
     status: "Nfe" as RevenueStatus,
     tipoReceitaOutros: "",
+    tipoConta: "",
+    tipoDocumento: "",
+    dataEmissao: "",
+    dataVencimento: "",
+    valorTotalDocumento: "",
     data: "",
     valor: "",
     descricao: "",
@@ -840,19 +851,19 @@ export default function CustoObras() {
 
   const modalCalculations = useMemo(() => {
     const receita = modalReceitas.reduce((total: number, receitaItem: any) => {
-      return total + numberValue(receitaItem.valor);
+      return total + getReceitaValor(receitaItem);
     }, 0);
     const nfeReceitas = modalReceitas.filter((receitaItem: any) => receitaItem.status === "Nfe");
     const valorTotalImpostoBase = nfeReceitas.reduce((total: number, receitaItem: any) => {
-      return total + numberValue(receitaItem.valor);
+      return total + getReceitaValor(receitaItem);
     }, 0);
     const porcentagemImposto = parsePercentInput(financeForm.porcentagemImposto);
     const valorPorcentagemImposto = valorTotalImpostoBase * (porcentagemImposto / 100);
     const impostos = nfeReceitas.map((receitaItem: any) => ({
       id: receitaItem.id,
       numeroDocumento: receitaItem.numeroDocumento,
-      data: receitaItem.data,
-      valorImposto: numberValue(receitaItem.valor) * (porcentagemImposto / 100),
+      data: getReceitaDate(receitaItem),
+      valorImposto: getReceitaValor(receitaItem) * (porcentagemImposto / 100),
     }));
     const totalDespesas = modalDespesas.reduce((total: number, despesa: any) => {
       return total + numberValue(despesa.valorTotalDocumento);
@@ -888,8 +899,9 @@ export default function CustoObras() {
   const chronologicalAllocationItems = useMemo<ChronologicalAllocationItem[]>(() => {
     const receitas = modalReceitas.map((receita: any) => {
       const key = `receita:${receita.id}`;
-      const originalDate = getDateInputValue(receita.data);
-      const originalMonth = getMonthInputValue(originalDate || receita.data);
+      const sourceDate = getReceitaDate(receita);
+      const originalDate = getDateInputValue(sourceDate);
+      const originalMonth = getMonthInputValue(originalDate || sourceDate);
       const allocation = allocationMap.get(key);
       const allocatedMonth = allocation?.mesReferencia;
       return {
@@ -898,10 +910,8 @@ export default function CustoObras() {
         itemId: Number(receita.id),
         grupo: "Receita",
         doc: receita.numeroDocumento || "",
-        descricao: receita.status === "Outros"
-          ? receita.tipoReceitaOutros || receita.descricao || "Outros"
-          : receita.descricao || receita.status || "",
-        valor: numberValue(receita.valor),
+        descricao: receita.descricao || getReceitaStatusLabel(receita),
+        valor: getReceitaValor(receita),
         originalDate,
         originalMonth,
         currentDate: allocatedMonth ? allocation?.dataReferencia || getDateInputFromMonth(allocatedMonth) : originalDate,
@@ -998,14 +1008,13 @@ export default function CustoObras() {
     modalReceitas.forEach((receita: any) => {
       const key = `receita:${receita.id}`;
       const allocation = allocationMap.get(key);
-      addItem("receitas", allocationMap.get(key)?.mesReferencia || receita.data, {
+      const sourceDate = getReceitaDate(receita);
+      addItem("receitas", allocationMap.get(key)?.mesReferencia || sourceDate, {
         id: `receita-${receita.id}`,
         doc: receita.numeroDocumento || "",
-        date: formatDateBR(allocation?.dataReferencia || receita.data),
-        value: numberValue(receita.valor),
-        description: receita.status === "Outros"
-          ? receita.tipoReceitaOutros || receita.descricao || "Outros"
-          : receita.descricao || receita.status || "",
+        date: formatDateBR(allocation?.dataReferencia || sourceDate),
+        value: getReceitaValor(receita),
+        description: receita.descricao || getReceitaStatusLabel(receita),
       });
     });
 
@@ -1095,11 +1104,17 @@ export default function CustoObras() {
   const filteredModalReceitas = useMemo(() => {
     return modalReceitas.filter((receita: any) => matchesSearch([
       receita.numeroDocumento,
-      receita.status,
+      getReceitaStatusLabel(receita),
       receita.tipoReceitaOutros,
+      receita.codigoFornecedorCliente,
+      receita.fornecedorCliente,
+      receita.tipoConta,
+      receita.tipoDocumento,
+      formatDateBR(receita.dataEmissao),
+      formatDateBR(receita.dataVencimento),
       formatDateBR(receita.data),
-      formatCurrency(receita.valor),
-      receita.valor,
+      formatCurrency(getReceitaValor(receita)),
+      getReceitaValor(receita),
       receita.descricao,
     ], receitaGroupSearch));
   }, [modalReceitas, receitaGroupSearch]);
@@ -1198,9 +1213,16 @@ export default function CustoObras() {
   function resetManualRevenueForm() {
     setManualRevenue({
       id: null,
+      codigoFornecedorCliente: "",
+      fornecedorCliente: "",
       numeroDocumento: "",
       status: "Nfe",
       tipoReceitaOutros: "",
+      tipoConta: "",
+      tipoDocumento: "",
+      dataEmissao: "",
+      dataVencimento: "",
+      valorTotalDocumento: "",
       data: "",
       valor: "",
       descricao: "",
@@ -1215,11 +1237,18 @@ export default function CustoObras() {
   const openEditManualRevenue = (receita: any) => {
     setManualRevenue({
       id: receita.id,
+      codigoFornecedorCliente: receita.codigoFornecedorCliente || "",
+      fornecedorCliente: receita.fornecedorCliente || "",
       numeroDocumento: receita.numeroDocumento || "",
       status: receita.status || "Nfe",
       tipoReceitaOutros: receita.tipoReceitaOutros || "",
-      data: receita.data || "",
-      valor: moneyInputValue(receita.valor),
+      tipoConta: receita.tipoConta || "",
+      tipoDocumento: receita.tipoDocumento || "",
+      dataEmissao: getDateInputValue(receita.dataEmissao || receita.data),
+      dataVencimento: getDateInputValue(receita.dataVencimento || receita.data),
+      valorTotalDocumento: moneyInputValue(receita.valorTotalDocumento ?? receita.valor),
+      data: getDateInputValue(receita.data || receita.dataVencimento || receita.dataEmissao),
+      valor: moneyInputValue(receita.valor ?? receita.valorTotalDocumento),
       descricao: receita.descricao || "",
     });
     setManualRevenueModalOpen(true);
@@ -1338,11 +1367,18 @@ export default function CustoObras() {
     const payload = {
       pedidoObraId: modalPedido.id,
       pedidoNum: String(modalPedido.pedido),
+      codigoFornecedorCliente: manualRevenue.codigoFornecedorCliente,
+      fornecedorCliente: manualRevenue.fornecedorCliente,
       numeroDocumento: manualRevenue.numeroDocumento,
       status: manualRevenue.status,
       tipoReceitaOutros: manualRevenue.status === "Outros" ? manualRevenue.tipoReceitaOutros : "",
-      data: manualRevenue.data,
-      valor: parseMoneyInput(manualRevenue.valor),
+      tipoConta: manualRevenue.tipoConta,
+      tipoDocumento: manualRevenue.tipoDocumento,
+      dataEmissao: manualRevenue.dataEmissao,
+      dataVencimento: manualRevenue.dataVencimento,
+      valorTotalDocumento: parseMoneyInput(manualRevenue.valorTotalDocumento),
+      data: manualRevenue.dataVencimento || manualRevenue.dataEmissao || manualRevenue.data,
+      valor: parseMoneyInput(manualRevenue.valorTotalDocumento),
       descricao: manualRevenue.descricao,
     };
 
@@ -1350,9 +1386,16 @@ export default function CustoObras() {
       updateReceita.mutate({
         id: manualRevenue.id,
         pedidoObraId: payload.pedidoObraId,
+        codigoFornecedorCliente: payload.codigoFornecedorCliente,
+        fornecedorCliente: payload.fornecedorCliente,
         numeroDocumento: payload.numeroDocumento,
         status: payload.status,
         tipoReceitaOutros: payload.tipoReceitaOutros,
+        tipoConta: payload.tipoConta,
+        tipoDocumento: payload.tipoDocumento,
+        dataEmissao: payload.dataEmissao,
+        dataVencimento: payload.dataVencimento,
+        valorTotalDocumento: payload.valorTotalDocumento,
         data: payload.data,
         valor: payload.valor,
         descricao: payload.descricao,
@@ -1813,10 +1856,15 @@ export default function CustoObras() {
                           <table className="desktop-table modal-revenues-table">
                             <thead>
                               <tr>
+                                <th>Codigo Forn./Cliente</th>
+                                <th>Fornecedor/Cliente</th>
                                 <th>N Doc</th>
                                 <th>Status</th>
-                                <th>Data</th>
-                                <th>Valor</th>
+                                <th>Tipo Conta</th>
+                                <th>Tipo Documento</th>
+                                <th>Data Emissao</th>
+                                <th>Data Vencimento</th>
+                                <th>Valor Total</th>
                                 <th>Descricao</th>
                                 <th>Acoes</th>
                               </tr>
@@ -1824,19 +1872,24 @@ export default function CustoObras() {
                             <tbody>
                               {modalReceitas.length === 0 ? (
                                 <tr>
-                                  <td colSpan={6} className="desktop-empty">Nenhuma receita cadastrada</td>
+                                  <td colSpan={11} className="desktop-empty">Nenhuma receita cadastrada</td>
                                 </tr>
                               ) : filteredModalReceitas.length === 0 ? (
                                 <tr>
-                                  <td colSpan={6} className="desktop-empty">Nenhuma receita encontrada para a busca</td>
+                                  <td colSpan={11} className="desktop-empty">Nenhuma receita encontrada para a busca</td>
                                 </tr>
                               ) : (
                                 filteredModalReceitas.map((receita: any) => (
                                   <tr key={receita.id}>
+                                    <td>{receita.codigoFornecedorCliente}</td>
+                                    <td className="desktop-client">{receita.fornecedorCliente}</td>
                                     <td>{receita.numeroDocumento}</td>
-                                    <td>{receita.status === "Outros" ? receita.tipoReceitaOutros || "Outros" : receita.status}</td>
-                                    <td>{formatDateBR(receita.data)}</td>
-                                    <td className="num">{formatCurrency(receita.valor)}</td>
+                                    <td>{getReceitaStatusLabel(receita)}</td>
+                                    <td>{receita.tipoConta}</td>
+                                    <td>{receita.tipoDocumento}</td>
+                                    <td>{formatDateBR(receita.dataEmissao || receita.data)}</td>
+                                    <td>{formatDateBR(receita.dataVencimento || receita.data)}</td>
+                                    <td className="num">{formatCurrency(getReceitaValor(receita))}</td>
                                     <td className="expense-complement" title={receita.descricao || ""}>{receita.descricao}</td>
                                     <td>
                                       <button
@@ -2482,6 +2535,20 @@ export default function CustoObras() {
 
           <section className="manual-expense-form manual-revenue-form">
             <label>
+              <span>Codigo Forn./Cliente</span>
+              <Input
+                value={manualRevenue.codigoFornecedorCliente}
+                onChange={(event) => setManualRevenue((current) => ({ ...current, codigoFornecedorCliente: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>Fornecedor/Cliente</span>
+              <Input
+                value={manualRevenue.fornecedorCliente}
+                onChange={(event) => setManualRevenue((current) => ({ ...current, fornecedorCliente: event.target.value }))}
+              />
+            </label>
+            <label>
               <span>N Doc</span>
               <Input
                 type="number"
@@ -2520,20 +2587,42 @@ export default function CustoObras() {
               </label>
             ) : null}
             <label>
-              <span>Data</span>
+              <span>Tipo Conta</span>
               <Input
-                type="date"
-                value={manualRevenue.data}
-                onChange={(event) => setManualRevenue((current) => ({ ...current, data: event.target.value }))}
+                value={manualRevenue.tipoConta}
+                onChange={(event) => setManualRevenue((current) => ({ ...current, tipoConta: event.target.value }))}
               />
             </label>
             <label>
-              <span>Valor</span>
+              <span>Tipo Documento</span>
+              <Input
+                value={manualRevenue.tipoDocumento}
+                onChange={(event) => setManualRevenue((current) => ({ ...current, tipoDocumento: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>Data Emissao</span>
+              <Input
+                type="date"
+                value={manualRevenue.dataEmissao}
+                onChange={(event) => setManualRevenue((current) => ({ ...current, dataEmissao: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>Data Vencimento</span>
+              <Input
+                type="date"
+                value={manualRevenue.dataVencimento}
+                onChange={(event) => setManualRevenue((current) => ({ ...current, dataVencimento: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>Valor Total</span>
               <div className="money-input-wrap">
                 <span>R$</span>
                 <Input
-                  value={manualRevenue.valor}
-                  onChange={(event) => setManualRevenue((current) => ({ ...current, valor: event.target.value }))}
+                  value={manualRevenue.valorTotalDocumento}
+                  onChange={(event) => setManualRevenue((current) => ({ ...current, valorTotalDocumento: event.target.value }))}
                 />
               </div>
             </label>

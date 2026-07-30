@@ -85,6 +85,13 @@
       "when": 1785265200000,
       "tag": "0011_data_resultado_alocacoes",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1785438000000,
+      "tag": "0012_receitas_crti_completo",
+      "breakpoints": true
     }
   ]
 }

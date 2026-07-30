@@ -177,9 +177,17 @@ export const pedidoObraReceitas = mysqlTable("pedido_obra_receitas", {
   id: int("id").autoincrement().primaryKey(),
   pedidoObraId: int("pedidoObraId").notNull(),
   pedidoNum: varchar("pedidoNum", { length: 50 }).notNull(),
+  despesaTabelaGeralId: int("despesaTabelaGeralId"),
+  codigoFornecedorCliente: varchar("codigoFornecedorCliente", { length: 50 }),
+  fornecedorCliente: varchar("fornecedorCliente", { length: 255 }),
   numeroDocumento: varchar("numeroDocumento", { length: 80 }),
   status: mysqlEnum("status", ["Nfe", "Faturamento Direto", "Outros"]).default("Nfe").notNull(),
   tipoReceitaOutros: text("tipoReceitaOutros").default(""),
+  tipoConta: varchar("tipoConta", { length: 50 }),
+  tipoDocumento: varchar("tipoDocumento", { length: 100 }),
+  dataEmissao: varchar("dataEmissao", { length: 10 }),
+  dataVencimento: varchar("dataVencimento", { length: 10 }),
+  valorTotalDocumento: decimal("valorTotalDocumento", { precision: 18, scale: 2 }).default("0"),
   data: varchar("data", { length: 10 }),
   valor: decimal("valor", { precision: 18, scale: 2 }).default("0"),
   descricao: text("descricao").default(""),
@@ -189,6 +197,7 @@ export const pedidoObraReceitas = mysqlTable("pedido_obra_receitas", {
 }, (table) => ({
   pedidoObraIdIdx: index("pedido_obra_receitas_pedidoObraId_idx").on(table.pedidoObraId),
   pedidoNumIdx: index("pedido_obra_receitas_pedidoNum_idx").on(table.pedidoNum),
+  despesaTabelaGeralIdIdx: index("pedido_obra_receitas_despesaTabelaGeralId_idx").on(table.despesaTabelaGeralId),
 }));
 
 export type PedidoObraReceita = typeof pedidoObraReceitas.$inferSelect;

@@ -153,9 +153,17 @@ try {
       id int AUTO_INCREMENT NOT NULL,
       pedidoObraId int NOT NULL,
       pedidoNum varchar(50) NOT NULL,
+      despesaTabelaGeralId int NULL,
+      codigoFornecedorCliente varchar(50) NULL,
+      fornecedorCliente varchar(255) NULL,
       numeroDocumento varchar(80) NULL,
       status enum('Nfe','Faturamento Direto','Outros') NOT NULL DEFAULT 'Nfe',
       tipoReceitaOutros text DEFAULT (''),
+      tipoConta varchar(50) NULL,
+      tipoDocumento varchar(100) NULL,
+      dataEmissao varchar(10) NULL,
+      dataVencimento varchar(10) NULL,
+      valorTotalDocumento decimal(18,2) DEFAULT '0',
       data varchar(10) NULL,
       valor decimal(18,2) DEFAULT '0',
       descricao text DEFAULT (''),
@@ -164,7 +172,8 @@ try {
       atualizadoEm timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       PRIMARY KEY (id),
       INDEX pedido_obra_receitas_pedidoObraId_idx (pedidoObraId),
-      INDEX pedido_obra_receitas_pedidoNum_idx (pedidoNum)
+      INDEX pedido_obra_receitas_pedidoNum_idx (pedidoNum),
+      INDEX pedido_obra_receitas_despesaTabelaGeralId_idx (despesaTabelaGeralId)
     )
   `);
 
@@ -176,6 +185,27 @@ try {
   const [receitaTipoOutrosColumns] = await connection.query("SHOW COLUMNS FROM pedido_obra_receitas LIKE 'tipoReceitaOutros'");
   if (receitaTipoOutrosColumns.length === 0) {
     await connection.query("ALTER TABLE pedido_obra_receitas ADD tipoReceitaOutros text DEFAULT ('') AFTER status");
+  }
+
+  const receitaColumns = [
+    ["despesaTabelaGeralId", "ALTER TABLE pedido_obra_receitas ADD despesaTabelaGeralId int NULL AFTER pedidoNum"],
+    ["codigoFornecedorCliente", "ALTER TABLE pedido_obra_receitas ADD codigoFornecedorCliente varchar(50) NULL AFTER despesaTabelaGeralId"],
+    ["fornecedorCliente", "ALTER TABLE pedido_obra_receitas ADD fornecedorCliente varchar(255) NULL AFTER codigoFornecedorCliente"],
+    ["tipoConta", "ALTER TABLE pedido_obra_receitas ADD tipoConta varchar(50) NULL AFTER tipoReceitaOutros"],
+    ["tipoDocumento", "ALTER TABLE pedido_obra_receitas ADD tipoDocumento varchar(100) NULL AFTER tipoConta"],
+    ["dataEmissao", "ALTER TABLE pedido_obra_receitas ADD dataEmissao varchar(10) NULL AFTER tipoDocumento"],
+    ["dataVencimento", "ALTER TABLE pedido_obra_receitas ADD dataVencimento varchar(10) NULL AFTER dataEmissao"],
+    ["valorTotalDocumento", "ALTER TABLE pedido_obra_receitas ADD valorTotalDocumento decimal(18,2) DEFAULT '0' AFTER dataVencimento"],
+  ];
+  for (const [columnName, ddl] of receitaColumns) {
+    const [columns] = await connection.query(`SHOW COLUMNS FROM pedido_obra_receitas LIKE '${columnName}'`);
+    if (columns.length === 0) await connection.query(ddl);
+  }
+
+  try {
+    await connection.query("CREATE INDEX pedido_obra_receitas_despesaTabelaGeralId_idx ON pedido_obra_receitas (despesaTabelaGeralId)");
+  } catch (error) {
+    if (error.code !== "ER_DUP_KEYNAME") throw error;
   }
 
   await connection.query(`

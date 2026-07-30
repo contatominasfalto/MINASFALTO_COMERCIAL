@@ -196,11 +196,18 @@ const pedidoObraDespesaUpdateSchema = z.object({
 const pedidoObraReceitaSchema = z.object({
   pedidoObraId: z.number().int().positive(),
   pedidoNum: z.string().min(1),
+  codigoFornecedorCliente: z.string().max(50).optional(),
+  fornecedorCliente: z.string().max(255).optional(),
   numeroDocumento: z.string().max(80).optional(),
   status: z.enum(["Nfe", "Faturamento Direto", "Outros"]),
   tipoReceitaOutros: z.string().max(1000).optional(),
+  tipoConta: z.string().max(50).optional(),
+  tipoDocumento: z.string().max(100).optional(),
+  dataEmissao: z.string().max(10).optional(),
+  dataVencimento: z.string().max(10).optional(),
+  valorTotalDocumento: z.coerce.number().nonnegative(),
   data: z.string().max(10).optional(),
-  valor: z.coerce.number().nonnegative(),
+  valor: z.coerce.number().nonnegative().optional(),
   descricao: z.string().max(5000).optional(),
 }).superRefine((data, ctx) => {
   if (data.status === "Outros" && !data.tipoReceitaOutros?.trim()) {
@@ -215,11 +222,18 @@ const pedidoObraReceitaSchema = z.object({
 const pedidoObraReceitaUpdateSchema = z.object({
   id: z.number().int().positive(),
   pedidoObraId: z.number().int().positive(),
+  codigoFornecedorCliente: z.string().max(50).optional(),
+  fornecedorCliente: z.string().max(255).optional(),
   numeroDocumento: z.string().max(80).optional(),
   status: z.enum(["Nfe", "Faturamento Direto", "Outros"]),
   tipoReceitaOutros: z.string().max(1000).optional(),
+  tipoConta: z.string().max(50).optional(),
+  tipoDocumento: z.string().max(100).optional(),
+  dataEmissao: z.string().max(10).optional(),
+  dataVencimento: z.string().max(10).optional(),
+  valorTotalDocumento: z.coerce.number().nonnegative(),
   data: z.string().max(10).optional(),
-  valor: z.coerce.number().nonnegative(),
+  valor: z.coerce.number().nonnegative().optional(),
   descricao: z.string().max(5000).optional(),
 }).superRefine((data, ctx) => {
   if (data.status === "Outros" && !data.tipoReceitaOutros?.trim()) {

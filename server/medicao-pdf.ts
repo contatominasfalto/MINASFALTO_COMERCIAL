@@ -179,6 +179,11 @@ function drawPageBackground(image: PdfImage) {
   return `q ${width.toFixed(2)} 0 0 ${height.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /BG Do Q\n`;
 }
 
+const receitaValor = (item: any) => Number(item?.valorTotalDocumento ?? item?.valor ?? 0) || 0;
+const receitaData = (item: any) => item?.dataVencimento || item?.dataEmissao || item?.data || "";
+const receitaStatus = (item: any) =>
+  item?.status === "Outros" ? item?.tipoReceitaOutros || "Outros" : item?.status || "";
+
 async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
   const pedido = await db.getPedidoObraById(pedidoObraIdOrPedidoNum)
     ?? await db.getPedidoObraByNumber(String(pedidoObraIdOrPedidoNum));
@@ -190,10 +195,10 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
   const despesas = modal.despesas as any[];
   const custos = modal.custos as any[];
   const percent = Number(modal.financeiro?.porcentagemImposto ?? 17) || 17;
-  const receitaTotal = receitas.reduce((sum, item) => sum + Number(item.valor || 0), 0);
+  const receitaTotal = receitas.reduce((sum, item) => sum + receitaValor(item), 0);
   const impostoTotal = receitas
     .filter((item) => item.status === "Nfe")
-    .reduce((sum, item) => sum + Number(item.valor || 0), 0) * (percent / 100);
+    .reduce((sum, item) => sum + receitaValor(item), 0) * (percent / 100);
   const despesaTotal = despesas.reduce((sum, item) => sum + Number(item.valorTotalDocumento || 0), 0);
   const custoTotal = custos.reduce((sum, item) => sum + Number(item.valorTotal || 0), 0);
   const saldo = receitaTotal - impostoTotal - despesaTotal - custoTotal;
@@ -271,11 +276,12 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
   card("Saldo", money(saldo), 446, 99);
   y -= 55;
 
-  section("Receitas", ["N Doc", "Status", "Data", "Valor", "Descricao"], receitas.map((item) => [
+  section("Receitas", ["N Doc", "Status", "Emissao", "Vencimento", "Valor Total", "Descricao"], receitas.map((item) => [
     item.numeroDocumento,
-    item.status === "Outros" ? item.tipoReceitaOutros || "Outros" : item.status,
-    dateBR(item.data),
-    money(item.valor),
+    receitaStatus(item),
+    dateBR(item.dataEmissao || item.data),
+    dateBR(item.dataVencimento || item.data),
+    money(receitaValor(item)),
     item.descricao,
   ]));
   section("Despesas", ["Codigo", "Fornecedor", "Doc", "Valor", "Complemento"], despesas.map((item) => [
@@ -287,8 +293,8 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
   ]));
   section("Impostos", ["N Doc", "Data", "Valor"], receitas.filter((item) => item.status === "Nfe").map((item) => [
     item.numeroDocumento,
-    dateBR(item.data),
-    money(Number(item.valor || 0) * (percent / 100)),
+    dateBR(receitaData(item)),
+    money(receitaValor(item) * (percent / 100)),
   ]));
   section("Custos", ["N Doc", "Data", "Valor", "Situacao", "Complemento"], custos.map((item) => [
     item.numeroDocumento,
@@ -328,17 +334,17 @@ async function buildCronologicoPdf(pedidoObraIdOrPedidoNum: number, referenciaMe
     return allocation?.dataReferencia || originalDate;
   };
 
-  const receitas = (modal.receitas as any[]).filter((item) => alocacaoMes("receita", item, item.data) === referenciaMes);
+  const receitas = (modal.receitas as any[]).filter((item) => alocacaoMes("receita", item, receitaData(item)) === referenciaMes);
   const despesas = (modal.despesas as any[]).filter((item) => {
     const sourceDate = item.dataVencimento || item.dataEmissao;
     return alocacaoMes("despesa", item, sourceDate) === referenciaMes;
   });
   const custos = (modal.custos as any[]).filter((item) => alocacaoMes("custo", item, item.dataEmissao) === referenciaMes);
   const percent = Number(modal.financeiro?.porcentagemImposto ?? 17) || 17;
-  const receitaTotal = receitas.reduce((sum, item) => sum + Number(item.valor || 0), 0);
+  const receitaTotal = receitas.reduce((sum, item) => sum + receitaValor(item), 0);
   const impostoTotal = receitas
     .filter((item) => item.status === "Nfe")
-    .reduce((sum, item) => sum + Number(item.valor || 0), 0) * (percent / 100);
+    .reduce((sum, item) => sum + receitaValor(item), 0) * (percent / 100);
   const despesaTotal = despesas.reduce((sum, item) => sum + Number(item.valorTotalDocumento || 0), 0);
   const custoTotal = custos.reduce((sum, item) => sum + Number(item.valorTotal || 0), 0);
   const saldo = receitaTotal - impostoTotal - despesaTotal - custoTotal;
@@ -417,11 +423,12 @@ async function buildCronologicoPdf(pedidoObraIdOrPedidoNum: number, referenciaMe
   card("Saldo", money(saldo), 446, 99);
   y -= 55;
 
-  section("Receitas", ["N Doc", "Status", "Data", "Valor", "Descricao"], receitas.map((item) => [
+  section("Receitas", ["N Doc", "Status", "Emissao", "Vencimento", "Valor Total", "Descricao"], receitas.map((item) => [
     item.numeroDocumento,
-    item.status === "Outros" ? item.tipoReceitaOutros || "Outros" : item.status,
-    dateBR(alocacaoData("receita", item, item.data)),
-    money(item.valor),
+    receitaStatus(item),
+    dateBR(item.dataEmissao || item.data),
+    dateBR(alocacaoData("receita", item, receitaData(item))),
+    money(receitaValor(item)),
     item.descricao,
   ]));
   section("Despesas", ["Codigo", "Fornecedor", "Doc", "Valor", "Complemento"], despesas.map((item) => [
@@ -433,8 +440,8 @@ async function buildCronologicoPdf(pedidoObraIdOrPedidoNum: number, referenciaMe
   ]));
   section("Impostos", ["N Doc", "Data", "Valor"], receitas.filter((item) => item.status === "Nfe").map((item) => [
     item.numeroDocumento,
-    dateBR(alocacaoData("receita", item, item.data)),
-    money(Number(item.valor || 0) * (percent / 100)),
+    dateBR(alocacaoData("receita", item, receitaData(item))),
+    money(receitaValor(item) * (percent / 100)),
   ]));
   section("Custos", ["N Doc", "Data", "Valor", "Situacao", "Complemento"], custos.map((item) => [
     item.numeroDocumento,

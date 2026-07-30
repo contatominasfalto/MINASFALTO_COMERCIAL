@@ -598,8 +598,8 @@ export async function listPedidosObras(filters?: {
       LEFT JOIN (
         SELECT
           pedidoNum,
-          SUM(COALESCE(valor, 0)) AS totalReceitas,
-          SUM(CASE WHEN status = 'Nfe' THEN COALESCE(valor, 0) ELSE 0 END) AS totalNfeReceitas
+          SUM(COALESCE(valorTotalDocumento, valor, 0)) AS totalReceitas,
+          SUM(CASE WHEN status = 'Nfe' THEN COALESCE(valorTotalDocumento, valor, 0) ELSE 0 END) AS totalNfeReceitas
         FROM pedido_obra_receitas
         GROUP BY pedidoNum
       ) por ON por.pedidoNum = po.pedido
@@ -694,8 +694,8 @@ export async function exportPedidosObras(filters?: {
       LEFT JOIN (
         SELECT
           pedidoNum,
-          SUM(COALESCE(valor, 0)) AS totalReceitas,
-          SUM(CASE WHEN status = 'Nfe' THEN COALESCE(valor, 0) ELSE 0 END) AS totalNfeReceitas
+          SUM(COALESCE(valorTotalDocumento, valor, 0)) AS totalReceitas,
+          SUM(CASE WHEN status = 'Nfe' THEN COALESCE(valorTotalDocumento, valor, 0) ELSE 0 END) AS totalNfeReceitas
         FROM pedido_obra_receitas
         GROUP BY pedidoNum
       ) por ON por.pedidoNum = po.pedido
@@ -927,7 +927,10 @@ export async function listDespesasTabelaGeral(filters?: {
   }
 
   if (filters?.somenteNaoVinculados) {
-    whereSql.push("NOT EXISTS (SELECT 1 FROM pedido_obra_despesas pod_filter WHERE pod_filter.despesaTabelaGeralId = despesas_tabela_geral.id)");
+    whereSql.push(`
+      NOT EXISTS (SELECT 1 FROM pedido_obra_despesas pod_filter WHERE pod_filter.despesaTabelaGeralId = despesas_tabela_geral.id)
+      AND NOT EXISTS (SELECT 1 FROM pedido_obra_receitas por_filter WHERE por_filter.despesaTabelaGeralId = despesas_tabela_geral.id)
+    `);
   }
 
   const whereClause = whereSql.length > 0 ? `WHERE ${whereSql.join(" AND ")}` : "";
@@ -962,8 +965,11 @@ export async function listDespesasTabelaGeral(filters?: {
       FROM despesas_tabela_geral
       LEFT JOIN (
         SELECT despesaTabelaGeralId, MAX(pedidoNum) AS pedidoNum
-        FROM pedido_obra_despesas
-        WHERE despesaTabelaGeralId IS NOT NULL
+        FROM (
+          SELECT despesaTabelaGeralId, pedidoNum FROM pedido_obra_despesas WHERE despesaTabelaGeralId IS NOT NULL
+          UNION ALL
+          SELECT despesaTabelaGeralId, pedidoNum FROM pedido_obra_receitas WHERE despesaTabelaGeralId IS NOT NULL
+        ) vinculos
         GROUP BY despesaTabelaGeralId
       ) pod ON pod.despesaTabelaGeralId = despesas_tabela_geral.id
       ${whereClause}
@@ -1007,7 +1013,10 @@ export async function exportDespesasTabelaGeral(filters?: {
   }
 
   if (filters?.somenteNaoVinculados) {
-    whereSql.push("NOT EXISTS (SELECT 1 FROM pedido_obra_despesas pod_filter WHERE pod_filter.despesaTabelaGeralId = despesas_tabela_geral.id)");
+    whereSql.push(`
+      NOT EXISTS (SELECT 1 FROM pedido_obra_despesas pod_filter WHERE pod_filter.despesaTabelaGeralId = despesas_tabela_geral.id)
+      AND NOT EXISTS (SELECT 1 FROM pedido_obra_receitas por_filter WHERE por_filter.despesaTabelaGeralId = despesas_tabela_geral.id)
+    `);
   }
 
   const whereClause = whereSql.length > 0 ? `WHERE ${whereSql.join(" AND ")}` : "";
@@ -1032,8 +1041,11 @@ export async function exportDespesasTabelaGeral(filters?: {
       FROM despesas_tabela_geral
       LEFT JOIN (
         SELECT despesaTabelaGeralId, MAX(pedidoNum) AS pedidoNum
-        FROM pedido_obra_despesas
-        WHERE despesaTabelaGeralId IS NOT NULL
+        FROM (
+          SELECT despesaTabelaGeralId, pedidoNum FROM pedido_obra_despesas WHERE despesaTabelaGeralId IS NOT NULL
+          UNION ALL
+          SELECT despesaTabelaGeralId, pedidoNum FROM pedido_obra_receitas WHERE despesaTabelaGeralId IS NOT NULL
+        ) vinculos
         GROUP BY despesaTabelaGeralId
       ) pod ON pod.despesaTabelaGeralId = despesas_tabela_geral.id
       ${whereClause}
@@ -1248,9 +1260,17 @@ export async function getPedidoObraModalData(pedidoObraId: number) {
           id,
           pedidoObraId,
           pedidoNum,
+          despesaTabelaGeralId,
+          codigoFornecedorCliente,
+          fornecedorCliente,
           numeroDocumento,
           status,
           tipoReceitaOutros,
+          tipoConta,
+          tipoDocumento,
+          dataEmissao,
+          dataVencimento,
+          valorTotalDocumento,
           \`data\`,
           valor,
           descricao,
@@ -1272,9 +1292,17 @@ export async function getPedidoObraModalData(pedidoObraId: number) {
           id,
           pedidoObraId,
           pedidoNum,
+          NULL AS despesaTabelaGeralId,
+          '' AS codigoFornecedorCliente,
+          '' AS fornecedorCliente,
           numeroDocumento,
           status,
           '' AS tipoReceitaOutros,
+          '' AS tipoConta,
+          '' AS tipoDocumento,
+          \`data\` AS dataEmissao,
+          \`data\` AS dataVencimento,
+          valor AS valorTotalDocumento,
           \`data\`,
           valor,
           descricao,
@@ -1488,11 +1516,18 @@ export async function clearPedidoObraFinanceiro(pedidoObraId: number, pedidoNum:
 export async function createPedidoObraReceita(data: {
   pedidoObraId: number;
   pedidoNum: string;
+  codigoFornecedorCliente?: string;
+  fornecedorCliente?: string;
   numeroDocumento?: string;
   status: "Nfe" | "Faturamento Direto" | "Outros";
   tipoReceitaOutros?: string;
+  tipoConta?: string;
+  tipoDocumento?: string;
+  dataEmissao?: string;
+  dataVencimento?: string;
+  valorTotalDocumento: number;
   data?: string;
-  valor: number;
+  valor?: number;
   descricao?: string;
   criadoPor?: string;
 }) {
@@ -1505,24 +1540,38 @@ export async function createPedidoObraReceita(data: {
       INSERT INTO pedido_obra_receitas (
         pedidoObraId,
         pedidoNum,
+        codigoFornecedorCliente,
+        fornecedorCliente,
         numeroDocumento,
         status,
         tipoReceitaOutros,
+        tipoConta,
+        tipoDocumento,
+        dataEmissao,
+        dataVencimento,
+        valorTotalDocumento,
         \`data\`,
         valor,
         descricao,
         criadoPor
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       data.pedidoObraId,
       data.pedidoNum,
+      data.codigoFornecedorCliente || "",
+      data.fornecedorCliente || "",
       data.numeroDocumento || "",
       data.status,
       data.status === "Outros" ? data.tipoReceitaOutros || "" : "",
-      data.data || "",
-      data.valor,
+      data.tipoConta || "",
+      data.tipoDocumento || "",
+      data.dataEmissao || data.data || "",
+      data.dataVencimento || data.data || "",
+      data.valorTotalDocumento ?? data.valor ?? 0,
+      data.data || data.dataVencimento || data.dataEmissao || "",
+      data.valor ?? data.valorTotalDocumento ?? 0,
       data.descricao || "",
       data.criadoPor || "Sistema",
     ],
@@ -1534,11 +1583,18 @@ export async function createPedidoObraReceita(data: {
 export async function updatePedidoObraReceita(data: {
   id: number;
   pedidoObraId: number;
+  codigoFornecedorCliente?: string;
+  fornecedorCliente?: string;
   numeroDocumento?: string;
   status: "Nfe" | "Faturamento Direto" | "Outros";
   tipoReceitaOutros?: string;
+  tipoConta?: string;
+  tipoDocumento?: string;
+  dataEmissao?: string;
+  dataVencimento?: string;
+  valorTotalDocumento: number;
   data?: string;
-  valor: number;
+  valor?: number;
   descricao?: string;
 }) {
   const db = await getDb();
@@ -1549,9 +1605,16 @@ export async function updatePedidoObraReceita(data: {
     `
       UPDATE pedido_obra_receitas
       SET
+        codigoFornecedorCliente = ?,
+        fornecedorCliente = ?,
         numeroDocumento = ?,
         status = ?,
         tipoReceitaOutros = ?,
+        tipoConta = ?,
+        tipoDocumento = ?,
+        dataEmissao = ?,
+        dataVencimento = ?,
+        valorTotalDocumento = ?,
         \`data\` = ?,
         valor = ?,
         descricao = ?,
@@ -1559,11 +1622,18 @@ export async function updatePedidoObraReceita(data: {
       WHERE id = ? AND pedidoObraId = ?
     `,
     [
+      data.codigoFornecedorCliente || "",
+      data.fornecedorCliente || "",
       data.numeroDocumento || "",
       data.status,
       data.status === "Outros" ? data.tipoReceitaOutros || "" : "",
-      data.data || "",
-      data.valor,
+      data.tipoConta || "",
+      data.tipoDocumento || "",
+      data.dataEmissao || data.data || "",
+      data.dataVencimento || data.data || "",
+      data.valorTotalDocumento ?? data.valor ?? 0,
+      data.data || data.dataVencimento || data.dataEmissao || "",
+      data.valor ?? data.valorTotalDocumento ?? 0,
       data.descricao || "",
       data.id,
       data.pedidoObraId,
@@ -1730,7 +1800,10 @@ export async function listDespesasTabelaGeralDisponiveis(filters?: {
     return { items: [], total: 0, page, pageSize, totalPages: 1 };
   }
 
-  const whereSql = ["NOT EXISTS (SELECT 1 FROM pedido_obra_despesas pod WHERE pod.despesaTabelaGeralId = dtg.id)"];
+  const whereSql = [`
+    NOT EXISTS (SELECT 1 FROM pedido_obra_despesas pod WHERE pod.despesaTabelaGeralId = dtg.id)
+    AND NOT EXISTS (SELECT 1 FROM pedido_obra_receitas por WHERE por.despesaTabelaGeralId = dtg.id)
+  `];
   const params: Array<string | number> = [];
 
   if (filters?.tipoConta && filters.tipoConta !== "TODOS") {
@@ -1923,12 +1996,41 @@ export async function vincularSaidasAutomaticasObras(criadoPor = "Sistema") {
     `,
   );
 
+  const [receitas] = await _pool.query<mysql.RowDataPacket[]>(
+    `
+      SELECT
+        dtg.id,
+        dtg.codigoFornecedorCliente,
+        dtg.fornecedorCliente,
+        dtg.numeroDocumento,
+        dtg.tipoConta,
+        dtg.tipoDocumento,
+        dtg.dataEmissao,
+        dtg.dataVencimento,
+        dtg.valorTotalDocumento,
+        dtg.complemento,
+        dtg.observacoesAprovacao
+      FROM despesas_tabela_geral dtg
+      LEFT JOIN pedido_obra_receitas por ON por.despesaTabelaGeralId = dtg.id
+      WHERE por.id IS NULL
+        AND UPPER(TRIM(COALESCE(dtg.tipoConta, ''))) = 'RECEBER'
+        AND (
+          COALESCE(dtg.complemento, '') REGEXP '[oO][[:space:]]*[0-9]+'
+          OR COALESCE(dtg.observacoesAprovacao, '') REGEXP '[oO][[:space:]]*[0-9]+'
+        )
+      ORDER BY dtg.id DESC
+    `,
+  );
+
   const connection = await _pool.getConnection();
   let vinculadas = 0;
+  let receitasVinculadas = 0;
   let semPedido = 0;
   let jaVinculadas = 0;
   const despesasProcessadas = despesas.length;
+  const receitasProcessadas = receitas.length;
   const linkedExpenseIds = new Set<number>();
+  const linkedRevenueIds = new Set<number>();
 
   try {
     await connection.beginTransaction();
@@ -2002,6 +2104,78 @@ export async function vincularSaidasAutomaticasObras(criadoPor = "Sistema") {
       vinculadas += 1;
     }
 
+    for (const receita of receitas) {
+      const receitaId = Number(receita.id);
+      if (linkedRevenueIds.has(receitaId)) continue;
+
+      const texto = `${receita.complemento || ""} ${receita.observacoesAprovacao || ""}`;
+      const matches = Array.from(texto.matchAll(/o\s*(\d+)/gi));
+      const pedidoEncontrado = matches
+        .map((match) => pedidosPorNumero.get(match[1]))
+        .find(Boolean);
+
+      if (!pedidoEncontrado) {
+        semPedido += 1;
+        continue;
+      }
+
+      const [existingLinks] = await connection.query<mysql.RowDataPacket[]>(
+        "SELECT id FROM pedido_obra_receitas WHERE despesaTabelaGeralId = ? LIMIT 1 FOR UPDATE",
+        [receitaId],
+      );
+
+      if (existingLinks.length > 0) {
+        jaVinculadas += 1;
+        continue;
+      }
+
+      const dataReferencia = receita.dataVencimento || receita.dataEmissao || "";
+      await connection.query(
+        `
+          INSERT INTO pedido_obra_receitas (
+            pedidoObraId,
+            pedidoNum,
+            despesaTabelaGeralId,
+            codigoFornecedorCliente,
+            fornecedorCliente,
+            numeroDocumento,
+            status,
+            tipoReceitaOutros,
+            tipoConta,
+            tipoDocumento,
+            dataEmissao,
+            dataVencimento,
+            valorTotalDocumento,
+            \`data\`,
+            valor,
+            descricao,
+            criadoPor
+          ) VALUES (?, ?, ?, ?, ?, ?, 'Outros', 'Receber', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
+          pedidoEncontrado.id,
+          pedidoEncontrado.pedido,
+          receitaId,
+          receita.codigoFornecedorCliente,
+          receita.fornecedorCliente,
+          receita.numeroDocumento,
+          receita.tipoConta,
+          receita.tipoDocumento,
+          receita.dataEmissao,
+          receita.dataVencimento,
+          receita.valorTotalDocumento,
+          dataReferencia,
+          receita.valorTotalDocumento,
+          receita.complemento || receita.observacoesAprovacao || "",
+          criadoPor,
+        ],
+      );
+
+      linkedRevenueIds.add(receitaId);
+      receitasVinculadas += 1;
+      vinculadas += 1;
+    }
+
     await connection.commit();
   } catch (error) {
     await connection.rollback();
@@ -2013,7 +2187,10 @@ export async function vincularSaidasAutomaticasObras(criadoPor = "Sistema") {
   return {
     success: true,
     despesasProcessadas,
+    receitasProcessadas,
     vinculadas,
+    despesasVinculadas: vinculadas - receitasVinculadas,
+    receitasVinculadas,
     semPedido,
     jaVinculadas,
   };
