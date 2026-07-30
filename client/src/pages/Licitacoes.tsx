@@ -67,6 +67,7 @@ const emptyLicitacao = {
   statusContrato: "Pendente",
   ataVendedorId: null as number | null,
   ataVendedorNome: "NA",
+  plataformaId: null as number | null,
 };
 
 function numberValue(value: unknown) {
@@ -104,6 +105,12 @@ function getPotencial(km: unknown) {
 
 function normalizeText(value: unknown) {
   return String(value ?? "").toUpperCase();
+}
+
+function normalizeExternalUrl(value: unknown) {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  return /^https?:\/\//i.test(text) ? text : `https://${text}`;
 }
 
 function normalizeLicitacaoStatusLabel(value: unknown) {
@@ -344,6 +351,32 @@ export default function Licitacoes() {
     () => rows.slice((licitacaoPage - 1) * licitacaoPageSize, licitacaoPage * licitacaoPageSize),
     [rows, licitacaoPage, licitacaoPageSize],
   );
+  const licitacaoTableColumns = useMemo(() => {
+    const columns: Array<[string, string]> = [
+      ["data", "Data"],
+      ["orgao", "Orgao"],
+      ["cidade", "Cidade"],
+      ["status", "Status"],
+      ["item", "Item"],
+      ["tipo", "Tipo"],
+      ["qtdeSc", "Qtde SC"],
+      ["valorUnit", "Valor Unit"],
+      ["lanceLimite", "Lance Limite"],
+      ["valorAdjudicado", "Valor Adjucado"],
+      ["qtdeTn", "Qtde TN"],
+      ["valorInicialContrato", "Valor Inicial Contrato"],
+      ["kmDistancia", "KM"],
+      ["potencialCliente", "Potencial"],
+      ["regiao", "Regiao"],
+    ];
+
+    if (panelTab === "geral") {
+      columns.splice(4, 0, ["plataformaNome", "Link Plat.Pregao"]);
+    }
+
+    return columns;
+  }, [panelTab]);
+  const licitacaoTableColumnCount = licitacaoTableColumns.length + (panelTab === "adjudicadas" ? 3 : 0) + 1;
   const currentTableLicitacao = useMemo(
     () => visibleLicitacoes.find((licitacao) => licitacao.id === selectedTableLicitacaoId) || visibleLicitacoes[0] || null,
     [visibleLicitacoes, selectedTableLicitacaoId],
@@ -442,6 +475,7 @@ export default function Licitacoes() {
       orgao: normalizeText(licitacaoForm.orgao),
       cidade: normalizeText(licitacaoForm.cidade),
       status: normalizeLicitacaoStatusLabel(licitacaoForm.status),
+      plataformaId: licitacaoForm.plataformaId ? Number(licitacaoForm.plataformaId) : null,
       item: normalizeText(licitacaoForm.item),
       tipo: normalizeText(licitacaoForm.tipo),
       regiao: normalizeText(licitacaoForm.regiao),
@@ -565,26 +599,10 @@ export default function Licitacoes() {
           aria-label="Licitacoes"
           onKeyDown={handleLicitacoesTableKeyDown}
         >
-          <table className="desktop-table licitacao-table">
+          <table className={`desktop-table licitacao-table ${panelTab === "geral" ? "licitacao-table-general" : "licitacao-table-adjucados"}`}>
             <thead>
               <tr>
-                {[
-                  ["data", "Data"],
-                  ["orgao", "Orgao"],
-                  ["cidade", "Cidade"],
-                  ["status", "Status"],
-                  ["item", "Item"],
-                  ["tipo", "Tipo"],
-                  ["qtdeSc", "Qtde SC"],
-                  ["valorUnit", "Valor Unit"],
-                  ["lanceLimite", "Lance Limite"],
-                  ["valorAdjudicado", "Valor Adjucado"],
-                  ["qtdeTn", "Qtde TN"],
-                  ["valorInicialContrato", "Valor Inicial Contrato"],
-                  ["kmDistancia", "KM"],
-                  ["potencialCliente", "Potencial"],
-                  ["regiao", "Regiao"],
-                ].map(([key, label]) => <th key={key} onClick={() => sortBy(key)}>{label}</th>)}
+                {licitacaoTableColumns.map(([key, label]) => <th key={key} onClick={() => sortBy(key)}>{label}</th>)}
                 {panelTab === "adjudicadas" && (
                   <>
                     <th>Status Contrato</th>
@@ -597,9 +615,9 @@ export default function Licitacoes() {
             </thead>
             <tbody>
               {licitacoes.isLoading ? (
-                <tr><td colSpan={panelTab === "adjudicadas" ? 19 : 16} className="desktop-empty">Carregando licitacoes...</td></tr>
+                <tr><td colSpan={licitacaoTableColumnCount} className="desktop-empty">Carregando licitacoes...</td></tr>
               ) : visibleLicitacoes.length === 0 ? (
-                <tr><td colSpan={panelTab === "adjudicadas" ? 19 : 16} className="desktop-empty">Nenhuma licitacao encontrada</td></tr>
+                <tr><td colSpan={licitacaoTableColumnCount} className="desktop-empty">Nenhuma licitacao encontrada</td></tr>
               ) : visibleLicitacoes.map((licitacao) => (
                 <tr
                   key={licitacao.id}
@@ -611,6 +629,27 @@ export default function Licitacoes() {
                   <td title={licitacao.orgao}>{normalizeText(licitacao.orgao)}</td>
                   <td>{normalizeText(licitacao.cidade)}</td>
                   <td>{getLicitacaoStatusDisplay(licitacao)}</td>
+                  {panelTab === "geral" && (
+                    <td className="licitacao-platform-cell">
+                      {licitacao.plataformaLink ? (
+                        <button
+                          type="button"
+                          className="mini-icon-button licitacao-platform-button"
+                          title={normalizeText(licitacao.plataformaNome || "Abrir plataforma")}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            const url = normalizeExternalUrl(licitacao.plataformaLink);
+                            if (url) window.open(url, "_blank", "noopener,noreferrer");
+                          }}
+                        >
+                          <ExternalLink size={13} />
+                          <span>Abrir</span>
+                        </button>
+                      ) : (
+                        <span className="licitacao-platform-empty">-</span>
+                      )}
+                    </td>
+                  )}
                   <td>{normalizeText(licitacao.item)}</td>
                   <td>{normalizeText(licitacao.tipo)}</td>
                   <td className="num">{formatDecimal(licitacao.qtdeSc)}</td>
@@ -703,6 +742,16 @@ export default function Licitacoes() {
               <option value="Outro">OUTRO</option>
             </SelectField>
             {licitacaoForm.status === "Outro" && <TextField label="Outro status" value={licitacaoForm.statusOutro || ""} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, status: normalizeText(value), statusOutro: normalizeText(value) }))} />}
+            <SelectField
+              label="Plataforma Pregao"
+              value={licitacaoForm.plataformaId || ""}
+              onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, plataformaId: value ? Number(value) : null }))}
+            >
+              <option value="">Selecione</option>
+              {plataformas.map((plataforma: any) => (
+                <option key={plataforma.id} value={plataforma.id}>{normalizeText(plataforma.nome)}</option>
+              ))}
+            </SelectField>
             <TextField label="Hora Inicio da Disputa" type="time" value={licitacaoForm.horaInicioDisputa} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, horaInicioDisputa: value }))} />
             <TextField label="Item" value={licitacaoForm.item} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, item: normalizeText(value) }))} />
             <TextField label="Tipo" value={licitacaoForm.tipo} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, tipo: normalizeText(value) }))} />

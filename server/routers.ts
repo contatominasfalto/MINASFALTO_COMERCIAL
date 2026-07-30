@@ -274,6 +274,7 @@ const licitacaoSchema = z.object({
   orgao: z.string().min(1).max(255),
   cidade: z.string().max(120).optional(),
   status: z.string().max(120).optional(),
+  plataformaId: z.number().int().positive().nullable().optional(),
   horaInicioDisputa: z.string().max(8).optional(),
   item: z.string().max(120).optional(),
   tipo: z.string().max(120).optional(),

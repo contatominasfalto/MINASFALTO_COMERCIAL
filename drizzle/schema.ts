@@ -287,6 +287,7 @@ export const licitacoes = mysqlTable("licitacoes", {
   orgao: varchar("orgao", { length: 255 }).notNull(),
   cidade: varchar("cidade", { length: 120 }),
   status: varchar("status", { length: 120 }).default("Pendente"),
+  plataformaId: int("plataformaId"),
   horaInicioDisputa: varchar("horaInicioDisputa", { length: 8 }),
   item: varchar("item", { length: 120 }),
   tipo: varchar("tipo", { length: 120 }),

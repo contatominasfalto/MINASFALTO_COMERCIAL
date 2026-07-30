@@ -2503,6 +2503,7 @@ export type LicitacaoInput = {
   orgao: string;
   cidade?: string;
   status?: string;
+  plataformaId?: number | null;
   horaInicioDisputa?: string;
   item?: string;
   tipo?: string;
@@ -2531,16 +2532,19 @@ export async function listLicitacoes(filters?: { search?: string; adjudicadas?: 
   }
   if (filters?.search?.trim()) {
     const likeValue = `%${filters.search.trim()}%`;
-    where.push("(l.orgao LIKE ? OR l.cidade LIKE ? OR l.status LIKE ? OR l.item LIKE ? OR l.tipo LIKE ? OR l.regiao LIKE ?)");
-    params.push(likeValue, likeValue, likeValue, likeValue, likeValue, likeValue);
+    where.push("(l.orgao LIKE ? OR l.cidade LIKE ? OR l.status LIKE ? OR l.item LIKE ? OR l.tipo LIKE ? OR l.regiao LIKE ? OR pl.nome LIKE ? OR pl.link LIKE ?)");
+    params.push(likeValue, likeValue, likeValue, likeValue, likeValue, likeValue, likeValue, likeValue);
   }
   const sql = `
     SELECT
       l.*,
+      pl.nome AS plataformaNome,
+      pl.link AS plataformaLink,
       COALESCE(SUM(p.quantidade), 0) AS quantidadeVinculada,
       (l.qtdeSc - COALESCE(SUM(p.quantidade), 0)) AS saldoEntrega
     FROM licitacoes l
     LEFT JOIN licitacao_pedidos_crti p ON p.licitacaoId = l.id
+    LEFT JOIN licitacao_plataformas pl ON pl.id = l.plataformaId
     ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
     GROUP BY l.id
     ORDER BY l.data DESC, l.id DESC
@@ -2555,15 +2559,16 @@ export async function createLicitacao(data: LicitacaoInput & { criadoPor?: strin
   const potencial = getLicitacaoPotencial(data.kmDistancia);
   const [result] = await pool.query<mysql.ResultSetHeader>(
     `INSERT INTO licitacoes (
-      data, orgao, cidade, status, horaInicioDisputa, item, tipo, qtdeSc, valorUnit,
+      data, orgao, cidade, status, plataformaId, horaInicioDisputa, item, tipo, qtdeSc, valorUnit,
       lanceLimite, valorAdjudicado, qtdeTn, valorInicialContrato, kmDistancia,
       potencialCliente, regiao, statusContrato, ataVendedorId, ataVendedorNome, criadoPor
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.data || "",
       data.orgao.trim(),
       data.cidade || "",
       status,
+      data.plataformaId || null,
       data.horaInicioDisputa || "",
       data.item || "",
       data.tipo || "",
@@ -2590,7 +2595,7 @@ export async function updateLicitacao(id: number, data: LicitacaoInput) {
   const status = normalizeLicitacaoStatus(data.status);
   await pool.query(
     `UPDATE licitacoes SET
-      data = ?, orgao = ?, cidade = ?, status = ?, horaInicioDisputa = ?, item = ?, tipo = ?,
+      data = ?, orgao = ?, cidade = ?, status = ?, plataformaId = ?, horaInicioDisputa = ?, item = ?, tipo = ?,
       qtdeSc = ?, valorUnit = ?, lanceLimite = ?, valorAdjudicado = ?, qtdeTn = ?,
       valorInicialContrato = ?, kmDistancia = ?, potencialCliente = ?, regiao = ?,
       statusContrato = ?, ataVendedorId = ?, ataVendedorNome = ?
@@ -2600,6 +2605,7 @@ export async function updateLicitacao(id: number, data: LicitacaoInput) {
       data.orgao.trim(),
       data.cidade || "",
       status,
+      data.plataformaId || null,
       data.horaInicioDisputa || "",
       data.item || "",
       data.tipo || "",

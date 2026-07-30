@@ -296,6 +296,7 @@ try {
       orgao varchar(255) NOT NULL,
       cidade varchar(120) NULL,
       status varchar(120) DEFAULT 'Pendente',
+      plataformaId int NULL,
       horaInicioDisputa varchar(8) NULL,
       item varchar(120) NULL,
       tipo varchar(120) NULL,
@@ -320,6 +321,12 @@ try {
       INDEX licitacoes_status_idx (status)
     )
   `);
+
+  try {
+    await connection.query("ALTER TABLE licitacoes ADD plataformaId int NULL AFTER status");
+  } catch (error) {
+    if (!String(error?.message || "").includes("Duplicate column name")) throw error;
+  }
 
   await connection.query(`
     CREATE TABLE IF NOT EXISTS licitacao_atas (

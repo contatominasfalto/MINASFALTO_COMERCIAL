@@ -195,6 +195,7 @@ const REQUIRED_COLUMNS = {
     "orgao",
     "cidade",
     "status",
+    "plataformaId",
     "horaInicioDisputa",
     "item",
     "tipo",
