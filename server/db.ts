@@ -1914,6 +1914,7 @@ export async function vincularSaidasAutomaticasObras(criadoPor = "Sistema") {
       FROM despesas_tabela_geral dtg
       LEFT JOIN pedido_obra_despesas pod ON pod.despesaTabelaGeralId = dtg.id
       WHERE pod.id IS NULL
+        AND UPPER(TRIM(COALESCE(dtg.tipoConta, ''))) = 'PAGAR'
         AND (
           COALESCE(dtg.complemento, '') REGEXP '[oO][[:space:]]*[0-9]+'
           OR COALESCE(dtg.observacoesAprovacao, '') REGEXP '[oO][[:space:]]*[0-9]+'
