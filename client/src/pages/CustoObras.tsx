@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileSpreadsheet, FileText, Flag, Link2, Pencil, Plus, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
@@ -365,6 +365,7 @@ export default function CustoObras() {
   const [tipoContaFilter, setTipoContaFilter] = useState("TODOS");
   const [somentePagarNaoVinculados, setSomentePagarNaoVinculados] = useState(false);
   const [selectedPedido, setSelectedPedido] = useState<any>(null);
+  const [selectedDespesaId, setSelectedDespesaId] = useState<number | null>(null);
   const [modalPedido, setModalPedido] = useState<any>(null);
   const [modalResultTab, setModalResultTab] = useState<"geral" | "cronologico">("geral");
   const [chronologicalOpenYears, setChronologicalOpenYears] = useState<Record<string, boolean>>({});
@@ -434,6 +435,8 @@ export default function CustoObras() {
   const [linkPageSize, setLinkPageSize] = useState(25);
   const [linkCategory, setLinkCategory] = useState<CostCategory>("Despesa");
   const [linkJustificativa, setLinkJustificativa] = useState("");
+  const pedidosTableRef = useRef<HTMLDivElement | null>(null);
+  const despesasTableRef = useRef<HTMLDivElement | null>(null);
 
   const { data: pedidosResult, error, isLoading, refetch } = trpc.pedidosObras.list.useQuery({
     status: statusFilter,
@@ -755,6 +758,10 @@ export default function CustoObras() {
   }, [pedidos, sortColumn, sortDirection]);
 
   const currentPedido = selectedPedido ?? visiblePedidos[0] ?? null;
+  const currentDespesa = useMemo(() => {
+    if (despesas.length === 0) return null;
+    return despesas.find((despesa: any) => despesa.id === selectedDespesaId) ?? despesas[0];
+  }, [despesas, selectedDespesaId]);
 
   const totals = useMemo(() => {
     return visiblePedidos.reduce(
@@ -785,6 +792,91 @@ export default function CustoObras() {
     if (column) toggleSort(column);
   };
 
+  const scrollSelectedRowIntoView = (container: HTMLDivElement | null) => {
+    window.requestAnimationFrame(() => {
+      const selectedRow = container?.querySelector("tbody tr.selected") as HTMLElement | null;
+      selectedRow?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    });
+  };
+
+  const openPedidoModal = (pedido: any) => {
+    setSelectedPedido(pedido);
+    setReceitaGroupOpen(false);
+    setCustosGroupOpen(false);
+    setImpostosGroupOpen(false);
+    setDespesasGroupOpen(false);
+    setReceitaGroupSearch("");
+    setCustosGroupSearch("");
+    setDespesasGroupSearch("");
+    setImpostosGroupSearch("");
+    setModalResultTab("geral");
+    setChronologicalOpenYears({});
+    setChronologicalOpenGroups({});
+    setModalPedido(pedido);
+  };
+
+  const handlePedidosTableKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.shiftKey && event.key === "ArrowRight") {
+      event.preventDefault();
+      setPedidosPage((page) => Math.min(page + 1, pedidosTotalPages));
+      return;
+    }
+
+    if (event.shiftKey && event.key === "ArrowLeft") {
+      event.preventDefault();
+      setPedidosPage((page) => Math.max(page - 1, 1));
+      return;
+    }
+
+    if (["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) {
+      event.preventDefault();
+      if (visiblePedidos.length === 0) return;
+
+      const currentIndex = visiblePedidos.findIndex((pedido) => pedido.id === currentPedido?.id);
+      const fallbackIndex = currentIndex >= 0 ? currentIndex : 0;
+      const nextIndex = event.key === "ArrowDown" || event.key === "ArrowRight"
+        ? Math.min(fallbackIndex + 1, visiblePedidos.length - 1)
+        : Math.max(fallbackIndex - 1, 0);
+
+      setSelectedPedido(visiblePedidos[nextIndex]);
+      scrollSelectedRowIntoView(pedidosTableRef.current);
+      return;
+    }
+
+    if (event.key === "Enter" && currentPedido) {
+      event.preventDefault();
+      openPedidoModal(currentPedido);
+    }
+  };
+
+  const handleDespesasTableKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.shiftKey && event.key === "ArrowRight") {
+      event.preventDefault();
+      setTabelaPage((page) => Math.min(page + 1, despesasTotalPages));
+      return;
+    }
+
+    if (event.shiftKey && event.key === "ArrowLeft") {
+      event.preventDefault();
+      setTabelaPage((page) => Math.max(page - 1, 1));
+      return;
+    }
+
+    if (!["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) return;
+
+    event.preventDefault();
+    if (despesas.length === 0) return;
+
+    const currentIndex = despesas.findIndex((despesa: any) => despesa.id === currentDespesa?.id);
+    const fallbackIndex = currentIndex >= 0 ? currentIndex : 0;
+    const nextIndex = event.key === "ArrowDown" || event.key === "ArrowRight"
+      ? Math.min(fallbackIndex + 1, despesas.length - 1)
+      : Math.max(fallbackIndex - 1, 0);
+
+    setSelectedDespesaId(despesas[nextIndex].id);
+    scrollSelectedRowIntoView(despesasTableRef.current);
+  };
+
   useEffect(() => {
     setPedidosPage(1);
     setSelectedPedido(null);
@@ -799,6 +891,7 @@ export default function CustoObras() {
 
   useEffect(() => {
     setTabelaPage(1);
+    setSelectedDespesaId(null);
   }, [despesasSearchTerm, effectiveTipoContaFilter, somentePagarNaoVinculados, tabelaPageSize]);
 
   useEffect(() => {
@@ -807,6 +900,20 @@ export default function CustoObras() {
       setTabelaPage(despesasTotalPages);
     }
   }, [despesasResult, tabelaPage, despesasTotalPages]);
+
+  useEffect(() => {
+    if (activeTab !== "pedidos" || visiblePedidos.length === 0) return;
+    if (!selectedPedido || !visiblePedidos.some((pedido) => pedido.id === selectedPedido.id)) {
+      setSelectedPedido(visiblePedidos[0]);
+    }
+  }, [activeTab, selectedPedido, visiblePedidos]);
+
+  useEffect(() => {
+    if (activeTab !== "tabela" || despesas.length === 0) return;
+    if (!selectedDespesaId || !despesas.some((despesa: any) => despesa.id === selectedDespesaId)) {
+      setSelectedDespesaId(despesas[0].id);
+    }
+  }, [activeTab, despesas, selectedDespesaId]);
 
   useEffect(() => {
     const financeiro = modalData?.financeiro;
@@ -1527,7 +1634,14 @@ export default function CustoObras() {
           </section>
 
           <main className="desktop-grid-frame costs-grid-frame">
-            <div className="desktop-table-scroll">
+            <div
+              className="desktop-table-scroll keyboard-table-scroll"
+              ref={pedidosTableRef}
+              tabIndex={0}
+              role="grid"
+              aria-label="Pedidos obras"
+              onKeyDown={handlePedidosTableKeyDown}
+            >
               <table className="desktop-table costs-table">
                 <thead onClick={handleHeaderSort}>
                   <tr>
@@ -1562,21 +1676,7 @@ export default function CustoObras() {
                           key={pedido.id}
                           className={selected ? "selected" : ""}
                           onClick={() => setSelectedPedido(pedido)}
-                          onDoubleClick={() => {
-                            setSelectedPedido(pedido);
-                            setReceitaGroupOpen(false);
-                            setCustosGroupOpen(false);
-                            setImpostosGroupOpen(false);
-                            setDespesasGroupOpen(false);
-                            setReceitaGroupSearch("");
-                            setCustosGroupSearch("");
-                            setDespesasGroupSearch("");
-                            setImpostosGroupSearch("");
-                            setModalResultTab("geral");
-                            setChronologicalOpenYears({});
-                            setChronologicalOpenGroups({});
-                            setModalPedido(pedido);
-                          }}
+                          onDoubleClick={() => openPedidoModal(pedido)}
                         >
                           <td>{pedido.pedido}</td>
                           <td>{pedido.dataPedido}</td>
@@ -1670,7 +1770,14 @@ export default function CustoObras() {
           </section>
 
           <main className="desktop-grid-frame costs-grid-frame">
-            <div className="desktop-table-scroll">
+            <div
+              className="desktop-table-scroll keyboard-table-scroll"
+              ref={despesasTableRef}
+              tabIndex={0}
+              role="grid"
+              aria-label="Despesas tabela geral"
+              onKeyDown={handleDespesasTableKeyDown}
+            >
               <table className="desktop-table expenses-table">
                 <thead>
                   <tr>
@@ -1704,7 +1811,11 @@ export default function CustoObras() {
                     </tr>
                   ) : (
                     despesas.map((despesa: any) => (
-                      <tr key={despesa.id}>
+                      <tr
+                        key={despesa.id}
+                        className={currentDespesa?.id === despesa.id ? "selected" : ""}
+                        onClick={() => setSelectedDespesaId(despesa.id)}
+                      >
                         <td>{despesa.codigoFornecedorCliente}</td>
                         <td className="desktop-client">{despesa.fornecedorCliente}</td>
                         <td>{despesa.numeroDocumento}</td>
