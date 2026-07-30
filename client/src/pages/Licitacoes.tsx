@@ -406,7 +406,14 @@ export default function Licitacoes() {
       return;
     }
 
-    if (!["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) return;
+    if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+      event.preventDefault();
+      const scrollContainer = event.currentTarget;
+      scrollContainer.scrollLeft += event.key === "ArrowRight" ? 120 : -120;
+      return;
+    }
+
+    if (!["ArrowDown", "ArrowUp"].includes(event.key)) return;
     event.preventDefault();
     if (!visibleLicitacoes.length) return;
 
@@ -414,7 +421,7 @@ export default function Licitacoes() {
       0,
       visibleLicitacoes.findIndex((licitacao) => licitacao.id === currentTableLicitacao?.id),
     );
-    const nextIndex = event.key === "ArrowDown" || event.key === "ArrowRight"
+    const nextIndex = event.key === "ArrowDown"
       ? Math.min(visibleLicitacoes.length - 1, currentIndex + 1)
       : Math.max(0, currentIndex - 1);
 
