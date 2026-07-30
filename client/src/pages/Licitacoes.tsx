@@ -639,11 +639,11 @@ export default function Licitacoes() {
         onOpenChange={(open) => {
           if (!open) setDeleteLicitacaoTarget(null);
         }}
-        title="Confirmar exclusao de licitacao"
-        description="Esta acao vai excluir a licitacao selecionada."
-        finalDescription="Confirmacao final: depois de continuar, a licitacao sera excluida."
+        title="Confirmar exclusão de licitação"
+        description="Esta ação vai excluir a licitação selecionada."
+        finalDescription="Confirmação final: depois de continuar, a licitação será excluída."
         details={[
-          { label: "Orgao", value: normalizeText(deleteLicitacaoTarget?.orgao) || "-" },
+          { label: "Órgão", value: normalizeText(deleteLicitacaoTarget?.orgao) || "-" },
           { label: "Cidade", value: normalizeText(deleteLicitacaoTarget?.cidade) || "-" },
           { label: "Status", value: normalizeText(deleteLicitacaoTarget?.status) || "-" },
         ]}
@@ -659,9 +659,9 @@ export default function Licitacoes() {
         onOpenChange={(open) => {
           if (!open) setDeleteSimpleTarget(null);
         }}
-        title="Confirmar exclusao"
-        description="Esta acao vai excluir o cadastro selecionado."
-        finalDescription="Confirmacao final: depois de continuar, o cadastro sera excluido."
+        title="Confirmar exclusão"
+        description="Esta ação vai excluir o cadastro selecionado."
+        finalDescription="Confirmação final: depois de continuar, o cadastro será excluído."
         details={[
           { label: "Tipo", value: deleteSimpleTarget?.kind ? normalizeText(deleteSimpleTarget.kind) : "-" },
           { label: "Nome", value: normalizeText(deleteSimpleTarget?.item?.nome) || "-" },
@@ -678,11 +678,11 @@ export default function Licitacoes() {
         onOpenChange={(open) => {
           if (!open) setDeletePedidoTarget(null);
         }}
-        title="Confirmar exclusao de pedido CRTI"
-        description="Esta acao vai remover o pedido vinculado ao controle de entrega."
-        finalDescription="Confirmacao final: depois de continuar, o pedido CRTI sera removido desta licitacao."
+        title="Confirmar exclusão de pedido CRTI"
+        description="Esta ação vai remover o pedido vinculado ao controle de entrega."
+        finalDescription="Confirmação final: depois de continuar, o pedido CRTI será removido desta licitação."
         details={[
-          { label: "Licitacao", value: normalizeText(deletePedidoTarget?.licitacao?.orgao) || "-" },
+          { label: "Licitação", value: normalizeText(deletePedidoTarget?.licitacao?.orgao) || "-" },
           { label: "Pedido", value: deletePedidoTarget?.pedido?.pedidoCrti ?? "-" },
           { label: "Cliente", value: normalizeText(deletePedidoTarget?.pedido?.cliente) || "-" },
         ]}

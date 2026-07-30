@@ -408,13 +408,13 @@ export default function StockPage() {
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-        title="Confirmar exclusao de movimentacao"
-        description="Esta acao vai excluir a movimentacao selecionada do estoque."
-        finalDescription="Confirmacao final: depois de continuar, a movimentacao sera excluida."
+        title="Confirmar exclusão de movimentação"
+        description="Esta ação vai excluir a movimentação selecionada do estoque."
+        finalDescription="Confirmação final: depois de continuar, a movimentação será excluída."
         details={[
           { label: "Data", value: deleteTarget?.date ? format(new Date(deleteTarget.date), "dd/MM/yyyy", { locale: ptBR }) : "-" },
-          { label: "Producao", value: deleteTarget?.production?.toFixed ? deleteTarget.production.toFixed(2) : "-" },
-          { label: "Saidas", value: deleteTarget?.outputs?.toFixed ? deleteTarget.outputs.toFixed(2) : "-" },
+          { label: "Produção", value: deleteTarget?.production?.toFixed ? deleteTarget.production.toFixed(2) : "-" },
+          { label: "Saídas", value: deleteTarget?.outputs?.toFixed ? deleteTarget.outputs.toFixed(2) : "-" },
         ]}
         onConfirm={confirmDelete}
       />

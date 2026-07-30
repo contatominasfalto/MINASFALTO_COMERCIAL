@@ -2383,7 +2383,7 @@ export default function CustoObras() {
                                     disabled={saveResultadoAlocacoes.isPending || !hasYearRealocacoes}
                                   >
                                     <RefreshCw size={14} />
-                                    Resetar realocacoes
+                                    Resetar realocações
                                   </button>
                                   <button
                                     type="button"
@@ -2391,7 +2391,7 @@ export default function CustoObras() {
                                     disabled={yearItems.length === 0}
                                   >
                                     <Pencil size={14} />
-                                    Realocar lancamentos
+                                    Realocar lançamentos
                                   </button>
                                 </div>
                               </header>
@@ -2509,13 +2509,13 @@ export default function CustoObras() {
         onOpenChange={(open) => {
           if (!open) setDeleteConfirm(null);
         }}
-        title={deleteConfirm?.type === "receita" ? "Confirmar exclusao de receita" : deleteConfirm?.item?.origem === "vinculada" ? "Confirmar desvinculacao" : "Confirmar exclusao de despesa"}
-        description="Esta acao precisa de confirmacao antes de remover o lancamento do pedido."
-        finalDescription="Confirmacao final: depois de continuar, o lancamento sera removido do pedido."
+        title={deleteConfirm?.type === "receita" ? "Confirmar exclusão de receita" : deleteConfirm?.item?.origem === "vinculada" ? "Confirmar desvinculação" : "Confirmar exclusão de despesa"}
+        description="Esta ação precisa de confirmação antes de remover o lançamento do pedido."
+        finalDescription="Confirmação final: depois de continuar, o lançamento será removido do pedido."
         details={[
           { label: "Pedido", value: modalPedido?.pedido ?? "-" },
           {
-            label: "Lancamento",
+            label: "Lançamento",
             value: deleteConfirm?.type === "receita"
               ? `${deleteConfirm?.item?.numeroDocumento || "-"} - ${getReceitaStatusLabel(deleteConfirm?.item || {})}`
               : `${deleteConfirm?.item?.numeroDocumento || "-"} - ${deleteConfirm?.item?.categoria || "-"}`,
@@ -2529,7 +2529,7 @@ export default function CustoObras() {
             ),
           },
         ]}
-        finalConfirmLabel={deleteConfirm?.type === "receita" ? "Confirmar exclusao" : deleteConfirm?.item?.origem === "vinculada" ? "Confirmar desvinculacao" : "Confirmar exclusao"}
+        finalConfirmLabel={deleteConfirm?.type === "receita" ? "Confirmar exclusão" : deleteConfirm?.item?.origem === "vinculada" ? "Confirmar desvinculação" : "Confirmar exclusão"}
         isPending={deleteReceita.isPending || deleteDespesa.isPending}
         onConfirm={handleConfirmDeleteModalItem}
       />
@@ -2541,12 +2541,12 @@ export default function CustoObras() {
           <DialogHeader>
             <DialogTitle>
               <AlertTriangle size={22} />
-              Confirmar reset de realocacoes
+              Confirmar reset de realocações
             </DialogTitle>
             <DialogDescription>
               {resetAllocationConfirm?.step === 1
-                ? "Esta acao vai retornar as realocacoes deste grupo para a data original."
-                : "Confirmacao final: depois de continuar, as realocacoes selecionadas serao resetadas."}
+                ? "Esta ação vai retornar as realocações deste grupo para a data original."
+                : "Confirmação final: depois de continuar, as realocações selecionadas serão resetadas."}
             </DialogDescription>
           </DialogHeader>
 
@@ -2564,7 +2564,7 @@ export default function CustoObras() {
               </strong>
             </div>
             <div className="sap-confirm-info">
-              <span>Lancamentos</span>
+              <span>Lançamentos</span>
               <strong>{resetAllocationConfirm ? getResetableAllocationItems(resetAllocationConfirm.yearKey).length : 0}</strong>
             </div>
           </section>
@@ -2604,7 +2604,7 @@ export default function CustoObras() {
       }}>
         <DialogContent className="allocation-dialog">
           <DialogHeader>
-            <DialogTitle>Realocar lancamentos</DialogTitle>
+            <DialogTitle>Realocar lançamentos</DialogTitle>
             <DialogDescription>
               Pedido {modalPedido?.pedido}{selectedAllocationYear ? ` - ${selectedAllocationYear === "sem-data" ? "Sem data" : `Ano ${selectedAllocationYear}`}` : ""}
             </DialogDescription>

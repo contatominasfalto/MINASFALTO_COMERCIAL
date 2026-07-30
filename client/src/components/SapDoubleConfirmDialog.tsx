@@ -29,7 +29,7 @@ export default function SapDoubleConfirmDialog({
   finalDescription,
   details = [],
   confirmLabel = "Continuar",
-  finalConfirmLabel = "Confirmar exclusao",
+  finalConfirmLabel = "Confirmar exclusão",
   isPending = false,
   onConfirm,
 }: SapDoubleConfirmDialogProps) {

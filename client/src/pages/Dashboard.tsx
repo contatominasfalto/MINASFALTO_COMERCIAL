@@ -481,9 +481,9 @@ export default function Dashboard() {
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-        title="Confirmar exclusao de pedido"
-        description="Esta acao vai excluir o pedido selecionado do painel comercial."
-        finalDescription="Confirmacao final: depois de continuar, o pedido sera excluido."
+        title="Confirmar exclusão de pedido"
+        description="Esta ação vai excluir o pedido selecionado do painel comercial."
+        finalDescription="Confirmação final: depois de continuar, o pedido será excluído."
         details={[
           { label: "Pedido", value: deleteTarget?.pedido ?? "-" },
           { label: "Cliente", value: deleteTarget?.cliente ?? "-" },
