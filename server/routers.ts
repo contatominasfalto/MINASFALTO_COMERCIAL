@@ -121,6 +121,7 @@ const contatoSchema = z.object({
   pedidoNum: z.string(),
   tipo: z.enum(["Ligação", "E-mail", "WhatsApp", "Visita", "Outro"]),
   descricao: z.string(),
+  novoStatus: z.preprocess(normalizeStatus, z.enum(["PENDENTE", STATUS_SAIDA_OK, "CANCELADO"])).optional(),
 });
 
 const estoqueMovimentacaoSchema = z.object({

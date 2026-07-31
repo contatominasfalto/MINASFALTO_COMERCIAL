@@ -2218,16 +2218,25 @@ export async function createContato(data: any) {
       usuario: data.usuario || "Sistema",
       dataContato: new Date(),
     });
+    if (data.novoStatus) {
+      await updatePedido(data.pedidoId, { status: data.novoStatus }, data.usuario || "Sistema");
+    }
     return { insertId: demoContatos.length };
   }
 
-  return db.insert(contatos).values({
+  const result = await db.insert(contatos).values({
     pedidoId: data.pedidoId,
     pedidoNum: data.pedidoNum,
     tipo: data.tipo || "Ligação",
     descricao: data.descricao,
     usuario: data.usuario || "Sistema",
   });
+
+  if (data.novoStatus) {
+    await updatePedido(data.pedidoId, { status: data.novoStatus }, data.usuario || "Sistema");
+  }
+
+  return result;
 }
 
 // ─────────────────────────────────────────────

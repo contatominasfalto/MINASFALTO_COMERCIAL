@@ -10,12 +10,18 @@ interface ContatoFormProps {
 }
 
 export default function ContatoForm({ pedido, onSuccess }: ContatoFormProps) {
+  const utils = trpc.useUtils();
   const [tipo, setTipo] = useState("Ligação");
   const [descricao, setDescricao] = useState("");
   const [status, setStatus] = useState("manter");
 
   const { mutate: createContato, isPending } = trpc.contatos.create.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
+      await Promise.all([
+        utils.contatos.listByPedido.invalidate(Number(pedido.id)),
+        utils.historico.listByPedido.invalidate(Number(pedido.id)),
+        utils.pedidos.list.invalidate(),
+      ]);
       toast.success("Contato registrado com sucesso!");
       onSuccess?.();
     },
@@ -30,10 +36,11 @@ export default function ContatoForm({ pedido, onSuccess }: ContatoFormProps) {
     }
 
     createContato({
-      pedidoId: pedido.id,
-      pedidoNum: pedido.pedido,
+      pedidoId: Number(pedido.id),
+      pedidoNum: String(pedido.pedido ?? ""),
       tipo: tipo as any,
-      descricao: status === "manter" ? descricao : `${descricao}\nStatus sugerido: ${status}`,
+      descricao,
+      novoStatus: status === "manter" ? undefined : status,
     });
   };
 
