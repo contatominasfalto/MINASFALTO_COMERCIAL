@@ -406,7 +406,11 @@ export default function Dashboard() {
       </footer>
 
       <Dialog open={isNewPedidoOpen} onOpenChange={setIsNewPedidoOpen}>
-        <DialogContent className="desktop-dialog pedido-window">
+        <DialogContent
+          className="desktop-dialog pedido-window"
+          onInteractOutside={(event) => event.preventDefault()}
+          onPointerDownOutside={(event) => event.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>▣ CADASTRO DE PEDIDO</DialogTitle>
             <DialogDescription>Novo Pedido</DialogDescription>
@@ -416,7 +420,11 @@ export default function Dashboard() {
       </Dialog>
 
       <Dialog open={isEditPedidoOpen} onOpenChange={setIsEditPedidoOpen}>
-        <DialogContent className="desktop-dialog pedido-window">
+        <DialogContent
+          className="desktop-dialog pedido-window"
+          onInteractOutside={(event) => event.preventDefault()}
+          onPointerDownOutside={(event) => event.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>▣ CADASTRO DE PEDIDO</DialogTitle>
             <DialogDescription>Editar Pedido</DialogDescription>
@@ -428,7 +436,11 @@ export default function Dashboard() {
       </Dialog>
 
       <Dialog open={isContatoOpen} onOpenChange={setIsContatoOpen}>
-        <DialogContent className="desktop-dialog contato-window">
+        <DialogContent
+          className="desktop-dialog contato-window"
+          onInteractOutside={(event) => event.preventDefault()}
+          onPointerDownOutside={(event) => event.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>☎ Registrar Contato — {selectedPedido?.cliente}</DialogTitle>
             <DialogDescription>Registrar Contato — Pedido {selectedPedido?.pedido}</DialogDescription>
@@ -448,7 +460,11 @@ export default function Dashboard() {
       </Dialog>
 
       <Dialog open={isCSVImportOpen} onOpenChange={setIsCSVImportOpen}>
-        <DialogContent className="desktop-dialog contato-window">
+        <DialogContent
+          className="desktop-dialog contato-window"
+          onInteractOutside={(event) => event.preventDefault()}
+          onPointerDownOutside={(event) => event.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>Importar Pedidos via CSV</DialogTitle>
             <DialogDescription>Carregue um arquivo CSV com os pedidos para importar</DialogDescription>

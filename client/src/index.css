@@ -685,7 +685,7 @@
 
 [data-slot="dialog-content"].desktop-dialog {
   max-height: calc(100vh - 40px);
-  z-index: 70;
+  z-index: 145;
   translate: none !important;
 }
 
