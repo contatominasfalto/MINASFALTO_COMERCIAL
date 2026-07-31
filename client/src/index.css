@@ -824,7 +824,11 @@
   color: #000000 !important;
   border: 1px solid #aeb7bf !important;
   border-radius: 0 !important;
-  z-index: 90 !important;
+  z-index: 260 !important;
+}
+
+[data-radix-popper-content-wrapper] {
+  z-index: 260 !important;
 }
 
 [data-slot="select-item"] {
