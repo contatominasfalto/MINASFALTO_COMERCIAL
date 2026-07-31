@@ -1779,6 +1779,11 @@
   text-align: center !important;
 }
 
+.licitacao-status-pendente {
+  color: #c00000 !important;
+  font-weight: 900 !important;
+}
+
 .licitacao-filter-row th {
   padding: 2px 4px;
   background: linear-gradient(#edf4fa, #dbe7f0);

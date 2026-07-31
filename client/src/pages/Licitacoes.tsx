@@ -142,6 +142,10 @@ function isAdjucadoStatus(value: unknown) {
   return text.includes("ADJUCADO") || text.includes("ADJUDICADO");
 }
 
+function isPendenteStatus(value: unknown) {
+  return normalizeText(value).trim() === "PENDENTE";
+}
+
 function getLicitacaoStatusDisplay(licitacao: Licitacao) {
   if (isAdjucadoStatus(licitacao?.status) && Math.abs(numberValue(licitacao?.saldoEntrega)) < 0.001) {
     return "ADJUCADO/ENTREGUE";
@@ -681,7 +685,9 @@ export default function Licitacoes() {
                   <td>{formatDateBR(licitacao.data)}</td>
                   <td title={licitacao.orgao}>{normalizeText(licitacao.orgao)}</td>
                   <td>{normalizeText(licitacao.cidade)}</td>
-                  <td>{getLicitacaoStatusDisplay(licitacao)}</td>
+                  <td className={isPendenteStatus(getLicitacaoStatusDisplay(licitacao)) ? "licitacao-status-pendente" : ""}>
+                    {getLicitacaoStatusDisplay(licitacao)}
+                  </td>
                   {panelTab === "geral" && (
                     <td className="licitacao-platform-cell">
                       {licitacao.plataformaLink ? (
