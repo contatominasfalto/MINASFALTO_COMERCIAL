@@ -117,6 +117,20 @@ function normalizeExternalUrl(value: unknown) {
   return /^https?:\/\//i.test(text) ? text : `https://${text}`;
 }
 
+function getLicitacaoFilterValue(licitacao: any, key: string) {
+  if (key === "data") return formatDateBR(licitacao.data);
+  if (key === "status") return getLicitacaoStatusDisplay(licitacao);
+  if (key === "plataformaNome") return `${licitacao.plataformaNome || ""} ${licitacao.plataformaLink || ""}`;
+  if (key === "qtdeSc" || key === "qtdeTn") return formatDecimal(licitacao[key]);
+  if (key === "valorUnit" || key === "lanceLimite" || key === "valorAdjudicado" || key === "valorInicialContrato") return formatCurrency(licitacao[key]);
+  if (key === "kmDistancia") return formatDecimal(licitacao.kmDistancia, 0);
+  if (key === "potencialCliente") return licitacao.potencialCliente || getPotencial(licitacao.kmDistancia);
+  if (key === "statusContrato") return licitacao.statusContrato || "Pendente";
+  if (key === "ataVendedorNome") return licitacao.ataVendedorNome || "NA";
+  if (key === "ataControle") return licitacao.ataVendedorNome && licitacao.ataVendedorNome !== "NA" ? "ATA VINCULADA" : "";
+  return licitacao[key] ?? "";
+}
+
 function normalizeLicitacaoStatusLabel(value: unknown) {
   const text = normalizeText(value);
   if (text.includes("ADJUDICADO")) return text.replaceAll("ADJUDICADO", "ADJUCADO");
@@ -237,6 +251,7 @@ export default function Licitacoes() {
   const [modal, setModal] = useState<ActiveModal>("menu");
   const [panelTab, setPanelTab] = useState<PanelTab>("geral");
   const [search, setSearch] = useState("");
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [sortKey, setSortKey] = useState("data");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [licitacaoPage, setLicitacaoPage] = useState(1);
@@ -340,21 +355,6 @@ export default function Licitacoes() {
     .filter((value, index, arr) => value && arr.indexOf(value) === index);
   const vendedores = opcoes.data?.vendedores || [];
   const plataformas = opcoes.data?.plataformas || [];
-  const rows = useMemo(() => {
-    const data = [...(licitacoes.data || [])];
-    return data.sort((left, right) => {
-      const a = String(left[sortKey] ?? "");
-      const b = String(right[sortKey] ?? "");
-      const result = a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" });
-      return sortDirection === "asc" ? result : -result;
-    });
-  }, [licitacoes.data, sortKey, sortDirection]);
-  const licitacaoTotal = rows.length;
-  const licitacaoTotalPages = Math.max(1, Math.ceil(licitacaoTotal / licitacaoPageSize));
-  const visibleLicitacoes = useMemo(
-    () => rows.slice((licitacaoPage - 1) * licitacaoPageSize, licitacaoPage * licitacaoPageSize),
-    [rows, licitacaoPage, licitacaoPageSize],
-  );
   const licitacaoTableColumns = useMemo(() => {
     const columns: Array<[string, string]> = [
       ["data", "Data"],
@@ -378,9 +378,36 @@ export default function Licitacoes() {
       columns.splice(4, 0, ["plataformaNome", "Link Plat.Pregao"]);
     }
 
+    if (panelTab === "adjudicadas") {
+      columns.push(["statusContrato", "Status Contrato"], ["ataVendedorNome", "Ata Vendedor"], ["ataControle", "Ata"]);
+    }
+
     return columns;
   }, [panelTab]);
-  const licitacaoTableColumnCount = licitacaoTableColumns.length + (panelTab === "adjudicadas" ? 3 : 0) + 1;
+  const licitacaoTableColumnCount = licitacaoTableColumns.length + 1;
+  const rows = useMemo(() => {
+    const visibleColumnKeys = new Set(licitacaoTableColumns.map(([key]) => key));
+    const filters = Object.entries(columnFilters)
+      .map(([key, value]) => [key, normalizeText(value).trim()] as const)
+      .filter(([key, value]) => visibleColumnKeys.has(key) && value);
+    const data = [...(licitacoes.data || [])].filter((licitacao) => {
+      if (!filters.length) return true;
+      return filters.every(([key, value]) => normalizeText(getLicitacaoFilterValue(licitacao, key)).includes(value));
+    });
+
+    return data.sort((left, right) => {
+      const a = String(getLicitacaoFilterValue(left, sortKey));
+      const b = String(getLicitacaoFilterValue(right, sortKey));
+      const result = a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" });
+      return sortDirection === "asc" ? result : -result;
+    });
+  }, [licitacoes.data, licitacaoTableColumns, columnFilters, sortKey, sortDirection]);
+  const licitacaoTotal = rows.length;
+  const licitacaoTotalPages = Math.max(1, Math.ceil(licitacaoTotal / licitacaoPageSize));
+  const visibleLicitacoes = useMemo(
+    () => rows.slice((licitacaoPage - 1) * licitacaoPageSize, licitacaoPage * licitacaoPageSize),
+    [rows, licitacaoPage, licitacaoPageSize],
+  );
   const currentTableLicitacao = useMemo(
     () => visibleLicitacoes.find((licitacao) => licitacao.id === selectedTableLicitacaoId) || visibleLicitacoes[0] || null,
     [visibleLicitacoes, selectedTableLicitacaoId],
@@ -392,7 +419,7 @@ export default function Licitacoes() {
 
   useEffect(() => {
     setLicitacaoPage(1);
-  }, [search, panelTab, licitacaoPageSize]);
+  }, [search, panelTab, licitacaoPageSize, columnFilters]);
 
   useEffect(() => {
     if (licitacaoPage > licitacaoTotalPages) setLicitacaoPage(licitacaoTotalPages);
@@ -607,14 +634,36 @@ export default function Licitacoes() {
             <thead>
               <tr>
                 {licitacaoTableColumns.map(([key, label]) => <th key={key} onClick={() => sortBy(key)}>{label}</th>)}
-                {panelTab === "adjudicadas" && (
-                  <>
-                    <th>Status Contrato</th>
-                    <th>Ata Vendedor</th>
-                    <th>Ata</th>
-                  </>
-                )}
                 <th>Acoes</th>
+              </tr>
+              <tr className="licitacao-filter-row">
+                {licitacaoTableColumns.map(([key, label]) => (
+                  <th key={`${key}-filter`}>
+                    <input
+                      aria-label={`Filtrar ${label}`}
+                      value={columnFilters[key] || ""}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setColumnFilters((current) => ({ ...current, [key]: value }));
+                      }}
+                      onClick={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => event.stopPropagation()}
+                    />
+                  </th>
+                ))}
+                <th>
+                  <button
+                    type="button"
+                    className="licitacao-clear-filters"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setColumnFilters({});
+                    }}
+                    disabled={Object.values(columnFilters).every((value) => !value)}
+                  >
+                    Limpar
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
