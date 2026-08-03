@@ -908,6 +908,14 @@ export async function listDespesasTabelaGeral(filters?: {
   const page = Math.max(1, Math.trunc(filters?.page || 1));
   const pageSize = Math.min(200, Math.max(10, Math.trunc(filters?.pageSize || 50)));
   const offset = (page - 1) * pageSize;
+  const mysqlDateSortExpression = (column: string) => `
+    COALESCE(
+      STR_TO_DATE(NULLIF(CAST(${column} AS CHAR), ''), '%Y-%m-%d %H:%i:%s'),
+      STR_TO_DATE(NULLIF(CAST(${column} AS CHAR), ''), '%Y-%m-%d'),
+      STR_TO_DATE(NULLIF(CAST(${column} AS CHAR), ''), '%d/%m/%Y %H:%i:%s'),
+      STR_TO_DATE(NULLIF(CAST(${column} AS CHAR), ''), '%d/%m/%Y')
+    )
+  `;
   const sortColumns: Record<string, string> = {
     id: "despesas_tabela_geral.id",
     codigoFornecedorCliente: "CAST(COALESCE(despesas_tabela_geral.codigoFornecedorCliente, '') AS CHAR)",
@@ -915,9 +923,9 @@ export async function listDespesasTabelaGeral(filters?: {
     numeroDocumento: "CAST(COALESCE(despesas_tabela_geral.numeroDocumento, '') AS CHAR)",
     tipoConta: "COALESCE(despesas_tabela_geral.tipoConta, '')",
     tipoDocumento: "COALESCE(despesas_tabela_geral.tipoDocumento, '')",
-    dataEmissao: "despesas_tabela_geral.dataEmissao",
-    dataVencimento: "despesas_tabela_geral.dataVencimento",
-    valorTotalDocumento: "despesas_tabela_geral.valorTotalDocumento",
+    dataEmissao: mysqlDateSortExpression("despesas_tabela_geral.dataEmissao"),
+    dataVencimento: mysqlDateSortExpression("despesas_tabela_geral.dataVencimento"),
+    valorTotalDocumento: "CAST(COALESCE(despesas_tabela_geral.valorTotalDocumento, 0) AS DECIMAL(18, 2))",
     complemento: "COALESCE(despesas_tabela_geral.complemento, '')",
     observacoesAprovacao: "COALESCE(despesas_tabela_geral.observacoesAprovacao, '')",
     vinculado: "COALESCE(pod.pedidoNum, 0)",

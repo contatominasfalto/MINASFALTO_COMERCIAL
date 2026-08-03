@@ -812,6 +812,9 @@ export default function CustoObras() {
     if (column) toggleSort(column);
   };
 
+  const getDefaultDespesasSortDirection = (column: DespesasSortColumn): SortDirection =>
+    ["id", "dataEmissao", "dataVencimento", "valorTotalDocumento", "vinculado"].includes(column) ? "desc" : "asc";
+
   const toggleDespesasSort = (column: DespesasSortColumn) => {
     setTabelaPage(1);
     setSelectedDespesaId(null);
@@ -822,7 +825,7 @@ export default function CustoObras() {
     }
 
     setDespesasSortColumn(column);
-    setDespesasSortDirection("asc");
+    setDespesasSortDirection(getDefaultDespesasSortDirection(column));
   };
 
   const despesasSortIndicator = (column: DespesasSortColumn) =>
