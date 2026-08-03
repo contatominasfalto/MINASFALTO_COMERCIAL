@@ -17,7 +17,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 const defaultStatus = ["Pendente", "Encerrado", "Documentacao Separada", "Adjucado"];
@@ -270,6 +270,7 @@ export default function Licitacoes() {
   const [pedidoForm, setPedidoForm] = useState<any>(emptyPedidoCrtiForm);
   const [openEntregaGroups, setOpenEntregaGroups] = useState<Record<number, boolean>>({});
   const [ataForm, setAtaForm] = useState<any>({ vendedorId: null, vendedorNome: "NA", validadeAta: "", quantidadeOriginal: 0, observacoes: "" });
+  const hydratedAtaId = useRef<number | null>(null);
   const [deleteLicitacaoTarget, setDeleteLicitacaoTarget] = useState<Licitacao | null>(null);
   const [deleteSimpleTarget, setDeleteSimpleTarget] = useState<{ kind: "status" | "plataforma" | "vendedor"; item: any; remove: any } | null>(null);
   const [deletePedidoTarget, setDeletePedidoTarget] = useState<{ pedido: any; licitacao: Licitacao } | null>(null);
@@ -288,6 +289,22 @@ export default function Licitacoes() {
     { licitacaoId: selectedLicitacao?.id || 0 },
     { enabled: modal === "ata" && Boolean(selectedLicitacao?.id) },
   );
+
+  useEffect(() => {
+    if (modal !== "ata" || !selectedLicitacao || !ata.isFetched || hydratedAtaId.current === selectedLicitacao.id) return;
+
+    const savedAta = ata.data;
+    if (savedAta && Number(savedAta.licitacaoId) === selectedLicitacao.id) {
+      setAtaForm({
+        vendedorId: savedAta.vendedorId || null,
+        vendedorNome: savedAta.vendedorNome || "NA",
+        validadeAta: savedAta.validadeAta || "",
+        quantidadeOriginal: numberValue(savedAta.quantidadeOriginal),
+        observacoes: savedAta.observacoes || "",
+      });
+    }
+    hydratedAtaId.current = selectedLicitacao.id;
+  }, [ata.data, ata.isFetched, modal, selectedLicitacao]);
   const invalidateAll = () => {
     void utils.licitacoes.list.invalidate();
     void utils.licitacoes.opcoes.invalidate();
@@ -520,6 +537,7 @@ export default function Licitacoes() {
   };
 
   const openAta = (licitacao: Licitacao) => {
+    hydratedAtaId.current = null;
     setSelectedLicitacao(licitacao);
     setAtaForm({
       vendedorId: licitacao.ataVendedorId || null,
@@ -848,7 +866,7 @@ export default function Licitacoes() {
               <option value="NA">NA</option>
               {vendedores.map((vendedor: any) => <option key={vendedor.id} value={vendedor.id}>{normalizeText(vendedor.nome)}</option>)}
             </SelectField>
-            <TextField label="Validade Ata" type="date" value={ataForm.validadeAta || ata.data?.validadeAta || ""} onChange={(value) => setAtaForm((current: any) => ({ ...current, validadeAta: value }))} />
+            <TextField label="Validade Ata" type="date" value={ataForm.validadeAta} onChange={(value) => setAtaForm((current: any) => ({ ...current, validadeAta: value }))} />
             <TextField label="Quantidade Original" type="number" value={ataForm.quantidadeOriginal} onChange={(value) => setAtaForm((current: any) => ({ ...current, quantidadeOriginal: Number(value) }))} />
             <label className="licitacao-field licitacao-readonly"><span>Limite Individual (50%)</span><strong>{formatDecimal(numberValue(ataForm.quantidadeOriginal) * 0.5)}</strong></label>
             <label className="licitacao-field licitacao-readonly"><span>Limite Coletivo (200%)</span><strong>{formatDecimal(numberValue(ataForm.quantidadeOriginal) * 2)}</strong></label>
