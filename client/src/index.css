@@ -1870,6 +1870,44 @@
 .licitacao-table-general th:nth-child(15), .licitacao-table-general td:nth-child(15) { width: 190px; text-align: center; }
 .licitacao-table-general th:nth-child(16), .licitacao-table-general td:nth-child(16) { width: 150px; text-align: center; }
 
+.licitacao-table-adjucados {
+  min-width: 2840px;
+}
+
+.licitacao-table-adjucados th:nth-child(17),
+.licitacao-table-adjucados td:nth-child(17) {
+  width: 170px;
+  min-width: 170px;
+  text-align: center;
+}
+
+.licitacao-table-adjucados th:nth-child(18),
+.licitacao-table-adjucados td:nth-child(18) {
+  width: 180px;
+  min-width: 180px;
+  text-align: center;
+}
+
+.licitacao-table-adjucados th:nth-child(19),
+.licitacao-table-adjucados td:nth-child(19) {
+  width: 110px;
+  min-width: 110px;
+  text-align: center;
+}
+
+.licitacao-table-adjucados th:nth-child(20),
+.licitacao-table-adjucados td:nth-child(20) {
+  width: 120px;
+  min-width: 120px;
+  text-align: center;
+}
+
+.licitacao-table-adjucados td:nth-child(17) select,
+.licitacao-table-adjucados td:nth-child(18) select {
+  width: 100%;
+  min-width: 0;
+}
+
 .licitacao-platform-cell {
   text-align: center;
 }
