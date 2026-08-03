@@ -19,6 +19,20 @@ type SortColumn =
   | "totalPedido"
   | "saldo";
 
+type DespesasSortColumn =
+  | "id"
+  | "codigoFornecedorCliente"
+  | "fornecedorCliente"
+  | "numeroDocumento"
+  | "tipoConta"
+  | "tipoDocumento"
+  | "dataEmissao"
+  | "dataVencimento"
+  | "valorTotalDocumento"
+  | "complemento"
+  | "observacoesAprovacao"
+  | "vinculado";
+
 type ActiveTab = "pedidos" | "tabela";
 type CostCategory = "Custo" | "Despesa" | "Outros";
 type RevenueStatus = "Nfe" | "Faturamento Direto" | "Outros";
@@ -377,6 +391,8 @@ export default function CustoObras() {
   const [tabelaPageSize, setTabelaPageSize] = useState(50);
   const [sortColumn, setSortColumn] = useState<SortColumn>("pedido");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [despesasSortColumn, setDespesasSortColumn] = useState<DespesasSortColumn>("id");
+  const [despesasSortDirection, setDespesasSortDirection] = useState<SortDirection>("desc");
   const [financeForm, setFinanceForm] = useState({
     nfes: "0",
     faturamentoDireto: "0",
@@ -460,6 +476,8 @@ export default function CustoObras() {
     somenteNaoVinculados: somentePagarNaoVinculados,
     page: tabelaPage,
     pageSize: tabelaPageSize,
+    sortBy: despesasSortColumn,
+    sortDirection: despesasSortDirection,
   });
   const despesas = despesasResult?.items ?? [];
   const despesasTotal = despesasResult?.total ?? 0;
@@ -794,6 +812,22 @@ export default function CustoObras() {
     if (column) toggleSort(column);
   };
 
+  const toggleDespesasSort = (column: DespesasSortColumn) => {
+    setTabelaPage(1);
+    setSelectedDespesaId(null);
+
+    if (despesasSortColumn === column) {
+      setDespesasSortDirection((current) => current === "asc" ? "desc" : "asc");
+      return;
+    }
+
+    setDespesasSortColumn(column);
+    setDespesasSortDirection("asc");
+  };
+
+  const despesasSortIndicator = (column: DespesasSortColumn) =>
+    despesasSortColumn === column ? (despesasSortDirection === "asc" ? " ▲" : " ▼") : "";
+
   const scrollSelectedRowIntoView = (container: HTMLDivElement | null) => {
     window.requestAnimationFrame(() => {
       const selectedRow = container?.querySelector("tbody tr.selected") as HTMLElement | null;
@@ -894,7 +928,14 @@ export default function CustoObras() {
   useEffect(() => {
     setTabelaPage(1);
     setSelectedDespesaId(null);
-  }, [despesasSearchTerm, effectiveTipoContaFilter, somentePagarNaoVinculados, tabelaPageSize]);
+  }, [
+    despesasSearchTerm,
+    effectiveTipoContaFilter,
+    somentePagarNaoVinculados,
+    tabelaPageSize,
+    despesasSortColumn,
+    despesasSortDirection,
+  ]);
 
   useEffect(() => {
     if (!despesasResult) return;
@@ -1800,17 +1841,39 @@ export default function CustoObras() {
               <table className="desktop-table expenses-table">
                 <thead>
                   <tr>
-                    <th>Codigo Forn./Cliente</th>
-                    <th>Fornecedor/Cliente</th>
-                    <th>Numero Documento</th>
-                    <th>Tipo Conta</th>
-                    <th>Tipo Documento</th>
-                    <th>Data Emissao</th>
-                    <th>Data Vencimento</th>
-                    <th>Valor Total</th>
-                    <th>Complemento</th>
-                    <th>Observacoes (Aprovacao)</th>
-                    <th>Vinculado</th>
+                    <th className="sortable-column" onClick={() => toggleDespesasSort("codigoFornecedorCliente")}>
+                      Codigo Forn./Cliente<span className="table-sort-indicator">{despesasSortIndicator("codigoFornecedorCliente")}</span>
+                    </th>
+                    <th className="sortable-column" onClick={() => toggleDespesasSort("fornecedorCliente")}>
+                      Fornecedor/Cliente<span className="table-sort-indicator">{despesasSortIndicator("fornecedorCliente")}</span>
+                    </th>
+                    <th className="sortable-column" onClick={() => toggleDespesasSort("numeroDocumento")}>
+                      Numero Documento<span className="table-sort-indicator">{despesasSortIndicator("numeroDocumento")}</span>
+                    </th>
+                    <th className="sortable-column" onClick={() => toggleDespesasSort("tipoConta")}>
+                      Tipo Conta<span className="table-sort-indicator">{despesasSortIndicator("tipoConta")}</span>
+                    </th>
+                    <th className="sortable-column" onClick={() => toggleDespesasSort("tipoDocumento")}>
+                      Tipo Documento<span className="table-sort-indicator">{despesasSortIndicator("tipoDocumento")}</span>
+                    </th>
+                    <th className="sortable-column" onClick={() => toggleDespesasSort("dataEmissao")}>
+                      Data Emissao<span className="table-sort-indicator">{despesasSortIndicator("dataEmissao")}</span>
+                    </th>
+                    <th className="sortable-column" onClick={() => toggleDespesasSort("dataVencimento")}>
+                      Data Vencimento<span className="table-sort-indicator">{despesasSortIndicator("dataVencimento")}</span>
+                    </th>
+                    <th className="sortable-column" onClick={() => toggleDespesasSort("valorTotalDocumento")}>
+                      Valor Total<span className="table-sort-indicator">{despesasSortIndicator("valorTotalDocumento")}</span>
+                    </th>
+                    <th className="sortable-column" onClick={() => toggleDespesasSort("complemento")}>
+                      Complemento<span className="table-sort-indicator">{despesasSortIndicator("complemento")}</span>
+                    </th>
+                    <th className="sortable-column" onClick={() => toggleDespesasSort("observacoesAprovacao")}>
+                      Observacoes (Aprovacao)<span className="table-sort-indicator">{despesasSortIndicator("observacoesAprovacao")}</span>
+                    </th>
+                    <th className="sortable-column" onClick={() => toggleDespesasSort("vinculado")}>
+                      Vinculado<span className="table-sort-indicator">{despesasSortIndicator("vinculado")}</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>

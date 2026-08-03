@@ -902,10 +902,29 @@ export async function listDespesasTabelaGeral(filters?: {
   somenteNaoVinculados?: boolean;
   page?: number;
   pageSize?: number;
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
 }) {
   const page = Math.max(1, Math.trunc(filters?.page || 1));
   const pageSize = Math.min(200, Math.max(10, Math.trunc(filters?.pageSize || 50)));
   const offset = (page - 1) * pageSize;
+  const sortColumns: Record<string, string> = {
+    id: "despesas_tabela_geral.id",
+    codigoFornecedorCliente: "CAST(COALESCE(despesas_tabela_geral.codigoFornecedorCliente, '') AS CHAR)",
+    fornecedorCliente: "COALESCE(despesas_tabela_geral.fornecedorCliente, '')",
+    numeroDocumento: "CAST(COALESCE(despesas_tabela_geral.numeroDocumento, '') AS CHAR)",
+    tipoConta: "COALESCE(despesas_tabela_geral.tipoConta, '')",
+    tipoDocumento: "COALESCE(despesas_tabela_geral.tipoDocumento, '')",
+    dataEmissao: "despesas_tabela_geral.dataEmissao",
+    dataVencimento: "despesas_tabela_geral.dataVencimento",
+    valorTotalDocumento: "despesas_tabela_geral.valorTotalDocumento",
+    complemento: "COALESCE(despesas_tabela_geral.complemento, '')",
+    observacoesAprovacao: "COALESCE(despesas_tabela_geral.observacoesAprovacao, '')",
+    vinculado: "COALESCE(pod.pedidoNum, 0)",
+  };
+  const sortBy = filters?.sortBy && sortColumns[filters.sortBy] ? filters.sortBy : "id";
+  const sortDirection = filters?.sortDirection === "asc" ? "ASC" : "DESC";
+  const orderBy = sortColumns[sortBy];
 
   const db = await getDb();
   if (!db || !_pool) {
@@ -973,7 +992,7 @@ export async function listDespesasTabelaGeral(filters?: {
         GROUP BY despesaTabelaGeralId
       ) pod ON pod.despesaTabelaGeralId = despesas_tabela_geral.id
       ${whereClause}
-      ORDER BY despesas_tabela_geral.id DESC
+      ORDER BY ${orderBy} ${sortDirection}, despesas_tabela_geral.id DESC
       LIMIT ? OFFSET ?
     `,
     [...params, pageSize, offset],

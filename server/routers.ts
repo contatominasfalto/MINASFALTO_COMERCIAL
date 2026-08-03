@@ -605,6 +605,21 @@ export const appRouter = router({
         somenteNaoVinculados: z.boolean().optional(),
         page: z.number().int().positive().optional(),
         pageSize: z.number().int().min(10).max(200).optional(),
+        sortBy: z.enum([
+          "id",
+          "codigoFornecedorCliente",
+          "fornecedorCliente",
+          "numeroDocumento",
+          "tipoConta",
+          "tipoDocumento",
+          "dataEmissao",
+          "dataVencimento",
+          "valorTotalDocumento",
+          "complemento",
+          "observacoesAprovacao",
+          "vinculado",
+        ]).optional(),
+        sortDirection: z.enum(["asc", "desc"]).optional(),
       }).optional())
       .query(({ input }) => db.listDespesasTabelaGeral(input)),
 

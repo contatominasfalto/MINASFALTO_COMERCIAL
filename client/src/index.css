@@ -553,6 +553,19 @@
   background: linear-gradient(#fff8e8, #ead28d);
 }
 
+.desktop-table th.sortable-column {
+  cursor: pointer;
+  user-select: none;
+}
+
+.table-sort-indicator {
+  display: inline-block;
+  min-width: 10px;
+  margin-left: 4px;
+  font-size: 10px;
+  line-height: 1;
+}
+
 .desktop-table td {
   height: 18px;
   padding: 0 7px;
