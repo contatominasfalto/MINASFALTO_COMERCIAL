@@ -2695,16 +2695,13 @@ export async function saveLicitacaoAta(data: {
   validadeAta?: string;
   quantidadeOriginal?: number;
   observacoes?: string;
-  quantidadeMaximaAdesoes?: number;
 }) {
   const pool = await ensureMysqlPool();
   const quantidadeOriginal = normalizeMoney(data.quantidadeOriginal);
   const limiteIndividual = quantidadeOriginal * 0.5;
   const limiteColetivo = quantidadeOriginal * 2;
-  const quantidadeMaximaAdesoes = Math.max(0, Math.trunc(Number(data.quantidadeMaximaAdesoes) || 0));
   const [adesaoRows] = await pool.query<mysql.RowDataPacket[]>(
     `SELECT
-      COUNT(*) AS total,
       COALESCE(MAX(quantidade), 0) AS maiorQuantidade,
       COALESCE(SUM(quantidade), 0) AS quantidadeTotal
     FROM licitacao_adesoes
@@ -2712,9 +2709,6 @@ export async function saveLicitacaoAta(data: {
     [data.licitacaoId],
   );
   const adesaoStats = adesaoRows[0] || {};
-  if (quantidadeMaximaAdesoes > 0 && Number(adesaoStats.total) > quantidadeMaximaAdesoes) {
-    throw new Error("A quantidade maxima informada e menor que o numero de adesoes ja cadastradas.");
-  }
   if (limiteIndividual > 0 && Number(adesaoStats.maiorQuantidade) > limiteIndividual) {
     throw new Error("A nova quantidade original deixaria uma adesao acima do limite individual de 50%.");
   }
@@ -2729,7 +2723,6 @@ export async function saveLicitacaoAta(data: {
     limiteIndividual,
     limiteColetivo,
     data.observacoes || "",
-    quantidadeMaximaAdesoes,
   ];
   const existing = await getLicitacaoAta(data.licitacaoId);
   if (existing) {
@@ -2741,16 +2734,15 @@ export async function saveLicitacaoAta(data: {
         quantidadeOriginal = ?,
         limiteIndividual = ?,
         limiteColetivo = ?,
-        observacoes = ?,
-        quantidadeMaximaAdesoes = ?
+        observacoes = ?
       WHERE licitacaoId = ?`,
       [...values, data.licitacaoId],
     );
   } else {
     await pool.query(
       `INSERT INTO licitacao_atas (
-        vendedorId, vendedorNome, validadeAta, quantidadeOriginal, limiteIndividual, limiteColetivo, observacoes, quantidadeMaximaAdesoes, licitacaoId
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        vendedorId, vendedorNome, validadeAta, quantidadeOriginal, limiteIndividual, limiteColetivo, observacoes, licitacaoId
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [...values, data.licitacaoId],
     );
   }
@@ -2890,7 +2882,7 @@ type LicitacaoAdesaoInput = {
 export async function listLicitacaoAdesoes(licitacaoId: number) {
   const pool = await ensureMysqlPool();
   const [ataRows] = await pool.query<mysql.RowDataPacket[]>(
-    "SELECT quantidadeMaximaAdesoes, limiteIndividual, limiteColetivo FROM licitacao_atas WHERE licitacaoId = ? LIMIT 1",
+    "SELECT limiteIndividual, limiteColetivo FROM licitacao_atas WHERE licitacaoId = ? LIMIT 1",
     [licitacaoId],
   );
   const [rows] = await pool.query<mysql.RowDataPacket[]>(
@@ -2904,12 +2896,9 @@ export async function listLicitacaoAdesoes(licitacaoId: number) {
   );
   const ata = ataRows[0] || {};
   const quantidadeUtilizada = rows.reduce((total, item) => total + (Number(item.quantidade) || 0), 0);
-  const quantidadeMaximaAdesoes = Number(ata.quantidadeMaximaAdesoes) || 0;
   return {
     items: rows,
-    quantidadeMaximaAdesoes,
     adesoesUtilizadas: rows.length,
-    adesoesDisponiveis: quantidadeMaximaAdesoes > 0 ? Math.max(0, quantidadeMaximaAdesoes - rows.length) : null,
     limiteIndividual: Number(ata.limiteIndividual) || 0,
     limiteColetivo: Number(ata.limiteColetivo) || 0,
     quantidadeUtilizada,
@@ -2919,7 +2908,7 @@ export async function listLicitacaoAdesoes(licitacaoId: number) {
 
 async function prepareLicitacaoAdesao(pool: mysql.Pool, data: LicitacaoAdesaoInput, currentId?: number) {
   const [ataRows] = await pool.query<mysql.RowDataPacket[]>(
-    "SELECT limiteIndividual, limiteColetivo, quantidadeMaximaAdesoes FROM licitacao_atas WHERE licitacaoId = ? LIMIT 1",
+    "SELECT limiteIndividual, limiteColetivo FROM licitacao_atas WHERE licitacaoId = ? LIMIT 1",
     [data.licitacaoId],
   );
   const ata = ataRows[0];
@@ -2932,13 +2921,9 @@ async function prepareLicitacaoAdesao(pool: mysql.Pool, data: LicitacaoAdesaoInp
   }
 
   const [totalRows] = await pool.query<mysql.RowDataPacket[]>(
-    "SELECT COUNT(*) AS total, COALESCE(SUM(quantidade), 0) AS quantidade FROM licitacao_adesoes WHERE licitacaoId = ? AND (? IS NULL OR id <> ?)",
+    "SELECT COALESCE(SUM(quantidade), 0) AS quantidade FROM licitacao_adesoes WHERE licitacaoId = ? AND (? IS NULL OR id <> ?)",
     [data.licitacaoId, currentId || null, currentId || null],
   );
-  const totalAtual = Number(totalRows[0]?.total) || 0;
-  const maximo = Number(ata.quantidadeMaximaAdesoes) || 0;
-  if (!currentId && maximo > 0 && totalAtual >= maximo) throw new Error("A quantidade maxima de adesoes desta Ata foi atingida.");
-
   const quantidadeTotal = (Number(totalRows[0]?.quantidade) || 0) + quantidade;
   const limiteColetivo = Number(ata.limiteColetivo) || 0;
   if (limiteColetivo > 0 && quantidadeTotal > limiteColetivo) {

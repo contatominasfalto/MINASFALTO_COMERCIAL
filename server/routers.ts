@@ -299,7 +299,6 @@ const licitacaoAtaSchema = z.object({
   validadeAta: z.string().max(10).optional(),
   quantidadeOriginal: z.coerce.number().nonnegative().optional(),
   observacoes: z.string().max(5000).optional(),
-  quantidadeMaximaAdesoes: z.coerce.number().int().nonnegative().optional(),
 });
 
 const licitacaoAdesaoSchema = z.object({

@@ -280,7 +280,7 @@ export default function Licitacoes() {
   const [selectedLicitacao, setSelectedLicitacao] = useState<Licitacao | null>(null);
   const [pedidoForm, setPedidoForm] = useState<any>(emptyPedidoCrtiForm);
   const [openEntregaGroups, setOpenEntregaGroups] = useState<Record<number, boolean>>({});
-  const [ataForm, setAtaForm] = useState<any>({ vendedorId: null, vendedorNome: "NA", validadeAta: "", quantidadeOriginal: 0, observacoes: "", quantidadeMaximaAdesoes: 0 });
+  const [ataForm, setAtaForm] = useState<any>({ vendedorId: null, vendedorNome: "NA", validadeAta: "", quantidadeOriginal: 0, observacoes: "" });
   const [ataTab, setAtaTab] = useState<"dados" | "adesoes">("dados");
   const [adesaoForm, setAdesaoForm] = useState<any>(emptyAdesaoForm);
   const hydratedAtaId = useRef<number | null>(null);
@@ -318,7 +318,6 @@ export default function Licitacoes() {
         validadeAta: savedAta.validadeAta || "",
         quantidadeOriginal: numberValue(savedAta.quantidadeOriginal),
         observacoes: savedAta.observacoes || "",
-        quantidadeMaximaAdesoes: Number(savedAta.quantidadeMaximaAdesoes) || 0,
       });
     }
     hydratedAtaId.current = selectedLicitacao.id;
@@ -583,7 +582,6 @@ export default function Licitacoes() {
       validadeAta: "",
       quantidadeOriginal: licitacao.qtdeSc || 0,
       observacoes: "",
-      quantidadeMaximaAdesoes: 0,
     });
     setModal("ata");
   };
@@ -949,14 +947,10 @@ export default function Licitacoes() {
 
           {ataTab === "adesoes" && (
             <section className="licitacao-adesoes">
-              <div className="licitacao-adesoes-limit">
-                <TextField label="Quantidade Maxima de Adesoes" type="number" value={ataForm.quantidadeMaximaAdesoes} onChange={(value) => setAtaForm((current: any) => ({ ...current, quantidadeMaximaAdesoes: Math.max(0, Number(value)) }))} />
-                <button type="button" className="desktop-action primary" disabled={saveAta.isPending} onClick={() => saveAta.mutate({ ...ataForm, licitacaoId: selectedLicitacao.id })}><Save size={14} /> Salvar Limite</button>
-              </div>
               <div className="licitacao-adesoes-summary">
-                <span><small>Adesoes utilizadas</small><strong>{adesoes.data?.adesoesUtilizadas || 0}</strong></span>
-                <span><small>Limite de adesoes</small><strong>{adesoes.data?.quantidadeMaximaAdesoes || "Nao definido"}</strong></span>
-                <span><small>Disponiveis</small><strong>{adesoes.data?.adesoesDisponiveis ?? "Sem limite"}</strong></span>
+                <span><small>Limite Individual (50%)</small><strong>{formatDecimal(adesoes.data?.limiteIndividual || 0)}</strong></span>
+                <span><small>Limite Coletivo (200%)</small><strong>{formatDecimal(adesoes.data?.limiteColetivo || 0)}</strong></span>
+                <span><small>Quantidade Aderida</small><strong>{formatDecimal(adesoes.data?.quantidadeUtilizada || 0)}</strong></span>
                 <span><small>Saldo coletivo</small><strong>{formatDecimal(adesoes.data?.saldoColetivo || 0)}</strong></span>
               </div>
 
