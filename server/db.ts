@@ -20,6 +20,7 @@ import { ENV } from './_core/env';
 let _db: any = null;
 let _dbUrl: string | null = null;
 let _pool: mysql.Pool | null = null;
+let _licitacaoAdesoesSchemaPromise: Promise<void> | null = null;
 
 function envFlag(name: string, defaultValue: boolean) {
   const value = process.env[name];
@@ -80,6 +81,7 @@ export async function getDb() {
     await _pool.end().catch(() => undefined);
     _pool = null;
     _db = null;
+    _licitacaoAdesoesSchemaPromise = null;
   }
 
   if (!_db) {
@@ -2434,6 +2436,39 @@ async function ensureMysqlPool() {
   return _pool;
 }
 
+export async function ensureLicitacaoAdesoesSchema(pool: mysql.Pool) {
+  if (!_licitacaoAdesoesSchemaPromise) {
+    _licitacaoAdesoesSchemaPromise = pool.query(`
+      CREATE TABLE IF NOT EXISTS licitacao_adesoes (
+        id int AUTO_INCREMENT NOT NULL,
+        licitacaoId int NOT NULL,
+        orgaoAderente varchar(255) NOT NULL,
+        dataAdesao varchar(10) NULL,
+        quantidade decimal(18,3) DEFAULT '0',
+        entregue boolean DEFAULT false,
+        dataEntrega varchar(10) NULL,
+        pedidoCrti varchar(50) NULL,
+        clienteCrti varchar(255) NULL,
+        dataPedidoCrti varchar(10) NULL,
+        statusPedidoCrti varchar(80) NULL,
+        quantidadePedidoCrti decimal(18,3) DEFAULT '0',
+        valorTotalPedidoCrti decimal(18,2) DEFAULT '0',
+        observacoes text DEFAULT (''),
+        criadoPor varchar(100) DEFAULT 'Sistema',
+        criadoEm timestamp DEFAULT CURRENT_TIMESTAMP,
+        atualizadoEm timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        INDEX licitacao_adesoes_licitacao_idx (licitacaoId),
+        INDEX licitacao_adesoes_pedido_idx (pedidoCrti)
+      )
+    `).then(() => undefined).catch((error) => {
+      _licitacaoAdesoesSchemaPromise = null;
+      throw error;
+    });
+  }
+  await _licitacaoAdesoesSchemaPromise;
+}
+
 function getLicitacaoPotencial(kmDistancia: unknown) {
   const km = Number(kmDistancia) || 0;
   if (km <= 0) return "";
@@ -2665,6 +2700,7 @@ export async function updateLicitacao(id: number, data: LicitacaoInput) {
 
 export async function deleteLicitacao(id: number) {
   const pool = await ensureMysqlPool();
+  await ensureLicitacaoAdesoesSchema(pool);
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
@@ -2697,6 +2733,7 @@ export async function saveLicitacaoAta(data: {
   observacoes?: string;
 }) {
   const pool = await ensureMysqlPool();
+  await ensureLicitacaoAdesoesSchema(pool);
   const quantidadeOriginal = normalizeMoney(data.quantidadeOriginal);
   const limiteIndividual = quantidadeOriginal * 0.5;
   const limiteColetivo = quantidadeOriginal * 2;
@@ -2834,6 +2871,7 @@ async function hydratePedidoCrtiLicitacao(data: {
 }
 
 async function assertPedidoCrtiDisponivel(pool: mysql.Pool, pedidoCrti: string, currentId?: number, currentAdesaoId?: number) {
+  await ensureLicitacaoAdesoesSchema(pool);
   const codigo = String(pedidoCrti || "").trim();
   const [rows] = await pool.query<mysql.RowDataPacket[]>(
     `SELECT
@@ -2881,6 +2919,7 @@ type LicitacaoAdesaoInput = {
 
 export async function listLicitacaoAdesoes(licitacaoId: number) {
   const pool = await ensureMysqlPool();
+  await ensureLicitacaoAdesoesSchema(pool);
   const [ataRows] = await pool.query<mysql.RowDataPacket[]>(
     "SELECT limiteIndividual, limiteColetivo FROM licitacao_atas WHERE licitacaoId = ? LIMIT 1",
     [licitacaoId],
@@ -2907,6 +2946,7 @@ export async function listLicitacaoAdesoes(licitacaoId: number) {
 }
 
 async function prepareLicitacaoAdesao(pool: mysql.Pool, data: LicitacaoAdesaoInput, currentId?: number) {
+  await ensureLicitacaoAdesoesSchema(pool);
   const [ataRows] = await pool.query<mysql.RowDataPacket[]>(
     "SELECT limiteIndividual, limiteColetivo FROM licitacao_atas WHERE licitacaoId = ? LIMIT 1",
     [data.licitacaoId],
