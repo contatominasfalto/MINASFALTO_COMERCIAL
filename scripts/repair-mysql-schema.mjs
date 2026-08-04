@@ -339,11 +339,42 @@ try {
       limiteIndividual decimal(18,3) DEFAULT '0',
       limiteColetivo decimal(18,3) DEFAULT '0',
       observacoes text DEFAULT (''),
+      quantidadeMaximaAdesoes int DEFAULT 0,
       criadoEm timestamp DEFAULT CURRENT_TIMESTAMP,
       atualizadoEm timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       PRIMARY KEY (id),
       INDEX licitacao_atas_licitacao_idx (licitacaoId),
       INDEX licitacao_atas_vendedor_idx (vendedorId)
+    )
+  `);
+
+  const [ataMaxAdesoesColumns] = await connection.query("SHOW COLUMNS FROM licitacao_atas LIKE 'quantidadeMaximaAdesoes'");
+  if (ataMaxAdesoesColumns.length === 0) {
+    await connection.query("ALTER TABLE licitacao_atas ADD quantidadeMaximaAdesoes int DEFAULT 0 AFTER observacoes");
+  }
+
+  await connection.query(`
+    CREATE TABLE IF NOT EXISTS licitacao_adesoes (
+      id int AUTO_INCREMENT NOT NULL,
+      licitacaoId int NOT NULL,
+      orgaoAderente varchar(255) NOT NULL,
+      dataAdesao varchar(10) NULL,
+      quantidade decimal(18,3) DEFAULT '0',
+      entregue boolean DEFAULT false,
+      dataEntrega varchar(10) NULL,
+      pedidoCrti varchar(50) NULL,
+      clienteCrti varchar(255) NULL,
+      dataPedidoCrti varchar(10) NULL,
+      statusPedidoCrti varchar(80) NULL,
+      quantidadePedidoCrti decimal(18,3) DEFAULT '0',
+      valorTotalPedidoCrti decimal(18,2) DEFAULT '0',
+      observacoes text DEFAULT (''),
+      criadoPor varchar(100) DEFAULT 'Sistema',
+      criadoEm timestamp DEFAULT CURRENT_TIMESTAMP,
+      atualizadoEm timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      INDEX licitacao_adesoes_licitacao_idx (licitacaoId),
+      INDEX licitacao_adesoes_pedido_idx (pedidoCrti)
     )
   `);
 

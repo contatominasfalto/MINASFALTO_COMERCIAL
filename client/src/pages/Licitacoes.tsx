@@ -48,6 +48,17 @@ const emptyPedidoCrtiForm = {
   observacoes: "",
 };
 
+const emptyAdesaoForm = {
+  id: null as number | null,
+  orgaoAderente: "",
+  dataAdesao: "",
+  quantidade: 0,
+  entregue: false,
+  dataEntrega: "",
+  pedidoCrti: "",
+  observacoes: "",
+};
+
 const emptyLicitacao = {
   data: "",
   orgao: "",
@@ -269,7 +280,9 @@ export default function Licitacoes() {
   const [selectedLicitacao, setSelectedLicitacao] = useState<Licitacao | null>(null);
   const [pedidoForm, setPedidoForm] = useState<any>(emptyPedidoCrtiForm);
   const [openEntregaGroups, setOpenEntregaGroups] = useState<Record<number, boolean>>({});
-  const [ataForm, setAtaForm] = useState<any>({ vendedorId: null, vendedorNome: "NA", validadeAta: "", quantidadeOriginal: 0, observacoes: "" });
+  const [ataForm, setAtaForm] = useState<any>({ vendedorId: null, vendedorNome: "NA", validadeAta: "", quantidadeOriginal: 0, observacoes: "", quantidadeMaximaAdesoes: 0 });
+  const [ataTab, setAtaTab] = useState<"dados" | "adesoes">("dados");
+  const [adesaoForm, setAdesaoForm] = useState<any>(emptyAdesaoForm);
   const hydratedAtaId = useRef<number | null>(null);
   const [deleteLicitacaoTarget, setDeleteLicitacaoTarget] = useState<Licitacao | null>(null);
   const [deleteSimpleTarget, setDeleteSimpleTarget] = useState<{ kind: "status" | "plataforma" | "vendedor"; item: any; remove: any } | null>(null);
@@ -289,6 +302,10 @@ export default function Licitacoes() {
     { licitacaoId: selectedLicitacao?.id || 0 },
     { enabled: modal === "ata" && Boolean(selectedLicitacao?.id) },
   );
+  const adesoes = trpc.licitacoes.adesoes.list.useQuery(
+    { licitacaoId: selectedLicitacao?.id || 0 },
+    { enabled: modal === "ata" && Boolean(selectedLicitacao?.id) },
+  );
 
   useEffect(() => {
     if (modal !== "ata" || !selectedLicitacao || !ata.isFetched || hydratedAtaId.current === selectedLicitacao.id) return;
@@ -301,6 +318,7 @@ export default function Licitacoes() {
         validadeAta: savedAta.validadeAta || "",
         quantidadeOriginal: numberValue(savedAta.quantidadeOriginal),
         observacoes: savedAta.observacoes || "",
+        quantidadeMaximaAdesoes: Number(savedAta.quantidadeMaximaAdesoes) || 0,
       });
     }
     hydratedAtaId.current = selectedLicitacao.id;
@@ -310,6 +328,7 @@ export default function Licitacoes() {
     void utils.licitacoes.opcoes.invalidate();
     void utils.licitacoes.pedidosCrti.list.invalidate();
     void utils.licitacoes.ata.get.invalidate();
+    void utils.licitacoes.adesoes.list.invalidate();
   };
 
   const createLicitacao = trpc.licitacoes.create.useMutation({
@@ -354,6 +373,23 @@ export default function Licitacoes() {
       invalidateAll();
     },
     onError: (error) => toast.error(`Erro ao salvar ata: ${error.message}`),
+  });
+  const saveAdesaoSuccess = () => {
+    toast.success(adesaoForm.id ? "Adesao atualizada." : "Adesao cadastrada.");
+    setAdesaoForm(emptyAdesaoForm);
+    invalidateAll();
+  };
+  const createAdesao = trpc.licitacoes.adesoes.create.useMutation({
+    onSuccess: saveAdesaoSuccess,
+    onError: (error) => toast.error(`Erro ao cadastrar adesao: ${error.message}`),
+  });
+  const updateAdesao = trpc.licitacoes.adesoes.update.useMutation({
+    onSuccess: saveAdesaoSuccess,
+    onError: (error) => toast.error(`Erro ao atualizar adesao: ${error.message}`),
+  });
+  const deleteAdesao = trpc.licitacoes.adesoes.delete.useMutation({
+    onSuccess: () => { toast.success("Adesao excluida."); setAdesaoForm(emptyAdesaoForm); invalidateAll(); },
+    onError: (error) => toast.error(`Erro ao excluir adesao: ${error.message}`),
   });
   const createPedido = trpc.licitacoes.pedidosCrti.create.useMutation({
     onSuccess: () => {
@@ -538,6 +574,8 @@ export default function Licitacoes() {
 
   const openAta = (licitacao: Licitacao) => {
     hydratedAtaId.current = null;
+    setAtaTab("dados");
+    setAdesaoForm(emptyAdesaoForm);
     setSelectedLicitacao(licitacao);
     setAtaForm({
       vendedorId: licitacao.ataVendedorId || null,
@@ -545,8 +583,29 @@ export default function Licitacoes() {
       validadeAta: "",
       quantidadeOriginal: licitacao.qtdeSc || 0,
       observacoes: "",
+      quantidadeMaximaAdesoes: 0,
     });
     setModal("ata");
+  };
+
+  const submitAdesao = () => {
+    if (!selectedLicitacao) return;
+    if (!String(adesaoForm.orgaoAderente || "").trim()) {
+      toast.error("Informe o orgao aderente.");
+      return;
+    }
+    const payload = {
+      licitacaoId: selectedLicitacao.id,
+      orgaoAderente: normalizeText(adesaoForm.orgaoAderente).trim(),
+      dataAdesao: adesaoForm.dataAdesao || "",
+      quantidade: numberValue(adesaoForm.quantidade),
+      entregue: Boolean(adesaoForm.entregue),
+      dataEntrega: adesaoForm.entregue ? adesaoForm.dataEntrega || "" : "",
+      pedidoCrti: adesaoForm.entregue ? String(adesaoForm.pedidoCrti || "").trim() : "",
+      observacoes: normalizeText(adesaoForm.observacoes),
+    };
+    if (adesaoForm.id) updateAdesao.mutate({ id: adesaoForm.id, data: payload });
+    else createAdesao.mutate(payload);
   };
 
   const submitPedidoCrti = (licitacao: Licitacao) => {
@@ -858,26 +917,93 @@ export default function Licitacoes() {
 
       {modal === "ata" && selectedLicitacao && (
         <SimpleModal title={`Controle de Ata - ${selectedLicitacao.orgao}`} onClose={() => setModal(null)} wide>
-          <section className="licitacao-form-grid licitacao-form-grid-compact">
-            <SelectField label="Vendedor" value={ataForm.vendedorId || "NA"} onChange={(value) => {
-              const vendedor = vendedores.find((item: any) => String(item.id) === value);
-              setAtaForm((current: any) => ({ ...current, vendedorId: vendedor?.id || null, vendedorNome: vendedor?.nome || "NA" }));
-            }}>
-              <option value="NA">NA</option>
-              {vendedores.map((vendedor: any) => <option key={vendedor.id} value={vendedor.id}>{normalizeText(vendedor.nome)}</option>)}
-            </SelectField>
-            <TextField label="Validade Ata" type="date" value={ataForm.validadeAta} onChange={(value) => setAtaForm((current: any) => ({ ...current, validadeAta: value }))} />
-            <TextField label="Quantidade Original" type="number" value={ataForm.quantidadeOriginal} onChange={(value) => setAtaForm((current: any) => ({ ...current, quantidadeOriginal: Number(value) }))} />
-            <label className="licitacao-field licitacao-readonly"><span>Limite Individual (50%)</span><strong>{formatDecimal(numberValue(ataForm.quantidadeOriginal) * 0.5)}</strong></label>
-            <label className="licitacao-field licitacao-readonly"><span>Limite Coletivo (200%)</span><strong>{formatDecimal(numberValue(ataForm.quantidadeOriginal) * 2)}</strong></label>
-          </section>
-          <label className="licitacao-field">
-            <span>Observacoes</span>
-            <textarea value={ataForm.observacoes} onChange={(event) => setAtaForm((current: any) => ({ ...current, observacoes: normalizeText(event.target.value) }))} />
-          </label>
-          <footer className="licitacao-modal-actions">
-            <button className="desktop-action primary" onClick={() => saveAta.mutate({ ...ataForm, licitacaoId: selectedLicitacao.id })}><Save size={14} /> Salvar Ata</button>
-          </footer>
+          <nav className="licitacao-ata-tabs">
+            <button type="button" className={ataTab === "dados" ? "active" : ""} onClick={() => setAtaTab("dados")}>Dados da Ata</button>
+            <button type="button" className={ataTab === "adesoes" ? "active" : ""} onClick={() => setAtaTab("adesoes")}>Controle de Adesoes</button>
+          </nav>
+
+          {ataTab === "dados" && (
+            <>
+              <section className="licitacao-form-grid licitacao-form-grid-compact">
+                <SelectField label="Vendedor" value={ataForm.vendedorId || "NA"} onChange={(value) => {
+                  const vendedor = vendedores.find((item: any) => String(item.id) === value);
+                  setAtaForm((current: any) => ({ ...current, vendedorId: vendedor?.id || null, vendedorNome: vendedor?.nome || "NA" }));
+                }}>
+                  <option value="NA">NA</option>
+                  {vendedores.map((vendedor: any) => <option key={vendedor.id} value={vendedor.id}>{normalizeText(vendedor.nome)}</option>)}
+                </SelectField>
+                <TextField label="Validade Ata" type="date" value={ataForm.validadeAta} onChange={(value) => setAtaForm((current: any) => ({ ...current, validadeAta: value }))} />
+                <TextField label="Quantidade Original" type="number" value={ataForm.quantidadeOriginal} onChange={(value) => setAtaForm((current: any) => ({ ...current, quantidadeOriginal: Number(value) }))} />
+                <label className="licitacao-field licitacao-readonly"><span>Limite Individual (50%)</span><strong>{formatDecimal(numberValue(ataForm.quantidadeOriginal) * 0.5)}</strong></label>
+                <label className="licitacao-field licitacao-readonly"><span>Limite Coletivo (200%)</span><strong>{formatDecimal(numberValue(ataForm.quantidadeOriginal) * 2)}</strong></label>
+              </section>
+              <label className="licitacao-field">
+                <span>Observacoes</span>
+                <textarea value={ataForm.observacoes} onChange={(event) => setAtaForm((current: any) => ({ ...current, observacoes: normalizeText(event.target.value) }))} />
+              </label>
+              <footer className="licitacao-modal-actions">
+                <button className="desktop-action primary" disabled={saveAta.isPending} onClick={() => saveAta.mutate({ ...ataForm, licitacaoId: selectedLicitacao.id })}><Save size={14} /> Salvar Ata</button>
+              </footer>
+            </>
+          )}
+
+          {ataTab === "adesoes" && (
+            <section className="licitacao-adesoes">
+              <div className="licitacao-adesoes-limit">
+                <TextField label="Quantidade Maxima de Adesoes" type="number" value={ataForm.quantidadeMaximaAdesoes} onChange={(value) => setAtaForm((current: any) => ({ ...current, quantidadeMaximaAdesoes: Math.max(0, Number(value)) }))} />
+                <button type="button" className="desktop-action primary" disabled={saveAta.isPending} onClick={() => saveAta.mutate({ ...ataForm, licitacaoId: selectedLicitacao.id })}><Save size={14} /> Salvar Limite</button>
+              </div>
+              <div className="licitacao-adesoes-summary">
+                <span><small>Adesoes utilizadas</small><strong>{adesoes.data?.adesoesUtilizadas || 0}</strong></span>
+                <span><small>Limite de adesoes</small><strong>{adesoes.data?.quantidadeMaximaAdesoes || "Nao definido"}</strong></span>
+                <span><small>Disponiveis</small><strong>{adesoes.data?.adesoesDisponiveis ?? "Sem limite"}</strong></span>
+                <span><small>Saldo coletivo</small><strong>{formatDecimal(adesoes.data?.saldoColetivo || 0)}</strong></span>
+              </div>
+
+              <div className="licitacao-adesao-form">
+                <TextField label="Orgao Aderente" value={adesaoForm.orgaoAderente} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, orgaoAderente: normalizeText(value) }))} />
+                <TextField label="Data da Adesao" type="date" value={adesaoForm.dataAdesao} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, dataAdesao: value }))} />
+                <TextField label="Quantidade" type="number" value={adesaoForm.quantidade} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, quantidade: Number(value) }))} />
+                <SelectField label="Entrega" value={adesaoForm.entregue ? "sim" : "nao"} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, entregue: value === "sim", dataEntrega: value === "sim" ? current.dataEntrega : "", pedidoCrti: value === "sim" ? current.pedidoCrti : "" }))}>
+                  <option value="nao">Nao</option>
+                  <option value="sim">Sim</option>
+                </SelectField>
+                {adesaoForm.entregue && <TextField label="Data da Entrega" type="date" value={adesaoForm.dataEntrega} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, dataEntrega: value }))} />}
+                {adesaoForm.entregue && <TextField label="Pedido CRTI" value={adesaoForm.pedidoCrti} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, pedidoCrti: value }))} />}
+                <label className="licitacao-field licitacao-adesao-observacoes"><span>Observacoes</span><textarea value={adesaoForm.observacoes} onChange={(event) => setAdesaoForm((current: any) => ({ ...current, observacoes: normalizeText(event.target.value) }))} /></label>
+                <div className="licitacao-adesao-actions">
+                  {adesaoForm.id && <button type="button" className="desktop-action" onClick={() => setAdesaoForm(emptyAdesaoForm)}><X size={14} /> Cancelar</button>}
+                  <button type="button" className="desktop-action primary" disabled={createAdesao.isPending || updateAdesao.isPending} onClick={submitAdesao}><Save size={14} /> {adesaoForm.id ? "Atualizar Adesao" : "Cadastrar Adesao"}</button>
+                </div>
+              </div>
+
+              <div className="desktop-table-scroll licitacao-adesoes-table-wrap">
+                <table className="desktop-table licitacao-adesoes-table">
+                  <thead><tr><th>Orgao Aderente</th><th>Data</th><th>Quantidade</th><th>Status Entrega</th><th>Data Entrega</th><th>Pedido CRTI</th><th>Cliente CRTI</th><th>Qtde Pedido</th><th>Saldo</th><th>Acoes</th></tr></thead>
+                  <tbody>
+                    {(adesoes.data?.items || []).map((item: any) => (
+                      <tr key={item.id}>
+                        <td>{normalizeText(item.orgaoAderente)}</td>
+                        <td>{formatDateBR(item.dataAdesao)}</td>
+                        <td className="num">{formatDecimal(item.quantidade)}</td>
+                        <td><span className={`licitacao-delivery-flag ${item.entregue ? "yes" : "no"}`}>{item.entregue ? "SIM" : "NAO"}</span></td>
+                        <td>{item.entregue ? formatDateBR(item.dataEntrega) : "-"}</td>
+                        <td>{item.pedidoCrti || "-"}</td>
+                        <td>{normalizeText(item.clienteCrti) || "-"}</td>
+                        <td className="num">{formatDecimal(item.quantidadePedidoCrti)}</td>
+                        <td className="num">{formatSaldoEntrega(item.saldoEntrega)}</td>
+                        <td className="actions">
+                          <button type="button" className="mini-icon-button" title="Editar adesao" onClick={() => setAdesaoForm({ id: item.id, orgaoAderente: item.orgaoAderente || "", dataAdesao: item.dataAdesao || "", quantidade: numberValue(item.quantidade), entregue: Boolean(item.entregue), dataEntrega: item.dataEntrega || "", pedidoCrti: item.pedidoCrti || "", observacoes: item.observacoes || "" })}><Pencil size={14} /></button>
+                          <button type="button" className="mini-icon-button danger" title="Excluir adesao" onClick={() => deleteAdesao.mutate({ id: item.id, licitacaoId: selectedLicitacao.id })}><Trash2 size={14} /></button>
+                        </td>
+                      </tr>
+                    ))}
+                    {!adesoes.isLoading && !(adesoes.data?.items || []).length && <tr><td colSpan={10} className="desktop-empty">Nenhuma adesao cadastrada.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
         </SimpleModal>
       )}
 

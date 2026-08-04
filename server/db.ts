@@ -2668,6 +2668,7 @@ export async function deleteLicitacao(id: number) {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
+    await connection.query("DELETE FROM licitacao_adesoes WHERE licitacaoId = ?", [id]);
     await connection.query("DELETE FROM licitacao_pedidos_crti WHERE licitacaoId = ?", [id]);
     await connection.query("DELETE FROM licitacao_atas WHERE licitacaoId = ?", [id]);
     await connection.query("DELETE FROM licitacoes WHERE id = ?", [id]);
@@ -2694,11 +2695,32 @@ export async function saveLicitacaoAta(data: {
   validadeAta?: string;
   quantidadeOriginal?: number;
   observacoes?: string;
+  quantidadeMaximaAdesoes?: number;
 }) {
   const pool = await ensureMysqlPool();
   const quantidadeOriginal = normalizeMoney(data.quantidadeOriginal);
   const limiteIndividual = quantidadeOriginal * 0.5;
   const limiteColetivo = quantidadeOriginal * 2;
+  const quantidadeMaximaAdesoes = Math.max(0, Math.trunc(Number(data.quantidadeMaximaAdesoes) || 0));
+  const [adesaoRows] = await pool.query<mysql.RowDataPacket[]>(
+    `SELECT
+      COUNT(*) AS total,
+      COALESCE(MAX(quantidade), 0) AS maiorQuantidade,
+      COALESCE(SUM(quantidade), 0) AS quantidadeTotal
+    FROM licitacao_adesoes
+    WHERE licitacaoId = ?`,
+    [data.licitacaoId],
+  );
+  const adesaoStats = adesaoRows[0] || {};
+  if (quantidadeMaximaAdesoes > 0 && Number(adesaoStats.total) > quantidadeMaximaAdesoes) {
+    throw new Error("A quantidade maxima informada e menor que o numero de adesoes ja cadastradas.");
+  }
+  if (limiteIndividual > 0 && Number(adesaoStats.maiorQuantidade) > limiteIndividual) {
+    throw new Error("A nova quantidade original deixaria uma adesao acima do limite individual de 50%.");
+  }
+  if (limiteColetivo > 0 && Number(adesaoStats.quantidadeTotal) > limiteColetivo) {
+    throw new Error("A nova quantidade original deixaria as adesoes acima do limite coletivo de 200%.");
+  }
   const values = [
     data.vendedorId || null,
     data.vendedorNome || "NA",
@@ -2707,6 +2729,7 @@ export async function saveLicitacaoAta(data: {
     limiteIndividual,
     limiteColetivo,
     data.observacoes || "",
+    quantidadeMaximaAdesoes,
   ];
   const existing = await getLicitacaoAta(data.licitacaoId);
   if (existing) {
@@ -2718,15 +2741,16 @@ export async function saveLicitacaoAta(data: {
         quantidadeOriginal = ?,
         limiteIndividual = ?,
         limiteColetivo = ?,
-        observacoes = ?
+        observacoes = ?,
+        quantidadeMaximaAdesoes = ?
       WHERE licitacaoId = ?`,
       [...values, data.licitacaoId],
     );
   } else {
     await pool.query(
       `INSERT INTO licitacao_atas (
-        vendedorId, vendedorNome, validadeAta, quantidadeOriginal, limiteIndividual, limiteColetivo, observacoes, licitacaoId
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        vendedorId, vendedorNome, validadeAta, quantidadeOriginal, limiteIndividual, limiteColetivo, observacoes, quantidadeMaximaAdesoes, licitacaoId
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [...values, data.licitacaoId],
     );
   }
@@ -2817,27 +2841,29 @@ async function hydratePedidoCrtiLicitacao(data: {
   };
 }
 
-async function assertPedidoCrtiDisponivel(pool: mysql.Pool, pedidoCrti: string, currentId?: number) {
+async function assertPedidoCrtiDisponivel(pool: mysql.Pool, pedidoCrti: string, currentId?: number, currentAdesaoId?: number) {
   const codigo = String(pedidoCrti || "").trim();
-  const params: Array<string | number> = [codigo];
-  let currentFilter = "";
-
-  if (currentId) {
-    currentFilter = " AND lp.id <> ?";
-    params.push(currentId);
-  }
-
   const [rows] = await pool.query<mysql.RowDataPacket[]>(
     `SELECT
-      lp.id,
-      lp.licitacaoId,
-      l.orgao,
-      l.cidade
-    FROM licitacao_pedidos_crti lp
-    LEFT JOIN licitacoes l ON l.id = lp.licitacaoId
-    WHERE TRIM(CAST(lp.pedidoCrti AS CHAR)) = ?${currentFilter}
+      vinculo.id,
+      vinculo.licitacaoId,
+      vinculo.orgao,
+      vinculo.cidade
+    FROM (
+      SELECT lp.id, lp.licitacaoId, l.orgao, l.cidade
+      FROM licitacao_pedidos_crti lp
+      LEFT JOIN licitacoes l ON l.id = lp.licitacaoId
+      WHERE TRIM(CAST(lp.pedidoCrti AS CHAR)) = ?
+        AND (? IS NULL OR lp.id <> ?)
+      UNION ALL
+      SELECT la.id, la.licitacaoId, la.orgaoAderente AS orgao, l.cidade
+      FROM licitacao_adesoes la
+      LEFT JOIN licitacoes l ON l.id = la.licitacaoId
+      WHERE TRIM(CAST(la.pedidoCrti AS CHAR)) = ?
+        AND (? IS NULL OR la.id <> ?)
+    ) vinculo
     LIMIT 1`,
-    params,
+    [codigo, currentId || null, currentId || null, codigo, currentAdesaoId || null, currentAdesaoId || null],
   );
 
   const existing = rows[0];
@@ -2847,6 +2873,134 @@ async function assertPedidoCrtiDisponivel(pool: mysql.Pool, pedidoCrti: string, 
   const cidade = String(existing.cidade || "").trim();
   const destino = cidade ? `${orgao} - ${cidade}` : orgao;
   throw new Error(`Pedido CRTI ${codigo} ja esta vinculado na licitacao ${destino}.`);
+}
+
+type LicitacaoAdesaoInput = {
+  licitacaoId: number;
+  orgaoAderente: string;
+  dataAdesao?: string;
+  quantidade: number;
+  entregue?: boolean;
+  dataEntrega?: string;
+  pedidoCrti?: string;
+  observacoes?: string;
+  criadoPor?: string;
+};
+
+export async function listLicitacaoAdesoes(licitacaoId: number) {
+  const pool = await ensureMysqlPool();
+  const [ataRows] = await pool.query<mysql.RowDataPacket[]>(
+    "SELECT quantidadeMaximaAdesoes, limiteIndividual, limiteColetivo FROM licitacao_atas WHERE licitacaoId = ? LIMIT 1",
+    [licitacaoId],
+  );
+  const [rows] = await pool.query<mysql.RowDataPacket[]>(
+    `SELECT
+      la.*,
+      (COALESCE(la.quantidade, 0) - COALESCE(la.quantidadePedidoCrti, 0)) AS saldoEntrega
+    FROM licitacao_adesoes la
+    WHERE la.licitacaoId = ?
+    ORDER BY la.id DESC`,
+    [licitacaoId],
+  );
+  const ata = ataRows[0] || {};
+  const quantidadeUtilizada = rows.reduce((total, item) => total + (Number(item.quantidade) || 0), 0);
+  const quantidadeMaximaAdesoes = Number(ata.quantidadeMaximaAdesoes) || 0;
+  return {
+    items: rows,
+    quantidadeMaximaAdesoes,
+    adesoesUtilizadas: rows.length,
+    adesoesDisponiveis: quantidadeMaximaAdesoes > 0 ? Math.max(0, quantidadeMaximaAdesoes - rows.length) : null,
+    limiteIndividual: Number(ata.limiteIndividual) || 0,
+    limiteColetivo: Number(ata.limiteColetivo) || 0,
+    quantidadeUtilizada,
+    saldoColetivo: (Number(ata.limiteColetivo) || 0) - quantidadeUtilizada,
+  };
+}
+
+async function prepareLicitacaoAdesao(pool: mysql.Pool, data: LicitacaoAdesaoInput, currentId?: number) {
+  const [ataRows] = await pool.query<mysql.RowDataPacket[]>(
+    "SELECT limiteIndividual, limiteColetivo, quantidadeMaximaAdesoes FROM licitacao_atas WHERE licitacaoId = ? LIMIT 1",
+    [data.licitacaoId],
+  );
+  const ata = ataRows[0];
+  if (!ata) throw new Error("Salve os dados da Ata antes de cadastrar adesoes.");
+
+  const quantidade = normalizeMoney(data.quantidade);
+  const limiteIndividual = Number(ata.limiteIndividual) || 0;
+  if (limiteIndividual > 0 && quantidade > limiteIndividual) {
+    throw new Error(`A quantidade da adesao excede o limite individual de ${limiteIndividual}.`);
+  }
+
+  const [totalRows] = await pool.query<mysql.RowDataPacket[]>(
+    "SELECT COUNT(*) AS total, COALESCE(SUM(quantidade), 0) AS quantidade FROM licitacao_adesoes WHERE licitacaoId = ? AND (? IS NULL OR id <> ?)",
+    [data.licitacaoId, currentId || null, currentId || null],
+  );
+  const totalAtual = Number(totalRows[0]?.total) || 0;
+  const maximo = Number(ata.quantidadeMaximaAdesoes) || 0;
+  if (!currentId && maximo > 0 && totalAtual >= maximo) throw new Error("A quantidade maxima de adesoes desta Ata foi atingida.");
+
+  const quantidadeTotal = (Number(totalRows[0]?.quantidade) || 0) + quantidade;
+  const limiteColetivo = Number(ata.limiteColetivo) || 0;
+  if (limiteColetivo > 0 && quantidadeTotal > limiteColetivo) {
+    throw new Error(`A soma das adesoes excede o limite coletivo de ${limiteColetivo}.`);
+  }
+
+  const entregue = Boolean(data.entregue);
+  const pedidoCrti = String(data.pedidoCrti || "").trim();
+  if (entregue && (!data.dataEntrega || !pedidoCrti)) {
+    throw new Error("Para marcar a entrega como Sim, informe a data de entrega e o pedido CRTI.");
+  }
+
+  let pedido = null;
+  if (pedidoCrti) {
+    pedido = await hydratePedidoCrtiLicitacao({ pedidoCrti });
+    await assertPedidoCrtiDisponivel(pool, pedido.pedidoCrti, undefined, currentId);
+  }
+  return { quantidade, entregue, pedidoCrti, pedido };
+}
+
+export async function createLicitacaoAdesao(data: LicitacaoAdesaoInput) {
+  const pool = await ensureMysqlPool();
+  const prepared = await prepareLicitacaoAdesao(pool, data);
+  await pool.query(
+    `INSERT INTO licitacao_adesoes (
+      licitacaoId, orgaoAderente, dataAdesao, quantidade, entregue, dataEntrega, pedidoCrti,
+      clienteCrti, dataPedidoCrti, statusPedidoCrti, quantidadePedidoCrti, valorTotalPedidoCrti,
+      observacoes, criadoPor
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      data.licitacaoId, data.orgaoAderente.trim(), data.dataAdesao || "", prepared.quantidade,
+      prepared.entregue, prepared.entregue ? data.dataEntrega || "" : "", prepared.pedido?.pedidoCrti || prepared.pedidoCrti || null,
+      prepared.pedido?.cliente || "", prepared.pedido?.dataPedido || "", prepared.pedido?.statusPedido || "",
+      normalizeMoney(prepared.pedido?.quantidade), normalizeMoney(prepared.pedido?.valorTotal), data.observacoes || "", data.criadoPor || "Sistema",
+    ],
+  );
+  return listLicitacaoAdesoes(data.licitacaoId);
+}
+
+export async function updateLicitacaoAdesao(id: number, data: LicitacaoAdesaoInput) {
+  const pool = await ensureMysqlPool();
+  const prepared = await prepareLicitacaoAdesao(pool, data, id);
+  await pool.query(
+    `UPDATE licitacao_adesoes SET
+      orgaoAderente = ?, dataAdesao = ?, quantidade = ?, entregue = ?, dataEntrega = ?, pedidoCrti = ?,
+      clienteCrti = ?, dataPedidoCrti = ?, statusPedidoCrti = ?, quantidadePedidoCrti = ?,
+      valorTotalPedidoCrti = ?, observacoes = ?
+    WHERE id = ? AND licitacaoId = ?`,
+    [
+      data.orgaoAderente.trim(), data.dataAdesao || "", prepared.quantidade, prepared.entregue,
+      prepared.entregue ? data.dataEntrega || "" : "", prepared.pedido?.pedidoCrti || prepared.pedidoCrti || null,
+      prepared.pedido?.cliente || "", prepared.pedido?.dataPedido || "", prepared.pedido?.statusPedido || "",
+      normalizeMoney(prepared.pedido?.quantidade), normalizeMoney(prepared.pedido?.valorTotal), data.observacoes || "", id, data.licitacaoId,
+    ],
+  );
+  return listLicitacaoAdesoes(data.licitacaoId);
+}
+
+export async function deleteLicitacaoAdesao(id: number, licitacaoId: number) {
+  const pool = await ensureMysqlPool();
+  await pool.query("DELETE FROM licitacao_adesoes WHERE id = ? AND licitacaoId = ?", [id, licitacaoId]);
+  return listLicitacaoAdesoes(licitacaoId);
 }
 
 export async function listLicitacaoPedidosCrti(licitacaoId: number) {

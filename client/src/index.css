@@ -2096,6 +2096,123 @@
   margin-top: 20px;
 }
 
+.licitacao-ata-tabs {
+  display: flex;
+  gap: 4px;
+  margin: -4px 0 18px;
+  border-bottom: 1px solid var(--sap-line);
+}
+
+.licitacao-ata-tabs button {
+  min-width: 190px;
+  padding: 9px 18px;
+  border: 1px solid var(--sap-line);
+  border-bottom: 0;
+  background: #e3ebf4;
+  color: var(--sap-text);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.licitacao-ata-tabs button.active {
+  background: linear-gradient(#fff8e8, #ead28d);
+  border-color: #c69221;
+}
+
+.licitacao-adesoes {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.licitacao-adesoes-limit {
+  display: grid;
+  grid-template-columns: minmax(220px, 360px) max-content;
+  align-items: end;
+  gap: 10px;
+}
+
+.licitacao-adesoes-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.licitacao-adesoes-summary span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--sap-line);
+  background: #eaf1f8;
+}
+
+.licitacao-adesoes-summary small {
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.licitacao-adesoes-summary strong {
+  font-size: 14px;
+}
+
+.licitacao-adesao-form {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 0.8fr 1fr 1fr;
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid var(--sap-line);
+  background: #edf3f9;
+}
+
+.licitacao-adesao-observacoes {
+  grid-column: 1 / 5;
+}
+
+.licitacao-adesao-observacoes textarea {
+  min-height: 54px;
+}
+
+.licitacao-adesao-actions {
+  grid-column: 5 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.licitacao-adesoes-table-wrap {
+  max-height: min(34vh, 350px);
+}
+
+.licitacao-adesoes-table {
+  min-width: 1380px;
+}
+
+.licitacao-delivery-flag {
+  display: inline-flex;
+  min-width: 46px;
+  justify-content: center;
+  padding: 3px 7px;
+  border: 1px solid;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.licitacao-delivery-flag.yes {
+  color: #146c2e;
+  background: #dff3e5;
+  border-color: #64a979;
+}
+
+.licitacao-delivery-flag.no {
+  color: #9b2424;
+  background: #fae1e1;
+  border-color: #c97a7a;
+}
+
 .desktop-action.primary {
   background: linear-gradient(#fff6da, #e9c667);
 }

@@ -299,6 +299,18 @@ const licitacaoAtaSchema = z.object({
   validadeAta: z.string().max(10).optional(),
   quantidadeOriginal: z.coerce.number().nonnegative().optional(),
   observacoes: z.string().max(5000).optional(),
+  quantidadeMaximaAdesoes: z.coerce.number().int().nonnegative().optional(),
+});
+
+const licitacaoAdesaoSchema = z.object({
+  licitacaoId: z.number().int().positive(),
+  orgaoAderente: z.string().trim().min(1).max(255),
+  dataAdesao: z.string().max(10).optional(),
+  quantidade: z.coerce.number().positive(),
+  entregue: z.boolean().optional(),
+  dataEntrega: z.string().max(10).optional(),
+  pedidoCrti: z.string().max(50).optional(),
+  observacoes: z.string().max(5000).optional(),
 });
 
 const licitacaoPedidoCrtiSchema = z.object({
@@ -695,6 +707,23 @@ export const appRouter = router({
         .input(z.object({ licitacaoId: z.number().int().positive() }))
         .query(({ input }) => db.getLicitacaoAta(input.licitacaoId)),
       save: costAccessProcedure.input(licitacaoAtaSchema).mutation(({ input }) => db.saveLicitacaoAta(input)),
+    }),
+    adesoes: router({
+      list: costAccessProcedure
+        .input(z.object({ licitacaoId: z.number().int().positive() }))
+        .query(({ input }) => db.listLicitacaoAdesoes(input.licitacaoId)),
+      create: costAccessProcedure
+        .input(licitacaoAdesaoSchema)
+        .mutation(({ input, ctx }) => db.createLicitacaoAdesao({
+          ...input,
+          criadoPor: ctx.user?.name || "Sistema",
+        })),
+      update: costAccessProcedure
+        .input(z.object({ id: z.number().int().positive(), data: licitacaoAdesaoSchema }))
+        .mutation(({ input }) => db.updateLicitacaoAdesao(input.id, input.data)),
+      delete: costAccessProcedure
+        .input(z.object({ id: z.number().int().positive(), licitacaoId: z.number().int().positive() }))
+        .mutation(({ input }) => db.deleteLicitacaoAdesao(input.id, input.licitacaoId)),
     }),
     pedidosCrti: router({
       buscar: costAccessProcedure

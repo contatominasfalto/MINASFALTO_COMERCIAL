@@ -99,6 +99,13 @@
       "when": 1785441600000,
       "tag": "0013_licitacao_plataforma_vinculo",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1785841200000,
+      "tag": "0014_licitacao_adesoes",
+      "breakpoints": true
     }
   ]
 }

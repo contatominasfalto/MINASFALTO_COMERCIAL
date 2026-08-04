@@ -8,7 +8,8 @@ import {
   decimal,
   index,
   uniqueIndex,
-  date
+  date,
+  boolean,
 } from "drizzle-orm/mysql-core";
 import { relations } from "drizzle-orm";
 
@@ -325,6 +326,7 @@ export const licitacaoAtas = mysqlTable("licitacao_atas", {
   limiteIndividual: decimal("limiteIndividual", { precision: 18, scale: 3 }).default("0"),
   limiteColetivo: decimal("limiteColetivo", { precision: 18, scale: 3 }).default("0"),
   observacoes: text("observacoes").default(""),
+  quantidadeMaximaAdesoes: int("quantidadeMaximaAdesoes").default(0),
   criadoEm: timestamp("criadoEm").defaultNow(),
   atualizadoEm: timestamp("atualizadoEm").defaultNow().onUpdateNow(),
 }, (table) => ({
@@ -334,6 +336,32 @@ export const licitacaoAtas = mysqlTable("licitacao_atas", {
 
 export type LicitacaoAta = typeof licitacaoAtas.$inferSelect;
 export type InsertLicitacaoAta = typeof licitacaoAtas.$inferInsert;
+
+export const licitacaoAdesoes = mysqlTable("licitacao_adesoes", {
+  id: int("id").autoincrement().primaryKey(),
+  licitacaoId: int("licitacaoId").notNull(),
+  orgaoAderente: varchar("orgaoAderente", { length: 255 }).notNull(),
+  dataAdesao: varchar("dataAdesao", { length: 10 }),
+  quantidade: decimal("quantidade", { precision: 18, scale: 3 }).default("0"),
+  entregue: boolean("entregue").default(false),
+  dataEntrega: varchar("dataEntrega", { length: 10 }),
+  pedidoCrti: varchar("pedidoCrti", { length: 50 }),
+  clienteCrti: varchar("clienteCrti", { length: 255 }),
+  dataPedidoCrti: varchar("dataPedidoCrti", { length: 10 }),
+  statusPedidoCrti: varchar("statusPedidoCrti", { length: 80 }),
+  quantidadePedidoCrti: decimal("quantidadePedidoCrti", { precision: 18, scale: 3 }).default("0"),
+  valorTotalPedidoCrti: decimal("valorTotalPedidoCrti", { precision: 18, scale: 2 }).default("0"),
+  observacoes: text("observacoes").default(""),
+  criadoPor: varchar("criadoPor", { length: 100 }).default("Sistema"),
+  criadoEm: timestamp("criadoEm").defaultNow(),
+  atualizadoEm: timestamp("atualizadoEm").defaultNow().onUpdateNow(),
+}, (table) => ({
+  licitacaoIdx: index("licitacao_adesoes_licitacao_idx").on(table.licitacaoId),
+  pedidoIdx: index("licitacao_adesoes_pedido_idx").on(table.pedidoCrti),
+}));
+
+export type LicitacaoAdesao = typeof licitacaoAdesoes.$inferSelect;
+export type InsertLicitacaoAdesao = typeof licitacaoAdesoes.$inferInsert;
 
 export const licitacaoPedidosCrti = mysqlTable("licitacao_pedidos_crti", {
   id: int("id").autoincrement().primaryKey(),
