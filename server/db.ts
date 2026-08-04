@@ -2438,7 +2438,8 @@ async function ensureMysqlPool() {
 
 export async function ensureLicitacaoAdesoesSchema(pool: mysql.Pool) {
   if (!_licitacaoAdesoesSchemaPromise) {
-    _licitacaoAdesoesSchemaPromise = pool.query(`
+    _licitacaoAdesoesSchemaPromise = (async () => {
+      await pool.query(`
       CREATE TABLE IF NOT EXISTS licitacao_adesoes (
         id int AUTO_INCREMENT NOT NULL,
         licitacaoId int NOT NULL,
@@ -2461,7 +2462,28 @@ export async function ensureLicitacaoAdesoesSchema(pool: mysql.Pool) {
         INDEX licitacao_adesoes_licitacao_idx (licitacaoId),
         INDEX licitacao_adesoes_pedido_idx (pedidoCrti)
       )
-    `).then(() => undefined).catch((error) => {
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS licitacao_adesao_pedidos_crti (
+          id int AUTO_INCREMENT NOT NULL,
+          adesaoId int NOT NULL,
+          licitacaoId int NOT NULL,
+          pedidoCrti varchar(50) NOT NULL,
+          cliente varchar(255) NULL,
+          dataPedido varchar(10) NULL,
+          statusPedido varchar(80) NULL,
+          quantidade decimal(18,3) DEFAULT '0',
+          valorTotal decimal(18,2) DEFAULT '0',
+          criadoPor varchar(100) DEFAULT 'Sistema',
+          criadoEm timestamp DEFAULT CURRENT_TIMESTAMP,
+          atualizadoEm timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          UNIQUE KEY licitacao_adesao_pedidos_pedido_unique (pedidoCrti),
+          INDEX licitacao_adesao_pedidos_adesao_idx (adesaoId),
+          INDEX licitacao_adesao_pedidos_licitacao_idx (licitacaoId)
+        )
+      `);
+    })().catch((error) => {
       _licitacaoAdesoesSchemaPromise = null;
       throw error;
     });
@@ -2704,6 +2726,7 @@ export async function deleteLicitacao(id: number) {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
+    await connection.query("DELETE FROM licitacao_adesao_pedidos_crti WHERE licitacaoId = ?", [id]);
     await connection.query("DELETE FROM licitacao_adesoes WHERE licitacaoId = ?", [id]);
     await connection.query("DELETE FROM licitacao_pedidos_crti WHERE licitacaoId = ?", [id]);
     await connection.query("DELETE FROM licitacao_atas WHERE licitacaoId = ?", [id]);
@@ -2886,11 +2909,12 @@ async function assertPedidoCrtiDisponivel(pool: mysql.Pool, pedidoCrti: string, 
       WHERE TRIM(CAST(lp.pedidoCrti AS CHAR)) = ?
         AND (? IS NULL OR lp.id <> ?)
       UNION ALL
-      SELECT la.id, la.licitacaoId, la.orgaoAderente AS orgao, l.cidade
-      FROM licitacao_adesoes la
-      LEFT JOIN licitacoes l ON l.id = la.licitacaoId
-      WHERE TRIM(CAST(la.pedidoCrti AS CHAR)) = ?
-        AND (? IS NULL OR la.id <> ?)
+      SELECT lap.id, lap.licitacaoId, la.orgaoAderente AS orgao, l.cidade
+      FROM licitacao_adesao_pedidos_crti lap
+      LEFT JOIN licitacao_adesoes la ON la.id = lap.adesaoId
+      LEFT JOIN licitacoes l ON l.id = lap.licitacaoId
+      WHERE TRIM(CAST(lap.pedidoCrti AS CHAR)) = ?
+        AND (? IS NULL OR lap.id <> ?)
     ) vinculo
     LIMIT 1`,
     [codigo, currentId || null, currentId || null, codigo, currentAdesaoId || null, currentAdesaoId || null],
@@ -2927,8 +2951,15 @@ export async function listLicitacaoAdesoes(licitacaoId: number) {
   const [rows] = await pool.query<mysql.RowDataPacket[]>(
     `SELECT
       la.*,
-      (COALESCE(la.quantidade, 0) - COALESCE(la.quantidadePedidoCrti, 0)) AS saldoEntrega
+      COALESCE(pedidos.quantidadeEntregue, 0) AS quantidadePedidoCrti,
+      COALESCE(pedidos.totalPedidos, 0) AS totalPedidos,
+      (COALESCE(la.quantidade, 0) - COALESCE(pedidos.quantidadeEntregue, 0)) AS saldoEntrega
     FROM licitacao_adesoes la
+    LEFT JOIN (
+      SELECT adesaoId, SUM(quantidade) AS quantidadeEntregue, COUNT(*) AS totalPedidos
+      FROM licitacao_adesao_pedidos_crti
+      GROUP BY adesaoId
+    ) pedidos ON pedidos.adesaoId = la.id
     WHERE la.licitacaoId = ?
     ORDER BY la.id DESC`,
     [licitacaoId],
@@ -2971,17 +3002,10 @@ async function prepareLicitacaoAdesao(pool: mysql.Pool, data: LicitacaoAdesaoInp
   }
 
   const entregue = Boolean(data.entregue);
-  const pedidoCrti = String(data.pedidoCrti || "").trim();
-  if (entregue && (!data.dataEntrega || !pedidoCrti)) {
-    throw new Error("Para marcar a entrega como Sim, informe a data de entrega e o pedido CRTI.");
+  if (entregue && !data.dataEntrega) {
+    throw new Error("Para marcar a entrega como Sim, informe a data de entrega.");
   }
-
-  let pedido = null;
-  if (pedidoCrti) {
-    pedido = await hydratePedidoCrtiLicitacao({ pedidoCrti });
-    await assertPedidoCrtiDisponivel(pool, pedido.pedidoCrti, undefined, currentId);
-  }
-  return { quantidade, entregue, pedidoCrti, pedido };
+  return { quantidade, entregue };
 }
 
 export async function createLicitacaoAdesao(data: LicitacaoAdesaoInput) {
@@ -2995,9 +3019,8 @@ export async function createLicitacaoAdesao(data: LicitacaoAdesaoInput) {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.licitacaoId, data.orgaoAderente.trim(), data.dataAdesao || "", prepared.quantidade,
-      prepared.entregue, prepared.entregue ? data.dataEntrega || "" : "", prepared.pedido?.pedidoCrti || prepared.pedidoCrti || null,
-      prepared.pedido?.cliente || "", prepared.pedido?.dataPedido || "", prepared.pedido?.statusPedido || "",
-      normalizeMoney(prepared.pedido?.quantidade), normalizeMoney(prepared.pedido?.valorTotal), data.observacoes || "", data.criadoPor || "Sistema",
+      prepared.entregue, prepared.entregue ? data.dataEntrega || "" : "", null,
+      "", "", "", 0, 0, data.observacoes || "", data.criadoPor || "Sistema",
     ],
   );
   return listLicitacaoAdesoes(data.licitacaoId);
@@ -3014,9 +3037,8 @@ export async function updateLicitacaoAdesao(id: number, data: LicitacaoAdesaoInp
     WHERE id = ? AND licitacaoId = ?`,
     [
       data.orgaoAderente.trim(), data.dataAdesao || "", prepared.quantidade, prepared.entregue,
-      prepared.entregue ? data.dataEntrega || "" : "", prepared.pedido?.pedidoCrti || prepared.pedidoCrti || null,
-      prepared.pedido?.cliente || "", prepared.pedido?.dataPedido || "", prepared.pedido?.statusPedido || "",
-      normalizeMoney(prepared.pedido?.quantidade), normalizeMoney(prepared.pedido?.valorTotal), data.observacoes || "", id, data.licitacaoId,
+      prepared.entregue ? data.dataEntrega || "" : "", null,
+      "", "", "", 0, 0, data.observacoes || "", id, data.licitacaoId,
     ],
   );
   return listLicitacaoAdesoes(data.licitacaoId);
@@ -3024,8 +3046,63 @@ export async function updateLicitacaoAdesao(id: number, data: LicitacaoAdesaoInp
 
 export async function deleteLicitacaoAdesao(id: number, licitacaoId: number) {
   const pool = await ensureMysqlPool();
+  await ensureLicitacaoAdesoesSchema(pool);
+  await pool.query("DELETE FROM licitacao_adesao_pedidos_crti WHERE adesaoId = ? AND licitacaoId = ?", [id, licitacaoId]);
   await pool.query("DELETE FROM licitacao_adesoes WHERE id = ? AND licitacaoId = ?", [id, licitacaoId]);
   return listLicitacaoAdesoes(licitacaoId);
+}
+
+export async function listLicitacaoAdesaoPedidosCrti(adesaoId: number) {
+  const pool = await ensureMysqlPool();
+  await ensureLicitacaoAdesoesSchema(pool);
+  const [adesaoRows] = await pool.query<mysql.RowDataPacket[]>(
+    "SELECT id, licitacaoId, quantidade FROM licitacao_adesoes WHERE id = ? LIMIT 1",
+    [adesaoId],
+  );
+  const adesao = adesaoRows[0];
+  if (!adesao) throw new Error("Adesao nao encontrada.");
+  const [rows] = await pool.query<mysql.RowDataPacket[]>(
+    "SELECT * FROM licitacao_adesao_pedidos_crti WHERE adesaoId = ? ORDER BY id DESC",
+    [adesaoId],
+  );
+  const entregue = rows.reduce((total, pedido) => total + (Number(pedido.quantidade) || 0), 0);
+  const quantidadeBase = Number(adesao.quantidade) || 0;
+  return { items: rows, quantidadeBase, entregue, saldoEntrega: quantidadeBase - entregue };
+}
+
+export async function createLicitacaoAdesaoPedidoCrti(data: {
+  adesaoId: number;
+  licitacaoId: number;
+  pedidoCrti: string;
+  criadoPor?: string;
+}) {
+  const pool = await ensureMysqlPool();
+  await ensureLicitacaoAdesoesSchema(pool);
+  const [adesaoRows] = await pool.query<mysql.RowDataPacket[]>(
+    "SELECT id FROM licitacao_adesoes WHERE id = ? AND licitacaoId = ? LIMIT 1",
+    [data.adesaoId, data.licitacaoId],
+  );
+  if (!adesaoRows[0]) throw new Error("Adesao nao encontrada nesta licitacao.");
+
+  const pedido = await hydratePedidoCrtiLicitacao({ pedidoCrti: data.pedidoCrti });
+  await assertPedidoCrtiDisponivel(pool, pedido.pedidoCrti);
+  await pool.query(
+    `INSERT INTO licitacao_adesao_pedidos_crti (
+      adesaoId, licitacaoId, pedidoCrti, cliente, dataPedido, statusPedido, quantidade, valorTotal, criadoPor
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      data.adesaoId, data.licitacaoId, pedido.pedidoCrti, pedido.cliente || "", pedido.dataPedido || "",
+      pedido.statusPedido || "", normalizeMoney(pedido.quantidade), normalizeMoney(pedido.valorTotal), data.criadoPor || "Sistema",
+    ],
+  );
+  return listLicitacaoAdesaoPedidosCrti(data.adesaoId);
+}
+
+export async function deleteLicitacaoAdesaoPedidoCrti(id: number, adesaoId: number) {
+  const pool = await ensureMysqlPool();
+  await ensureLicitacaoAdesoesSchema(pool);
+  await pool.query("DELETE FROM licitacao_adesao_pedidos_crti WHERE id = ? AND adesaoId = ?", [id, adesaoId]);
+  return listLicitacaoAdesaoPedidosCrti(adesaoId);
 }
 
 export async function listLicitacaoPedidosCrti(licitacaoId: number) {

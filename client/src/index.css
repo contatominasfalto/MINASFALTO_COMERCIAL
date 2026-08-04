@@ -2184,6 +2184,43 @@
   min-width: 1380px;
 }
 
+.licitacao-adesao-pedidos-row > td {
+  padding: 12px !important;
+  background: #edf3f9;
+}
+
+.licitacao-adesao-pedido-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 420px) max-content minmax(170px, 1fr) minmax(150px, 1fr);
+  align-items: end;
+  gap: 10px;
+}
+
+.licitacao-adesao-pedido-form > span {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 10px;
+  border: 1px solid var(--sap-line);
+  background: #e3ebf4;
+  font-weight: 800;
+}
+
+.licitacao-adesao-pedido-form small {
+  font-size: 9px;
+}
+
+.licitacao-adesao-pedidos-list {
+  max-height: 230px;
+  margin-top: 10px;
+}
+
+.licitacao-adesao-pedidos-list table {
+  min-width: 980px;
+}
+
 .licitacao-delivery-flag {
   display: inline-flex;
   min-width: 46px;

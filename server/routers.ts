@@ -308,7 +308,6 @@ const licitacaoAdesaoSchema = z.object({
   quantidade: z.coerce.number().positive(),
   entregue: z.boolean().optional(),
   dataEntrega: z.string().max(10).optional(),
-  pedidoCrti: z.string().max(50).optional(),
   observacoes: z.string().max(5000).optional(),
 });
 
@@ -723,6 +722,24 @@ export const appRouter = router({
       delete: costAccessProcedure
         .input(z.object({ id: z.number().int().positive(), licitacaoId: z.number().int().positive() }))
         .mutation(({ input }) => db.deleteLicitacaoAdesao(input.id, input.licitacaoId)),
+      pedidosCrti: router({
+        list: costAccessProcedure
+          .input(z.object({ adesaoId: z.number().int().positive() }))
+          .query(({ input }) => db.listLicitacaoAdesaoPedidosCrti(input.adesaoId)),
+        create: costAccessProcedure
+          .input(z.object({
+            adesaoId: z.number().int().positive(),
+            licitacaoId: z.number().int().positive(),
+            pedidoCrti: z.string().trim().min(1).max(50),
+          }))
+          .mutation(({ input, ctx }) => db.createLicitacaoAdesaoPedidoCrti({
+            ...input,
+            criadoPor: ctx.user?.name || "Sistema",
+          })),
+        delete: costAccessProcedure
+          .input(z.object({ id: z.number().int().positive(), adesaoId: z.number().int().positive() }))
+          .mutation(({ input }) => db.deleteLicitacaoAdesaoPedidoCrti(input.id, input.adesaoId)),
+      }),
     }),
     pedidosCrti: router({
       buscar: costAccessProcedure

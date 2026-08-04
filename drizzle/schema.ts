@@ -363,6 +363,24 @@ export const licitacaoAdesoes = mysqlTable("licitacao_adesoes", {
 export type LicitacaoAdesao = typeof licitacaoAdesoes.$inferSelect;
 export type InsertLicitacaoAdesao = typeof licitacaoAdesoes.$inferInsert;
 
+export const licitacaoAdesaoPedidosCrti = mysqlTable("licitacao_adesao_pedidos_crti", {
+  id: int("id").autoincrement().primaryKey(),
+  adesaoId: int("adesaoId").notNull(),
+  licitacaoId: int("licitacaoId").notNull(),
+  pedidoCrti: varchar("pedidoCrti", { length: 50 }).notNull().unique(),
+  cliente: varchar("cliente", { length: 255 }),
+  dataPedido: varchar("dataPedido", { length: 10 }),
+  statusPedido: varchar("statusPedido", { length: 80 }),
+  quantidade: decimal("quantidade", { precision: 18, scale: 3 }).default("0"),
+  valorTotal: decimal("valorTotal", { precision: 18, scale: 2 }).default("0"),
+  criadoPor: varchar("criadoPor", { length: 100 }).default("Sistema"),
+  criadoEm: timestamp("criadoEm").defaultNow(),
+  atualizadoEm: timestamp("atualizadoEm").defaultNow().onUpdateNow(),
+}, (table) => ({
+  adesaoIdx: index("licitacao_adesao_pedidos_adesao_idx").on(table.adesaoId),
+  licitacaoIdx: index("licitacao_adesao_pedidos_licitacao_idx").on(table.licitacaoId),
+}));
+
 export const licitacaoPedidosCrti = mysqlTable("licitacao_pedidos_crti", {
   id: int("id").autoincrement().primaryKey(),
   licitacaoId: int("licitacaoId").notNull(),

@@ -17,7 +17,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 const defaultStatus = ["Pendente", "Encerrado", "Documentacao Separada", "Adjucado"];
@@ -55,7 +55,6 @@ const emptyAdesaoForm = {
   quantidade: 0,
   entregue: false,
   dataEntrega: "",
-  pedidoCrti: "",
   observacoes: "",
 };
 
@@ -283,6 +282,9 @@ export default function Licitacoes() {
   const [ataForm, setAtaForm] = useState<any>({ vendedorId: null, vendedorNome: "NA", validadeAta: "", quantidadeOriginal: 0, observacoes: "" });
   const [ataTab, setAtaTab] = useState<"dados" | "adesoes">("dados");
   const [adesaoForm, setAdesaoForm] = useState<any>(emptyAdesaoForm);
+  const [selectedAdesaoId, setSelectedAdesaoId] = useState<number | null>(null);
+  const [openAdesaoGroups, setOpenAdesaoGroups] = useState<Record<number, boolean>>({});
+  const [adesaoPedidoCrti, setAdesaoPedidoCrti] = useState("");
   const hydratedAtaId = useRef<number | null>(null);
   const [deleteLicitacaoTarget, setDeleteLicitacaoTarget] = useState<Licitacao | null>(null);
   const [deleteSimpleTarget, setDeleteSimpleTarget] = useState<{ kind: "status" | "plataforma" | "vendedor"; item: any; remove: any } | null>(null);
@@ -306,6 +308,10 @@ export default function Licitacoes() {
     { licitacaoId: selectedLicitacao?.id || 0 },
     { enabled: modal === "ata" && Boolean(selectedLicitacao?.id) },
   );
+  const adesaoPedidosCrti = trpc.licitacoes.adesoes.pedidosCrti.list.useQuery(
+    { adesaoId: selectedAdesaoId || 0 },
+    { enabled: modal === "ata" && ataTab === "adesoes" && Boolean(selectedAdesaoId) },
+  );
 
   useEffect(() => {
     if (modal !== "ata" || !selectedLicitacao || !ata.isFetched || hydratedAtaId.current === selectedLicitacao.id) return;
@@ -328,6 +334,7 @@ export default function Licitacoes() {
     void utils.licitacoes.pedidosCrti.list.invalidate();
     void utils.licitacoes.ata.get.invalidate();
     void utils.licitacoes.adesoes.list.invalidate();
+    void utils.licitacoes.adesoes.pedidosCrti.list.invalidate();
   };
 
   const createLicitacao = trpc.licitacoes.create.useMutation({
@@ -389,6 +396,14 @@ export default function Licitacoes() {
   const deleteAdesao = trpc.licitacoes.adesoes.delete.useMutation({
     onSuccess: () => { toast.success("Adesao excluida."); setAdesaoForm(emptyAdesaoForm); invalidateAll(); },
     onError: (error) => toast.error(`Erro ao excluir adesao: ${error.message}`),
+  });
+  const createAdesaoPedido = trpc.licitacoes.adesoes.pedidosCrti.create.useMutation({
+    onSuccess: () => { toast.success("Pedido CRTI vinculado a adesao."); setAdesaoPedidoCrti(""); invalidateAll(); },
+    onError: (error) => toast.error(`Erro ao vincular pedido CRTI: ${error.message}`),
+  });
+  const deleteAdesaoPedido = trpc.licitacoes.adesoes.pedidosCrti.delete.useMutation({
+    onSuccess: () => { toast.success("Pedido CRTI desvinculado da adesao."); invalidateAll(); },
+    onError: (error) => toast.error(`Erro ao desvincular pedido CRTI: ${error.message}`),
   });
   const createPedido = trpc.licitacoes.pedidosCrti.create.useMutation({
     onSuccess: () => {
@@ -575,6 +590,9 @@ export default function Licitacoes() {
     hydratedAtaId.current = null;
     setAtaTab("dados");
     setAdesaoForm(emptyAdesaoForm);
+    setSelectedAdesaoId(null);
+    setOpenAdesaoGroups({});
+    setAdesaoPedidoCrti("");
     setSelectedLicitacao(licitacao);
     setAtaForm({
       vendedorId: licitacao.ataVendedorId || null,
@@ -599,7 +617,6 @@ export default function Licitacoes() {
       quantidade: numberValue(adesaoForm.quantidade),
       entregue: Boolean(adesaoForm.entregue),
       dataEntrega: adesaoForm.entregue ? adesaoForm.dataEntrega || "" : "",
-      pedidoCrti: adesaoForm.entregue ? String(adesaoForm.pedidoCrti || "").trim() : "",
       observacoes: normalizeText(adesaoForm.observacoes),
     };
     if (adesaoForm.id) updateAdesao.mutate({ id: adesaoForm.id, data: payload });
@@ -958,12 +975,11 @@ export default function Licitacoes() {
                 <TextField label="Orgao Aderente" value={adesaoForm.orgaoAderente} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, orgaoAderente: normalizeText(value) }))} />
                 <TextField label="Data da Adesao" type="date" value={adesaoForm.dataAdesao} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, dataAdesao: value }))} />
                 <TextField label="Quantidade" type="number" value={adesaoForm.quantidade} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, quantidade: Number(value) }))} />
-                <SelectField label="Entrega" value={adesaoForm.entregue ? "sim" : "nao"} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, entregue: value === "sim", dataEntrega: value === "sim" ? current.dataEntrega : "", pedidoCrti: value === "sim" ? current.pedidoCrti : "" }))}>
+                <SelectField label="Entrega" value={adesaoForm.entregue ? "sim" : "nao"} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, entregue: value === "sim", dataEntrega: value === "sim" ? current.dataEntrega : "" }))}>
                   <option value="nao">Nao</option>
                   <option value="sim">Sim</option>
                 </SelectField>
                 {adesaoForm.entregue && <TextField label="Data da Entrega" type="date" value={adesaoForm.dataEntrega} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, dataEntrega: value }))} />}
-                {adesaoForm.entregue && <TextField label="Pedido CRTI" value={adesaoForm.pedidoCrti} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, pedidoCrti: value }))} />}
                 <label className="licitacao-field licitacao-adesao-observacoes"><span>Observacoes</span><textarea value={adesaoForm.observacoes} onChange={(event) => setAdesaoForm((current: any) => ({ ...current, observacoes: normalizeText(event.target.value) }))} /></label>
                 <div className="licitacao-adesao-actions">
                   {adesaoForm.id && <button type="button" className="desktop-action" onClick={() => setAdesaoForm(emptyAdesaoForm)}><X size={14} /> Cancelar</button>}
@@ -973,26 +989,60 @@ export default function Licitacoes() {
 
               <div className="desktop-table-scroll licitacao-adesoes-table-wrap">
                 <table className="desktop-table licitacao-adesoes-table">
-                  <thead><tr><th>Orgao Aderente</th><th>Data</th><th>Quantidade</th><th>Status Entrega</th><th>Data Entrega</th><th>Pedido CRTI</th><th>Cliente CRTI</th><th>Qtde Pedido</th><th>Saldo</th><th>Acoes</th></tr></thead>
+                  <thead><tr><th></th><th>Orgao Aderente</th><th>Data</th><th>Quantidade</th><th>Status Entrega</th><th>Data Entrega</th><th>Pedidos CRTI</th><th>Saldo</th><th>Acoes</th></tr></thead>
                   <tbody>
-                    {(adesoes.data?.items || []).map((item: any) => (
-                      <tr key={item.id}>
-                        <td>{normalizeText(item.orgaoAderente)}</td>
-                        <td>{formatDateBR(item.dataAdesao)}</td>
-                        <td className="num">{formatDecimal(item.quantidade)}</td>
-                        <td><span className={`licitacao-delivery-flag ${item.entregue ? "yes" : "no"}`}>{item.entregue ? "SIM" : "NAO"}</span></td>
-                        <td>{item.entregue ? formatDateBR(item.dataEntrega) : "-"}</td>
-                        <td>{item.pedidoCrti || "-"}</td>
-                        <td>{normalizeText(item.clienteCrti) || "-"}</td>
-                        <td className="num">{formatDecimal(item.quantidadePedidoCrti)}</td>
-                        <td className="num">{formatSaldoEntrega(item.saldoEntrega)}</td>
-                        <td className="actions">
-                          <button type="button" className="mini-icon-button" title="Editar adesao" onClick={() => setAdesaoForm({ id: item.id, orgaoAderente: item.orgaoAderente || "", dataAdesao: item.dataAdesao || "", quantidade: numberValue(item.quantidade), entregue: Boolean(item.entregue), dataEntrega: item.dataEntrega || "", pedidoCrti: item.pedidoCrti || "", observacoes: item.observacoes || "" })}><Pencil size={14} /></button>
-                          <button type="button" className="mini-icon-button danger" title="Excluir adesao" onClick={() => deleteAdesao.mutate({ id: item.id, licitacaoId: selectedLicitacao.id })}><Trash2 size={14} /></button>
-                        </td>
-                      </tr>
-                    ))}
-                    {!adesoes.isLoading && !(adesoes.data?.items || []).length && <tr><td colSpan={10} className="desktop-empty">Nenhuma adesao cadastrada.</td></tr>}
+                    {(adesoes.data?.items || []).map((item: any) => {
+                      const isOpen = Boolean(openAdesaoGroups[item.id]);
+                      return (
+                        <Fragment key={item.id}>
+                          <tr>
+                            <td><button type="button" className="mini-icon-button" title="Vincular pedidos CRTI" onClick={() => { setSelectedAdesaoId(item.id); setAdesaoPedidoCrti(""); setOpenAdesaoGroups({ [item.id]: !isOpen }); }}>{isOpen ? "-" : "+"}</button></td>
+                            <td>{normalizeText(item.orgaoAderente)}</td>
+                            <td>{formatDateBR(item.dataAdesao)}</td>
+                            <td className="num">{formatDecimal(item.quantidade)}</td>
+                            <td><span className={`licitacao-delivery-flag ${item.entregue ? "yes" : "no"}`}>{item.entregue ? "SIM" : "NAO"}</span></td>
+                            <td>{item.entregue ? formatDateBR(item.dataEntrega) : "-"}</td>
+                            <td className="num">{item.totalPedidos || 0}</td>
+                            <td className="num">{formatSaldoEntrega(item.saldoEntrega)}</td>
+                            <td className="actions">
+                              <button type="button" className="mini-icon-button" title="Editar adesao" onClick={() => setAdesaoForm({ id: item.id, orgaoAderente: item.orgaoAderente || "", dataAdesao: item.dataAdesao || "", quantidade: numberValue(item.quantidade), entregue: Boolean(item.entregue), dataEntrega: item.dataEntrega || "", observacoes: item.observacoes || "" })}><Pencil size={14} /></button>
+                              <button type="button" className="mini-icon-button danger" title="Excluir adesao" onClick={() => deleteAdesao.mutate({ id: item.id, licitacaoId: selectedLicitacao.id })}><Trash2 size={14} /></button>
+                            </td>
+                          </tr>
+                          {isOpen && selectedAdesaoId === item.id && (
+                            <tr className="licitacao-adesao-pedidos-row">
+                              <td colSpan={9}>
+                                <div className="licitacao-adesao-pedido-form">
+                                  <TextField label="Codigo Pedido CRTI" value={adesaoPedidoCrti} onChange={setAdesaoPedidoCrti} />
+                                  <button type="button" className="desktop-action primary" disabled={createAdesaoPedido.isPending} onClick={() => {
+                                    const codigo = adesaoPedidoCrti.trim();
+                                    if (!codigo) return toast.error("Informe o codigo do pedido CRTI.");
+                                    createAdesaoPedido.mutate({ adesaoId: item.id, licitacaoId: selectedLicitacao.id, pedidoCrti: codigo });
+                                  }}><Link2 size={14} /> Vincular Pedido</button>
+                                  <span><small>Quantidade da adesao</small><strong>{formatDecimal(item.quantidade)}</strong></span>
+                                  <span><small>Saldo atual</small><strong>{formatSaldoEntrega(adesaoPedidosCrti.data?.saldoEntrega ?? item.saldoEntrega)}</strong></span>
+                                </div>
+                                <div className="desktop-table-scroll licitacao-adesao-pedidos-list">
+                                  <table className="desktop-table">
+                                    <thead><tr><th>Pedido</th><th>Cliente</th><th>Data</th><th>Status</th><th>Quantidade</th><th>Valor</th><th>Acoes</th></tr></thead>
+                                    <tbody>
+                                      {(adesaoPedidosCrti.data?.items || []).map((pedido: any) => (
+                                        <tr key={pedido.id}>
+                                          <td>{pedido.pedidoCrti}</td><td>{normalizeText(pedido.cliente)}</td><td>{formatDateBR(pedido.dataPedido)}</td><td>{normalizeText(pedido.statusPedido)}</td><td className="num">{formatDecimal(pedido.quantidade)}</td><td className="num">{formatCurrency(pedido.valorTotal)}</td>
+                                          <td><button type="button" className="mini-icon-button danger" title="Desvincular pedido" onClick={() => deleteAdesaoPedido.mutate({ id: pedido.id, adesaoId: item.id })}><Trash2 size={14} /></button></td>
+                                        </tr>
+                                      ))}
+                                      {!adesaoPedidosCrti.isLoading && !(adesaoPedidosCrti.data?.items || []).length && <tr><td colSpan={7} className="desktop-empty">Nenhum pedido CRTI vinculado.</td></tr>}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
+                    {!adesoes.isLoading && !(adesoes.data?.items || []).length && <tr><td colSpan={9} className="desktop-empty">Nenhuma adesao cadastrada.</td></tr>}
                   </tbody>
                 </table>
               </div>

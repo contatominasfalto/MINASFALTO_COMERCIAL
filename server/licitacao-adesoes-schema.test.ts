@@ -11,7 +11,8 @@ describe("schema de adesoes de licitacao", () => {
       ensureLicitacaoAdesoesSchema(pool),
     ]);
 
-    expect(query).toHaveBeenCalledTimes(1);
+    expect(query).toHaveBeenCalledTimes(2);
     expect(query.mock.calls[0][0]).toContain("CREATE TABLE IF NOT EXISTS licitacao_adesoes");
+    expect(query.mock.calls[1][0]).toContain("CREATE TABLE IF NOT EXISTS licitacao_adesao_pedidos_crti");
   });
 });
