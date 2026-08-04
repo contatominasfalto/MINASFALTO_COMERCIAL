@@ -1962,6 +1962,19 @@
   min-height: min(460px, calc(100vh - 76px));
 }
 
+.licitacao-modal-backdrop-fullscreen {
+  padding: 0;
+}
+
+.licitacao-modal-fullscreen {
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  max-height: none;
+  border: 0;
+  padding: 34px 20px 18px;
+}
+
 .licitacao-modal-delivery {
   --delivery-columns: 30px minmax(260px, 2.35fr) minmax(160px, 1.2fr) minmax(130px, 1fr) minmax(170px, 1.2fr) minmax(250px, 1.65fr) minmax(150px, 0.9fr);
   width: min(1580px, calc(100vw - 70px));

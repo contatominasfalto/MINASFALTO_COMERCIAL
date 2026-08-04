@@ -170,6 +170,7 @@ function SimpleModal({
   wide = false,
   menu = false,
   delivery = false,
+  fullscreen = false,
 }: {
   title: string;
   children: React.ReactNode;
@@ -177,10 +178,11 @@ function SimpleModal({
   wide?: boolean;
   menu?: boolean;
   delivery?: boolean;
+  fullscreen?: boolean;
 }) {
   return (
-    <div className="desktop-modal-backdrop licitacao-modal-backdrop">
-      <section className={delivery ? "licitacao-modal licitacao-modal-delivery" : wide ? "licitacao-modal licitacao-modal-wide" : menu ? "licitacao-modal licitacao-modal-menu" : "licitacao-modal"}>
+    <div className={`desktop-modal-backdrop licitacao-modal-backdrop${fullscreen ? " licitacao-modal-backdrop-fullscreen" : ""}`}>
+      <section className={fullscreen ? "licitacao-modal licitacao-modal-fullscreen" : delivery ? "licitacao-modal licitacao-modal-delivery" : wide ? "licitacao-modal licitacao-modal-wide" : menu ? "licitacao-modal licitacao-modal-menu" : "licitacao-modal"}>
         {delivery && <img className="licitacao-modal-logo" src={minasfaltoLogo} alt="Minasfalto" />}
         <button type="button" className="desktop-modal-close" onClick={onClose} aria-label="Fechar">
           <X size={22} />
@@ -931,7 +933,7 @@ export default function Licitacoes() {
       {modal === "vendedor" && renderAuxCadastro("vendedor")}
 
       {modal === "ata" && selectedLicitacao && (
-        <SimpleModal title={`Controle de Ata - ${selectedLicitacao.orgao}`} onClose={() => setModal(null)} wide>
+        <SimpleModal title={`Controle de Ata - ${selectedLicitacao.orgao}`} onClose={() => setModal(null)} fullscreen>
           <nav className="licitacao-ata-tabs">
             <button type="button" className={ataTab === "dados" ? "active" : ""} onClick={() => setAtaTab("dados")}>Dados da Ata</button>
             <button type="button" className={ataTab === "adesoes" ? "active" : ""} onClick={() => setAtaTab("adesoes")}>Controle de Adesoes</button>
