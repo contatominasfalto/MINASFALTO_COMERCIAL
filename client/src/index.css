@@ -1796,6 +1796,27 @@
   text-align: center !important;
 }
 
+.licitacao-sortable-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.licitacao-sortable-header > span,
+.licitacao-sortable-header > b {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.licitacao-sortable-header > b {
+  margin-left: 5px;
+  color: #8a5b00;
+  font-size: 9px;
+}
+
+.licitacao-sortable-header:hover {
+  background: linear-gradient(#fff8e6, #ead89f) !important;
+}
+
 .licitacao-status-pendente {
   color: #c00000 !important;
   font-weight: 900 !important;

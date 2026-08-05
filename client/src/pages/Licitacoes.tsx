@@ -142,6 +142,45 @@ function getLicitacaoFilterValue(licitacao: any, key: string) {
   return licitacao[key] ?? "";
 }
 
+const licitacaoNumericSortKeys = new Set([
+  "qtdeSc",
+  "valorUnit",
+  "lanceLimite",
+  "valorAdjudicado",
+  "qtdeTn",
+  "valorInicialContrato",
+  "kmDistancia",
+]);
+
+function getLicitacaoSortValue(licitacao: any, key: string): number | string {
+  if (licitacaoNumericSortKeys.has(key)) return numberValue(licitacao[key]);
+
+  if (key === "data") {
+    const text = String(licitacao.data ?? "").trim().split("T")[0];
+    const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (iso) return Number(`${iso[1]}${iso[2]}${iso[3]}`);
+    const br = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (br) return Number(`${br[3]}${br[2]}${br[1]}`);
+    return 0;
+  }
+
+  return normalizeText(getLicitacaoFilterValue(licitacao, key)).trim();
+}
+
+function compareLicitacoes(left: any, right: any, key: string) {
+  const leftValue = getLicitacaoSortValue(left, key);
+  const rightValue = getLicitacaoSortValue(right, key);
+
+  if (typeof leftValue === "number" && typeof rightValue === "number") {
+    return leftValue - rightValue;
+  }
+
+  return String(leftValue).localeCompare(String(rightValue), "pt-BR", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
 function normalizeLicitacaoStatusLabel(value: unknown) {
   const text = normalizeText(value);
   return text
@@ -505,9 +544,7 @@ export default function Licitacoes() {
     });
 
     return data.sort((left, right) => {
-      const a = String(getLicitacaoFilterValue(left, sortKey));
-      const b = String(getLicitacaoFilterValue(right, sortKey));
-      const result = a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" });
+      const result = compareLicitacoes(left, right, sortKey);
       return sortDirection === "asc" ? result : -result;
     });
   }, [licitacoes.data, licitacaoTableColumns, columnFilters, sortKey, sortDirection]);
@@ -768,7 +805,17 @@ export default function Licitacoes() {
           <table className={`desktop-table licitacao-table ${panelTab === "geral" ? "licitacao-table-general" : "licitacao-table-adjucados"}`}>
             <thead>
               <tr>
-                {licitacaoTableColumns.map(([key, label]) => <th key={key} onClick={() => sortBy(key)}>{label}</th>)}
+                {licitacaoTableColumns.map(([key, label]) => (
+                  <th
+                    key={key}
+                    className="licitacao-sortable-header"
+                    aria-sort={sortKey === key ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
+                    onClick={() => sortBy(key)}
+                  >
+                    <span>{label}</span>
+                    {sortKey === key && <b aria-hidden="true">{sortDirection === "asc" ? "▲" : "▼"}</b>}
+                  </th>
+                ))}
                 <th>Ações</th>
               </tr>
               <tr className="licitacao-filter-row">
