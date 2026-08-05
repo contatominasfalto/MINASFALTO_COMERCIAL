@@ -2495,7 +2495,7 @@ function getLicitacaoPotencial(kmDistancia: unknown) {
   const km = Number(kmDistancia) || 0;
   if (km <= 0) return "";
   if (km <= 200) return "Cliente potencial";
-  if (km <= 300) return "Medio potencial";
+  if (km <= 300) return "Médio potencial";
   return "Cliente distante / fraco potencial";
 }
 
@@ -2770,10 +2770,10 @@ export async function saveLicitacaoAta(data: {
   );
   const adesaoStats = adesaoRows[0] || {};
   if (limiteIndividual > 0 && Number(adesaoStats.maiorQuantidade) > limiteIndividual) {
-    throw new Error("A nova quantidade original deixaria uma adesao acima do limite individual de 50%.");
+    throw new Error("A nova quantidade original deixaria uma adesão acima do limite individual de 50%.");
   }
   if (limiteColetivo > 0 && Number(adesaoStats.quantidadeTotal) > limiteColetivo) {
-    throw new Error("A nova quantidade original deixaria as adesoes acima do limite coletivo de 200%.");
+    throw new Error("A nova quantidade original deixaria as adesões acima do limite coletivo de 200%.");
   }
   const values = [
     data.vendedorId || null,
@@ -2879,7 +2879,7 @@ async function hydratePedidoCrtiLicitacao(data: {
 }) {
   const pedido = await buscarPedidoCrtiLicitacao(data.pedidoCrti);
   if (!pedido) {
-    throw new Error("Pedido CRTI nao encontrado na tabela comercial de pedidos.");
+    throw new Error("Pedido CRTI não encontrado na tabela comercial de pedidos.");
   }
 
   return {
@@ -2923,10 +2923,10 @@ async function assertPedidoCrtiDisponivel(pool: mysql.Pool, pedidoCrti: string, 
   const existing = rows[0];
   if (!existing) return;
 
-  const orgao = String(existing.orgao || "licitacao").trim();
+  const orgao = String(existing.orgao || "licitação").trim();
   const cidade = String(existing.cidade || "").trim();
   const destino = cidade ? `${orgao} - ${cidade}` : orgao;
-  throw new Error(`Pedido CRTI ${codigo} ja esta vinculado na licitacao ${destino}.`);
+  throw new Error(`Pedido CRTI ${codigo} já está vinculado na licitação ${destino}.`);
 }
 
 type LicitacaoAdesaoInput = {
@@ -2983,12 +2983,12 @@ async function prepareLicitacaoAdesao(pool: mysql.Pool, data: LicitacaoAdesaoInp
     [data.licitacaoId],
   );
   const ata = ataRows[0];
-  if (!ata) throw new Error("Salve os dados da Ata antes de cadastrar adesoes.");
+  if (!ata) throw new Error("Salve os dados da Ata antes de cadastrar adesões.");
 
   const quantidade = normalizeMoney(data.quantidade);
   const limiteIndividual = Number(ata.limiteIndividual) || 0;
   if (limiteIndividual > 0 && quantidade > limiteIndividual) {
-    throw new Error(`A quantidade da adesao excede o limite individual de ${limiteIndividual}.`);
+    throw new Error(`A quantidade da adesão excede o limite individual de ${limiteIndividual}.`);
   }
 
   const [totalRows] = await pool.query<mysql.RowDataPacket[]>(
@@ -2998,7 +2998,7 @@ async function prepareLicitacaoAdesao(pool: mysql.Pool, data: LicitacaoAdesaoInp
   const quantidadeTotal = (Number(totalRows[0]?.quantidade) || 0) + quantidade;
   const limiteColetivo = Number(ata.limiteColetivo) || 0;
   if (limiteColetivo > 0 && quantidadeTotal > limiteColetivo) {
-    throw new Error(`A soma das adesoes excede o limite coletivo de ${limiteColetivo}.`);
+    throw new Error(`A soma das adesões excede o limite coletivo de ${limiteColetivo}.`);
   }
 
   const entregue = Boolean(data.entregue);
@@ -3060,7 +3060,7 @@ export async function listLicitacaoAdesaoPedidosCrti(adesaoId: number) {
     [adesaoId],
   );
   const adesao = adesaoRows[0];
-  if (!adesao) throw new Error("Adesao nao encontrada.");
+  if (!adesao) throw new Error("Adesão não encontrada.");
   const [rows] = await pool.query<mysql.RowDataPacket[]>(
     "SELECT * FROM licitacao_adesao_pedidos_crti WHERE adesaoId = ? ORDER BY id DESC",
     [adesaoId],
@@ -3082,7 +3082,7 @@ export async function createLicitacaoAdesaoPedidoCrti(data: {
     "SELECT id FROM licitacao_adesoes WHERE id = ? AND licitacaoId = ? LIMIT 1",
     [data.adesaoId, data.licitacaoId],
   );
-  if (!adesaoRows[0]) throw new Error("Adesao nao encontrada nesta licitacao.");
+  if (!adesaoRows[0]) throw new Error("Adesão não encontrada nesta licitação.");
 
   const pedido = await hydratePedidoCrtiLicitacao({ pedidoCrti: data.pedidoCrti });
   await assertPedidoCrtiDisponivel(pool, pedido.pedidoCrti);

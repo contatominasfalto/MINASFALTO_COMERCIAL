@@ -20,16 +20,16 @@ import {
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-const defaultStatus = ["Pendente", "Encerrado", "Documentacao Separada", "Adjucado"];
-const regioesMg = ["Norte", "Sul", "Leste", "Oeste", "Triangulo", "Central", "Metropolitana", "Zona da Mata", "Vale do Aco", "Vale do Rio Doce", "Alto Paranaiba", "Noroeste", "Jequitinhonha", "Mucuri", "Campo das Vertentes"];
+const defaultStatus = ["Pendente", "Encerrado", "Documentação Separada", "Adjudicado"];
+const regioesMg = ["Norte", "Sul", "Leste", "Oeste", "Triângulo", "Central", "Metropolitana", "Zona da Mata", "Vale do Aço", "Vale do Rio Doce", "Alto Paranaíba", "Noroeste", "Jequitinhonha", "Mucuri", "Campo das Vertentes"];
 const cidadesMg = [
-  "Belo Horizonte", "Contagem", "Betim", "Ribeirao das Neves", "Santa Luzia", "Ibirite", "Sabara", "Nova Lima",
-  "Uberlandia", "Uberaba", "Araguari", "Ituiutaba", "Patos de Minas", "Patrocinio", "Araxá", "Frutal",
-  "Montes Claros", "Januaria", "Pirapora", "Bocaiuva", "Janauba", "Salinas", "Varginha", "Pouso Alegre",
-  "Lavras", "Alfenas", "Passos", "Itajuba", "Pocos de Caldas", "Tres Coracoes", "Juiz de Fora", "Barbacena",
+  "Belo Horizonte", "Contagem", "Betim", "Ribeirão das Neves", "Santa Luzia", "Ibirité", "Sabará", "Nova Lima",
+  "Uberlândia", "Uberaba", "Araguari", "Ituiutaba", "Patos de Minas", "Patrocínio", "Araxá", "Frutal",
+  "Montes Claros", "Januária", "Pirapora", "Bocaiuva", "Janaúba", "Salinas", "Varginha", "Pouso Alegre",
+  "Lavras", "Alfenas", "Passos", "Itajubá", "Poços de Caldas", "Três Corações", "Juiz de Fora", "Barbacena",
   "Muriaé", "Ubá", "Cataguases", "Viçosa", "Governador Valadares", "Ipatinga", "Coronel Fabriciano",
-  "Timoteo", "Caratinga", "Manhuaçu", "Teofilo Otoni", "Diamantina", "Curvelo", "Sete Lagoas", "Divinopolis",
-  "Itauna", "Formiga", "Pará de Minas", "Ouro Preto", "Mariana", "Conselheiro Lafaiete", "Joao Monlevade",
+  "Timóteo", "Caratinga", "Manhuaçu", "Teófilo Otoni", "Diamantina", "Curvelo", "Sete Lagoas", "Divinópolis",
+  "Itaúna", "Formiga", "Pará de Minas", "Ouro Preto", "Mariana", "Conselheiro Lafaiete", "João Monlevade",
   "Outra",
 ];
 
@@ -113,7 +113,7 @@ function getPotencial(km: unknown) {
   const value = numberValue(km);
   if (!value) return "";
   if (value <= 200) return "Cliente potencial";
-  if (value <= 300) return "Medio potencial";
+  if (value <= 300) return "Médio potencial";
   return "Cliente distante / fraco potencial";
 }
 
@@ -143,8 +143,9 @@ function getLicitacaoFilterValue(licitacao: any, key: string) {
 
 function normalizeLicitacaoStatusLabel(value: unknown) {
   const text = normalizeText(value);
-  if (text.includes("ADJUDICADO")) return text.replaceAll("ADJUDICADO", "ADJUCADO");
-  return text;
+  return text
+    .replaceAll("ADJUCADO", "ADJUDICADO")
+    .replaceAll("DOCUMENTACAO", "DOCUMENTAÇÃO");
 }
 
 function isAdjucadoStatus(value: unknown) {
@@ -158,7 +159,7 @@ function isPendenteStatus(value: unknown) {
 
 function getLicitacaoStatusDisplay(licitacao: Licitacao) {
   if (isAdjucadoStatus(licitacao?.status) && Math.abs(numberValue(licitacao?.saldoEntrega)) < 0.001) {
-    return "ADJUCADO/ENTREGUE";
+    return "ADJUDICADO/ENTREGUE";
   }
   return normalizeLicitacaoStatusLabel(licitacao?.status);
 }
@@ -233,29 +234,29 @@ function LicitacaoPagination({
   const end = Math.min(total, page * pageSize);
 
   return (
-    <div className="cost-pagination licitacao-pagination" aria-label="Paginacao">
+    <div className="cost-pagination licitacao-pagination" aria-label="Paginação">
       <span className="cost-page-range">{start}-{end} de {total}</span>
       <select
         className="cost-page-size"
         value={pageSize}
         onChange={(event) => onPageSizeChange(Number(event.target.value))}
-        aria-label="Registros por pagina"
+        aria-label="Registros por página"
       >
         {[25, 50, 100, 200].map((option) => (
           <option key={option} value={option}>{option}</option>
         ))}
       </select>
-      <button type="button" onClick={() => onPageChange(1)} disabled={page <= 1} aria-label="Primeira pagina">
+      <button type="button" onClick={() => onPageChange(1)} disabled={page <= 1} aria-label="Primeira página">
         <ChevronsLeft size={15} />
       </button>
-      <button type="button" onClick={() => onPageChange(Math.max(1, page - 1))} disabled={page <= 1} aria-label="Pagina anterior">
+      <button type="button" onClick={() => onPageChange(Math.max(1, page - 1))} disabled={page <= 1} aria-label="Página anterior">
         <ChevronLeft size={15} />
       </button>
-      <span className="cost-page-label">Pagina {page} de {totalPages}</span>
-      <button type="button" onClick={() => onPageChange(Math.min(totalPages, page + 1))} disabled={page >= totalPages} aria-label="Proxima pagina">
+      <span className="cost-page-label">Página {page} de {totalPages}</span>
+      <button type="button" onClick={() => onPageChange(Math.min(totalPages, page + 1))} disabled={page >= totalPages} aria-label="Próxima página">
         <ChevronRight size={15} />
       </button>
-      <button type="button" onClick={() => onPageChange(totalPages)} disabled={page >= totalPages} aria-label="Ultima pagina">
+      <button type="button" onClick={() => onPageChange(totalPages)} disabled={page >= totalPages} aria-label="Última página">
         <ChevronsRight size={15} />
       </button>
     </div>
@@ -343,28 +344,28 @@ export default function Licitacoes() {
 
   const createLicitacao = trpc.licitacoes.create.useMutation({
     onSuccess: () => {
-      toast.success("Licitacao cadastrada.");
+      toast.success("Licitação cadastrada.");
       setModal(null);
       setLicitacaoForm(emptyLicitacao);
       invalidateAll();
     },
-    onError: (error) => toast.error(`Erro ao cadastrar licitacao: ${error.message}`),
+    onError: (error) => toast.error(`Erro ao cadastrar licitação: ${error.message}`),
   });
   const updateLicitacao = trpc.licitacoes.update.useMutation({
     onSuccess: () => {
-      toast.success("Licitacao atualizada.");
+      toast.success("Licitação atualizada.");
       setModal(null);
       setEditingLicitacao(null);
       invalidateAll();
     },
-    onError: (error) => toast.error(`Erro ao atualizar licitacao: ${error.message}`),
+    onError: (error) => toast.error(`Erro ao atualizar licitação: ${error.message}`),
   });
   const deleteLicitacao = trpc.licitacoes.delete.useMutation({
     onSuccess: () => {
-      toast.success("Licitacao excluida.");
+      toast.success("Licitação excluída.");
       invalidateAll();
     },
-    onError: (error) => toast.error(`Erro ao excluir licitacao: ${error.message}`),
+    onError: (error) => toast.error(`Erro ao excluir licitação: ${error.message}`),
   });
 
   const statusCreate = trpc.licitacoes.status.create.useMutation({ onSuccess: () => { setSimpleForm({ nome: "", link: "" }); invalidateAll(); } });
@@ -385,28 +386,28 @@ export default function Licitacoes() {
     onError: (error) => toast.error(`Erro ao salvar ata: ${error.message}`),
   });
   const saveAdesaoSuccess = () => {
-    toast.success(adesaoForm.id ? "Adesao atualizada." : "Adesao cadastrada.");
+    toast.success(adesaoForm.id ? "Adesão atualizada." : "Adesão cadastrada.");
     setAdesaoForm(emptyAdesaoForm);
     invalidateAll();
   };
   const createAdesao = trpc.licitacoes.adesoes.create.useMutation({
     onSuccess: saveAdesaoSuccess,
-    onError: (error) => toast.error(`Erro ao cadastrar adesao: ${error.message}`),
+    onError: (error) => toast.error(`Erro ao cadastrar adesão: ${error.message}`),
   });
   const updateAdesao = trpc.licitacoes.adesoes.update.useMutation({
     onSuccess: saveAdesaoSuccess,
-    onError: (error) => toast.error(`Erro ao atualizar adesao: ${error.message}`),
+    onError: (error) => toast.error(`Erro ao atualizar adesão: ${error.message}`),
   });
   const deleteAdesao = trpc.licitacoes.adesoes.delete.useMutation({
-    onSuccess: () => { toast.success("Adesao excluida."); setAdesaoForm(emptyAdesaoForm); invalidateAll(); },
-    onError: (error) => toast.error(`Erro ao excluir adesao: ${error.message}`),
+    onSuccess: () => { toast.success("Adesão excluída."); setAdesaoForm(emptyAdesaoForm); invalidateAll(); },
+    onError: (error) => toast.error(`Erro ao excluir adesão: ${error.message}`),
   });
   const createAdesaoPedido = trpc.licitacoes.adesoes.pedidosCrti.create.useMutation({
-    onSuccess: () => { toast.success("Pedido CRTI vinculado a adesao."); setAdesaoPedidoCrti(""); invalidateAll(); },
+    onSuccess: () => { toast.success("Pedido CRTI vinculado à adesão."); setAdesaoPedidoCrti(""); invalidateAll(); },
     onError: (error) => toast.error(`Erro ao vincular pedido CRTI: ${error.message}`),
   });
   const deleteAdesaoPedido = trpc.licitacoes.adesoes.pedidosCrti.delete.useMutation({
-    onSuccess: () => { toast.success("Pedido CRTI desvinculado da adesao."); invalidateAll(); },
+    onSuccess: () => { toast.success("Pedido CRTI desvinculado da adesão."); invalidateAll(); },
     onError: (error) => toast.error(`Erro ao desvincular pedido CRTI: ${error.message}`),
   });
   const createPedido = trpc.licitacoes.pedidosCrti.create.useMutation({
@@ -433,7 +434,7 @@ export default function Licitacoes() {
   const licitacaoTableColumns = useMemo(() => {
     const columns: Array<[string, string]> = [
       ["data", "Data"],
-      ["orgao", "Orgao"],
+      ["orgao", "Órgão"],
       ["cidade", "Cidade"],
       ["status", "Status"],
       ["item", "Item"],
@@ -441,16 +442,16 @@ export default function Licitacoes() {
       ["qtdeSc", "Qtde SC"],
       ["valorUnit", "Valor Unit"],
       ["lanceLimite", "Lance Limite"],
-      ["valorAdjudicado", "Valor Adjucado"],
+      ["valorAdjudicado", "Valor Adjudicado"],
       ["qtdeTn", "Qtde TN"],
       ["valorInicialContrato", "Valor Inicial Contrato"],
       ["kmDistancia", "KM"],
       ["potencialCliente", "Potencial"],
-      ["regiao", "Regiao"],
+      ["regiao", "Região"],
     ];
 
     if (panelTab === "geral") {
-      columns.splice(4, 0, ["plataformaNome", "Link Plat.Pregao"]);
+      columns.splice(4, 0, ["plataformaNome", "Link Plat. Pregão"]);
     }
 
     if (panelTab === "adjudicadas") {
@@ -611,7 +612,7 @@ export default function Licitacoes() {
   const submitAdesao = () => {
     if (!selectedLicitacao) return;
     if (!String(adesaoForm.orgaoAderente || "").trim()) {
-      toast.error("Informe o orgao aderente.");
+      toast.error("Informe o órgão aderente.");
       return;
     }
     const payload = {
@@ -630,7 +631,7 @@ export default function Licitacoes() {
   const submitPedidoCrti = (licitacao: Licitacao) => {
     const codigoPedido = String(pedidoForm.pedidoCrti || "").trim();
     if (!codigoPedido) {
-      toast.error("Informe o codigo do pedido CRTI.");
+      toast.error("Informe o código do pedido CRTI.");
       return;
     }
 
@@ -648,7 +649,7 @@ export default function Licitacoes() {
 
   const renderAuxCadastro = (kind: "status" | "plataforma" | "vendedor") => {
     const isPlataforma = kind === "plataforma";
-    const title = kind === "status" ? "Cadastro Status" : kind === "plataforma" ? "Cadastro Plataforma Pregao" : "Cadastro Vendedor";
+    const title = kind === "status" ? "Cadastro Status" : kind === "plataforma" ? "Cadastro Plataforma Pregão" : "Cadastro Vendedor";
     const items = kind === "status" ? opcoes.data?.status || [] : kind === "plataforma" ? plataformas : vendedores;
     const create = kind === "status" ? statusCreate : kind === "plataforma" ? plataformaCreate : vendedorCreate;
     const update = kind === "status" ? statusUpdate : kind === "plataforma" ? plataformaUpdate : vendedorUpdate;
@@ -663,7 +664,7 @@ export default function Licitacoes() {
             className="desktop-action"
             onClick={() => simpleEdit ? update.mutate({ id: simpleEdit.id, data: simpleForm }) : create.mutate(simpleForm)}
           >
-            <Save size={14} /> {simpleEdit ? "Salvar edicao" : "Cadastrar"}
+            <Save size={14} /> {simpleEdit ? "Salvar edição" : "Cadastrar"}
           </button>
         </section>
         <div className="desktop-table-scroll licitacao-list-scroll">
@@ -672,7 +673,7 @@ export default function Licitacoes() {
               <tr>
                 <th>Nome</th>
                 {isPlataforma && <th>Link</th>}
-                <th>Acoes</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -699,8 +700,8 @@ export default function Licitacoes() {
         <div className="desktop-title">
           <img src={minasfaltoLogo} alt="Minasfalto" />
           <div>
-            <h1>LICITACOES</h1>
-            <span>Controle de pregoes, atas e entregas CRTI</span>
+            <h1>LICITAÇÕES</h1>
+            <span>Controle de pregões, atas e entregas CRTI</span>
           </div>
         </div>
         <button className="desktop-back" onClick={() => { window.location.href = withAppBase("/"); }}>
@@ -709,8 +710,8 @@ export default function Licitacoes() {
       </header>
 
       <section className="desktop-toolbar">
-        <button className="desktop-action" onClick={() => setModal("menu")}><Plus size={14} /> Menu Licitacoes</button>
-        <button className="desktop-action" onClick={() => openLicitacaoForm()}><Plus size={14} /> Nova Licitacao</button>
+        <button className="desktop-action" onClick={() => setModal("menu")}><Plus size={14} /> Menu Licitações</button>
+        <button className="desktop-action" onClick={() => openLicitacaoForm()}><Plus size={14} /> Nova Licitação</button>
         <label className="desktop-search">
           <Search size={13} /> Buscar:
           <input value={search} onChange={(event) => setSearch(event.target.value)} />
@@ -719,7 +720,7 @@ export default function Licitacoes() {
 
       <section className="desktop-tabs licitacao-tabs">
         <button className={panelTab === "geral" ? "active" : ""} onClick={() => setPanelTab("geral")}>PAINEL PRINCIPAL</button>
-        <button className={panelTab === "adjudicadas" ? "active" : ""} onClick={() => setPanelTab("adjudicadas")}>ADJUCADOS</button>
+        <button className={panelTab === "adjudicadas" ? "active" : ""} onClick={() => setPanelTab("adjudicadas")}>ADJUDICADOS</button>
       </section>
 
       <section className="desktop-grid-frame licitacao-grid-frame">
@@ -727,14 +728,14 @@ export default function Licitacoes() {
           className="desktop-table-scroll keyboard-table-scroll"
           tabIndex={0}
           role="grid"
-          aria-label="Licitacoes"
+          aria-label="Licitações"
           onKeyDown={handleLicitacoesTableKeyDown}
         >
           <table className={`desktop-table licitacao-table ${panelTab === "geral" ? "licitacao-table-general" : "licitacao-table-adjucados"}`}>
             <thead>
               <tr>
                 {licitacaoTableColumns.map(([key, label]) => <th key={key} onClick={() => sortBy(key)}>{label}</th>)}
-                <th>Acoes</th>
+                <th>Ações</th>
               </tr>
               <tr className="licitacao-filter-row">
                 {licitacaoTableColumns.map(([key, label]) => (
@@ -768,9 +769,9 @@ export default function Licitacoes() {
             </thead>
             <tbody>
               {licitacoes.isLoading ? (
-                <tr><td colSpan={licitacaoTableColumnCount} className="desktop-empty">Carregando licitacoes...</td></tr>
+                <tr><td colSpan={licitacaoTableColumnCount} className="desktop-empty">Carregando licitações...</td></tr>
               ) : visibleLicitacoes.length === 0 ? (
-                <tr><td colSpan={licitacaoTableColumnCount} className="desktop-empty">Nenhuma licitacao encontrada</td></tr>
+                <tr><td colSpan={licitacaoTableColumnCount} className="desktop-empty">Nenhuma licitação encontrada</td></tr>
               ) : visibleLicitacoes.map((licitacao) => (
                 <tr
                   key={licitacao.id}
@@ -865,16 +866,16 @@ export default function Licitacoes() {
             onPageChange={setLicitacaoPage}
             onPageSizeChange={setLicitacaoPageSize}
           />
-          <span>{visibleLicitacoes.length} licitacao(s) nesta pagina</span>
+          <span>{visibleLicitacoes.length} licitação(ões) nesta página</span>
         </footer>
       </section>
 
       {modal === "menu" && (
         <SimpleModal title="Licitações" onClose={() => setModal(null)} menu>
           <div className="licitacao-menu-grid">
-            <button onClick={() => openLicitacaoForm()}><Plus size={18} /> Cadastro Licitacao</button>
+            <button onClick={() => openLicitacaoForm()}><Plus size={18} /> Cadastro Licitação</button>
             <button onClick={() => setModal("status")}><Plus size={18} /> Cadastro status</button>
-            <button onClick={() => setModal("plataforma")}><ExternalLink size={18} /> Cadastro Plataforma Pregao</button>
+            <button onClick={() => setModal("plataforma")}><ExternalLink size={18} /> Cadastro Plataforma Pregão</button>
             <button onClick={() => setModal(null)}><Search size={18} /> Acesso ao Painel Principal</button>
             <button onClick={() => setModal("vendedor")}><Plus size={18} /> Cadastro Vendedor</button>
             <button onClick={() => { setSelectedLicitacao(null); setOpenEntregaGroups({}); setModal("entrega"); }}><Link2 size={18} /> Vincular Pedido CRTI Controle de Entrega</button>
@@ -883,10 +884,10 @@ export default function Licitacoes() {
       )}
 
       {modal === "licitacao" && (
-        <SimpleModal title={editingLicitacao ? "Editar Licitacao" : "Cadastro Licitacao"} onClose={() => setModal(null)} wide>
+        <SimpleModal title={editingLicitacao ? "Editar Licitação" : "Cadastro Licitação"} onClose={() => setModal(null)} wide>
           <section className="licitacao-form-grid">
             <TextField label="Data" type="date" value={licitacaoForm.data} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, data: value }))} />
-            <TextField label="Orgao" value={licitacaoForm.orgao} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, orgao: normalizeText(value) }))} />
+            <TextField label="Órgão" value={licitacaoForm.orgao} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, orgao: normalizeText(value) }))} />
             <SelectField label="Cidade" value={cidadeMode === "outra" ? "Outra" : licitacaoForm.cidade} onChange={(value) => { setCidadeMode(value === "Outra" ? "outra" : "lista"); setLicitacaoForm((current: any) => ({ ...current, cidade: value === "Outra" ? "" : value })); }}>
               <option value="">Selecione</option>
               {cidadesMg.map((cidade) => <option key={cidade} value={cidade}>{normalizeText(cidade)}</option>)}
@@ -898,7 +899,7 @@ export default function Licitacoes() {
             </SelectField>
             {licitacaoForm.status === "Outro" && <TextField label="Outro status" value={licitacaoForm.statusOutro || ""} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, status: normalizeText(value), statusOutro: normalizeText(value) }))} />}
             <SelectField
-              label="Plataforma Pregao"
+              label="Plataforma Pregão"
               value={licitacaoForm.plataformaId || ""}
               onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, plataformaId: value ? Number(value) : null }))}
             >
@@ -907,18 +908,18 @@ export default function Licitacoes() {
                 <option key={plataforma.id} value={plataforma.id}>{normalizeText(plataforma.nome)}</option>
               ))}
             </SelectField>
-            <TextField label="Hora Inicio da Disputa" type="time" value={licitacaoForm.horaInicioDisputa} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, horaInicioDisputa: value }))} />
+            <TextField label="Hora Início da Disputa" type="time" value={licitacaoForm.horaInicioDisputa} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, horaInicioDisputa: value }))} />
             <TextField label="Item" value={licitacaoForm.item} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, item: normalizeText(value) }))} />
             <TextField label="Tipo" value={licitacaoForm.tipo} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, tipo: normalizeText(value) }))} />
             <TextField label="Qtde SC" type="number" value={licitacaoForm.qtdeSc} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, qtdeSc: Number(value) }))} />
             <TextField label="Valor Unit" type="number" value={licitacaoForm.valorUnit} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, valorUnit: Number(value) }))} />
             <TextField label="Lance Limite" type="number" value={licitacaoForm.lanceLimite} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, lanceLimite: Number(value) }))} />
-            <TextField label="Valor Adjucado" type="number" value={licitacaoForm.valorAdjudicado} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, valorAdjudicado: Number(value) }))} />
+            <TextField label="Valor Adjudicado" type="number" value={licitacaoForm.valorAdjudicado} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, valorAdjudicado: Number(value) }))} />
             <TextField label="Qtde TN" type="number" value={licitacaoForm.qtdeTn} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, qtdeTn: Number(value) }))} />
             <TextField label="Valor Inicial Contrato" type="number" value={licitacaoForm.valorInicialContrato} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, valorInicialContrato: Number(value) }))} />
-            <TextField label="KM distancia" type="number" value={licitacaoForm.kmDistancia} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, kmDistancia: Number(value) }))} />
+            <TextField label="KM distância" type="number" value={licitacaoForm.kmDistancia} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, kmDistancia: Number(value) }))} />
             <label className="licitacao-field licitacao-readonly"><span>Potencial</span><strong>{getPotencial(licitacaoForm.kmDistancia)}</strong></label>
-            <SelectField label="Regiao" value={licitacaoForm.regiao} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, regiao: value }))}>
+            <SelectField label="Região" value={licitacaoForm.regiao} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, regiao: value }))}>
               <option value="">Selecione</option>
               {regioesMg.map((regiao) => <option key={regiao} value={regiao}>{normalizeText(regiao)}</option>)}
             </SelectField>
@@ -938,7 +939,7 @@ export default function Licitacoes() {
         <SimpleModal title={`Controle de Ata - ${selectedLicitacao.orgao}`} onClose={() => setModal(null)} fullscreen>
           <nav className="licitacao-ata-tabs">
             <button type="button" className={ataTab === "dados" ? "active" : ""} onClick={() => setAtaTab("dados")}>Dados da Ata</button>
-            <button type="button" className={ataTab === "adesoes" ? "active" : ""} onClick={() => setAtaTab("adesoes")}>Controle de Adesoes</button>
+            <button type="button" className={ataTab === "adesoes" ? "active" : ""} onClick={() => setAtaTab("adesoes")}>Controle de Adesões</button>
           </nav>
 
           {ataTab === "dados" && (
@@ -957,7 +958,7 @@ export default function Licitacoes() {
                 <label className="licitacao-field licitacao-readonly"><span>Limite Coletivo (200%)</span><strong>{formatDecimal(numberValue(ataForm.quantidadeOriginal) * 2)}</strong></label>
               </section>
               <label className="licitacao-field">
-                <span>Observacoes</span>
+                <span>Observações</span>
                 <textarea value={ataForm.observacoes} onChange={(event) => setAtaForm((current: any) => ({ ...current, observacoes: normalizeText(event.target.value) }))} />
               </label>
               <footer className="licitacao-modal-actions">
@@ -976,24 +977,24 @@ export default function Licitacoes() {
               </div>
 
               <div className="licitacao-adesao-form">
-                <TextField label="Orgao Aderente" value={adesaoForm.orgaoAderente} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, orgaoAderente: normalizeText(value) }))} />
-                <TextField label="Data da Adesao" type="date" value={adesaoForm.dataAdesao} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, dataAdesao: value }))} />
+                <TextField label="Órgão Aderente" value={adesaoForm.orgaoAderente} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, orgaoAderente: normalizeText(value) }))} />
+                <TextField label="Data da Adesão" type="date" value={adesaoForm.dataAdesao} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, dataAdesao: value }))} />
                 <TextField label="Quantidade" type="number" value={adesaoForm.quantidade} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, quantidade: Number(value) }))} />
                 <SelectField label="Entrega" value={adesaoForm.entregue ? "sim" : "nao"} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, entregue: value === "sim", dataEntrega: value === "sim" ? current.dataEntrega : "" }))}>
-                  <option value="nao">Nao</option>
+                  <option value="nao">Não</option>
                   <option value="sim">Sim</option>
                 </SelectField>
                 {adesaoForm.entregue && <TextField label="Data da Entrega" type="date" value={adesaoForm.dataEntrega} onChange={(value) => setAdesaoForm((current: any) => ({ ...current, dataEntrega: value }))} />}
-                <label className="licitacao-field licitacao-adesao-observacoes"><span>Observacoes</span><textarea value={adesaoForm.observacoes} onChange={(event) => setAdesaoForm((current: any) => ({ ...current, observacoes: normalizeText(event.target.value) }))} /></label>
+                <label className="licitacao-field licitacao-adesao-observacoes"><span>Observações</span><textarea value={adesaoForm.observacoes} onChange={(event) => setAdesaoForm((current: any) => ({ ...current, observacoes: normalizeText(event.target.value) }))} /></label>
                 <div className="licitacao-adesao-actions">
                   {adesaoForm.id && <button type="button" className="desktop-action" onClick={() => setAdesaoForm(emptyAdesaoForm)}><X size={14} /> Cancelar</button>}
-                  <button type="button" className="desktop-action primary" disabled={createAdesao.isPending || updateAdesao.isPending} onClick={submitAdesao}><Save size={14} /> {adesaoForm.id ? "Atualizar Adesao" : "Cadastrar Adesao"}</button>
+                  <button type="button" className="desktop-action primary" disabled={createAdesao.isPending || updateAdesao.isPending} onClick={submitAdesao}><Save size={14} /> {adesaoForm.id ? "Atualizar Adesão" : "Cadastrar Adesão"}</button>
                 </div>
               </div>
 
               <div className="desktop-table-scroll licitacao-adesoes-table-wrap">
                 <table className="desktop-table licitacao-adesoes-table">
-                  <thead><tr><th></th><th>Orgao Aderente</th><th>Data</th><th>Quantidade</th><th>Status Entrega</th><th>Data Entrega</th><th>Pedidos CRTI</th><th>Saldo</th><th>Acoes</th></tr></thead>
+                  <thead><tr><th></th><th>Órgão Aderente</th><th>Data</th><th>Quantidade</th><th>Status Entrega</th><th>Data Entrega</th><th>Pedidos CRTI</th><th>Saldo</th><th>Ações</th></tr></thead>
                   <tbody>
                     {(adesoes.data?.items || []).map((item: any) => {
                       const isOpen = Boolean(openAdesaoGroups[item.id]);
@@ -1004,31 +1005,31 @@ export default function Licitacoes() {
                             <td>{normalizeText(item.orgaoAderente)}</td>
                             <td>{formatDateBR(item.dataAdesao)}</td>
                             <td className="num">{formatDecimal(item.quantidade)}</td>
-                            <td><span className={`licitacao-delivery-flag ${item.entregue ? "yes" : "no"}`}>{item.entregue ? "SIM" : "NAO"}</span></td>
+                            <td><span className={`licitacao-delivery-flag ${item.entregue ? "yes" : "no"}`}>{item.entregue ? "SIM" : "NÃO"}</span></td>
                             <td>{item.entregue ? formatDateBR(item.dataEntrega) : "-"}</td>
                             <td className="num">{item.totalPedidos || 0}</td>
                             <td className="num">{formatSaldoEntrega(item.saldoEntrega)}</td>
                             <td className="actions">
-                              <button type="button" className="mini-icon-button" title="Editar adesao" onClick={() => setAdesaoForm({ id: item.id, orgaoAderente: item.orgaoAderente || "", dataAdesao: item.dataAdesao || "", quantidade: numberValue(item.quantidade), entregue: Boolean(item.entregue), dataEntrega: item.dataEntrega || "", observacoes: item.observacoes || "" })}><Pencil size={14} /></button>
-                              <button type="button" className="mini-icon-button danger" title="Excluir adesao" onClick={() => setDeleteAdesaoTarget({ adesao: item, licitacao: selectedLicitacao })}><Trash2 size={14} /></button>
+                              <button type="button" className="mini-icon-button" title="Editar adesão" onClick={() => setAdesaoForm({ id: item.id, orgaoAderente: item.orgaoAderente || "", dataAdesao: item.dataAdesao || "", quantidade: numberValue(item.quantidade), entregue: Boolean(item.entregue), dataEntrega: item.dataEntrega || "", observacoes: item.observacoes || "" })}><Pencil size={14} /></button>
+                              <button type="button" className="mini-icon-button danger" title="Excluir adesão" onClick={() => setDeleteAdesaoTarget({ adesao: item, licitacao: selectedLicitacao })}><Trash2 size={14} /></button>
                             </td>
                           </tr>
                           {isOpen && selectedAdesaoId === item.id && (
                             <tr className="licitacao-adesao-pedidos-row">
                               <td colSpan={9}>
                                 <div className="licitacao-adesao-pedido-form">
-                                  <TextField label="Codigo Pedido CRTI" value={adesaoPedidoCrti} onChange={setAdesaoPedidoCrti} />
+                                  <TextField label="Código Pedido CRTI" value={adesaoPedidoCrti} onChange={setAdesaoPedidoCrti} />
                                   <button type="button" className="desktop-action primary" disabled={createAdesaoPedido.isPending} onClick={() => {
                                     const codigo = adesaoPedidoCrti.trim();
-                                    if (!codigo) return toast.error("Informe o codigo do pedido CRTI.");
+                                    if (!codigo) return toast.error("Informe o código do pedido CRTI.");
                                     createAdesaoPedido.mutate({ adesaoId: item.id, licitacaoId: selectedLicitacao.id, pedidoCrti: codigo });
                                   }}><Link2 size={14} /> Vincular Pedido</button>
-                                  <span><small>Quantidade da adesao</small><strong>{formatDecimal(item.quantidade)}</strong></span>
+                                  <span><small>Quantidade da adesão</small><strong>{formatDecimal(item.quantidade)}</strong></span>
                                   <span><small>Saldo atual</small><strong>{formatSaldoEntrega(adesaoPedidosCrti.data?.saldoEntrega ?? item.saldoEntrega)}</strong></span>
                                 </div>
                                 <div className="desktop-table-scroll licitacao-adesao-pedidos-list">
                                   <table className="desktop-table">
-                                    <thead><tr><th>Pedido</th><th>Cliente</th><th>Data</th><th>Status</th><th>Quantidade</th><th>Valor</th><th>Acoes</th></tr></thead>
+                                    <thead><tr><th>Pedido</th><th>Cliente</th><th>Data</th><th>Status</th><th>Quantidade</th><th>Valor</th><th>Ações</th></tr></thead>
                                     <tbody>
                                       {(adesaoPedidosCrti.data?.items || []).map((pedido: any) => (
                                         <tr key={pedido.id}>
@@ -1046,7 +1047,7 @@ export default function Licitacoes() {
                         </Fragment>
                       );
                     })}
-                    {!adesoes.isLoading && !(adesoes.data?.items || []).length && <tr><td colSpan={9} className="desktop-empty">Nenhuma adesao cadastrada.</td></tr>}
+                    {!adesoes.isLoading && !(adesoes.data?.items || []).length && <tr><td colSpan={9} className="desktop-empty">Nenhuma adesão cadastrada.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -1060,7 +1061,7 @@ export default function Licitacoes() {
           <section className="licitacao-delivery-list">
             <div className="licitacao-delivery-columns" aria-hidden="true">
               <span></span>
-              <strong>ORGAO</strong>
+              <strong>ÓRGÃO</strong>
               <strong>Cidade</strong>
               <strong>Item</strong>
               <strong>Tipo</strong>
@@ -1068,7 +1069,7 @@ export default function Licitacoes() {
               <strong>Saldo</strong>
             </div>
             {adjudicadasPendentes.length === 0 ? (
-              <div className="desktop-empty">Nenhuma licitacao adjucada com saldo pendente.</div>
+              <div className="desktop-empty">Nenhuma licitação adjudicada com saldo pendente.</div>
             ) : adjudicadasPendentes.map((licitacao: any) => {
               const isOpen = Boolean(openEntregaGroups[licitacao.id]);
               const isSelected = selectedLicitacao?.id === licitacao.id;
@@ -1090,7 +1091,7 @@ export default function Licitacoes() {
                   {isOpen && (
                     <div className="licitacao-group-body">
                       <section className="licitacao-delivery-form">
-                        <TextField label="Codigo Pedido CRTI" value={pedidoForm.pedidoCrti} onChange={(value) => setPedidoForm((current: any) => ({ ...current, pedidoCrti: value }))} />
+                        <TextField label="Código Pedido CRTI" value={pedidoForm.pedidoCrti} onChange={(value) => setPedidoForm((current: any) => ({ ...current, pedidoCrti: value }))} />
                         <button
                           type="button"
                           className="desktop-action primary"
@@ -1099,7 +1100,7 @@ export default function Licitacoes() {
                           <Save size={14} /> Salvar
                         </button>
                         <div className="licitacao-delivery-quantity">
-                          <span>Quantidade Licitacao</span>
+                          <span>Quantidade Licitação</span>
                           <strong>{formatDecimal(licitacao.qtdeSc)}</strong>
                         </div>
                       </section>
@@ -1107,7 +1108,7 @@ export default function Licitacoes() {
                         <div className="desktop-table-scroll licitacao-list-scroll">
                           <table className="desktop-table licitacao-delivery-table">
                             <thead>
-                              <tr><th>Pedido</th><th>Cliente</th><th>Data</th><th>Status</th><th>Qtde</th><th>Valor</th><th>Saldo Entrega</th><th>Acoes</th></tr>
+                              <tr><th>Pedido</th><th>Cliente</th><th>Data</th><th>Status</th><th>Qtde</th><th>Valor</th><th>Saldo Entrega</th><th>Ações</th></tr>
                             </thead>
                             <tbody>
                               {(pedidosCrti.data?.items || []).map((pedido: any) => (
@@ -1224,13 +1225,13 @@ export default function Licitacoes() {
         onOpenChange={(open) => {
           if (!open) setDeleteAdesaoTarget(null);
         }}
-        title="Confirmar exclusao de adesao"
-        description="Esta acao vai excluir a adesao e todos os pedidos CRTI vinculados a ela."
-        finalDescription="Confirmacao final: a adesao e seus vinculos de entrega serao excluidos definitivamente."
-        finalConfirmLabel="Excluir adesao"
+        title="Confirmar exclusão de adesão"
+        description="Esta ação vai excluir a adesão e todos os pedidos CRTI vinculados a ela."
+        finalDescription="Confirmação final: a adesão e seus vínculos de entrega serão excluídos definitivamente."
+        finalConfirmLabel="Excluir adesão"
         details={[
-          { label: "Licitacao", value: normalizeText(deleteAdesaoTarget?.licitacao?.orgao) || "-" },
-          { label: "Orgao aderente", value: normalizeText(deleteAdesaoTarget?.adesao?.orgaoAderente) || "-" },
+          { label: "Licitação", value: normalizeText(deleteAdesaoTarget?.licitacao?.orgao) || "-" },
+          { label: "Órgão aderente", value: normalizeText(deleteAdesaoTarget?.adesao?.orgaoAderente) || "-" },
           { label: "Quantidade", value: formatDecimal(deleteAdesaoTarget?.adesao?.quantidade || 0) },
           { label: "Pedidos vinculados", value: deleteAdesaoTarget?.adesao?.totalPedidos ?? 0 },
         ]}
@@ -1238,7 +1239,7 @@ export default function Licitacoes() {
         onConfirm={() => {
           const adesaoId = Number(deleteAdesaoTarget?.adesao?.id);
           const licitacaoId = Number(deleteAdesaoTarget?.licitacao?.id);
-          if (!adesaoId || !licitacaoId) return toast.error("Nao foi possivel identificar a adesao para excluir.");
+          if (!adesaoId || !licitacaoId) return toast.error("Não foi possível identificar a adesão para excluir.");
           deleteAdesao.mutate(
             { id: adesaoId, licitacaoId },
             { onSuccess: () => setDeleteAdesaoTarget(null) },
@@ -1251,12 +1252,12 @@ export default function Licitacoes() {
         onOpenChange={(open) => {
           if (!open) setDeleteAdesaoPedidoTarget(null);
         }}
-        title="Confirmar desvinculo de pedido CRTI"
-        description="Esta acao vai remover o pedido do controle de entrega do orgao aderente."
-        finalDescription="Confirmacao final: o pedido sera desvinculado e sua quantidade retornara ao saldo da adesao."
+        title="Confirmar desvínculo de pedido CRTI"
+        description="Esta ação vai remover o pedido do controle de entrega do órgão aderente."
+        finalDescription="Confirmação final: o pedido será desvinculado e sua quantidade retornará ao saldo da adesão."
         finalConfirmLabel="Desvincular pedido"
         details={[
-          { label: "Orgao aderente", value: normalizeText(deleteAdesaoPedidoTarget?.adesao?.orgaoAderente) || "-" },
+          { label: "Órgão aderente", value: normalizeText(deleteAdesaoPedidoTarget?.adesao?.orgaoAderente) || "-" },
           { label: "Pedido", value: deleteAdesaoPedidoTarget?.pedido?.pedidoCrti ?? "-" },
           { label: "Cliente", value: normalizeText(deleteAdesaoPedidoTarget?.pedido?.cliente) || "-" },
           { label: "Quantidade", value: formatDecimal(deleteAdesaoPedidoTarget?.pedido?.quantidade || 0) },
@@ -1265,7 +1266,7 @@ export default function Licitacoes() {
         onConfirm={() => {
           const pedidoId = Number(deleteAdesaoPedidoTarget?.pedido?.id);
           const adesaoId = Number(deleteAdesaoPedidoTarget?.adesao?.id);
-          if (!pedidoId || !adesaoId) return toast.error("Nao foi possivel identificar o pedido para desvincular.");
+          if (!pedidoId || !adesaoId) return toast.error("Não foi possível identificar o pedido para desvincular.");
           deleteAdesaoPedido.mutate(
             { id: pedidoId, adesaoId },
             { onSuccess: () => setDeleteAdesaoPedidoTarget(null) },
