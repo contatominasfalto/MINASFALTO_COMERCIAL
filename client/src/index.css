@@ -2241,7 +2241,36 @@
 }
 
 .licitacao-adesao-pedidos-list table {
-  min-width: 980px;
+  width: 100%;
+  min-width: 1100px;
+  table-layout: fixed;
+}
+
+.licitacao-adesao-pedidos-list th:nth-child(1),
+.licitacao-adesao-pedidos-list td:nth-child(1) { width: 9%; }
+
+.licitacao-adesao-pedidos-list th:nth-child(2),
+.licitacao-adesao-pedidos-list td:nth-child(2) { width: 34%; }
+
+.licitacao-adesao-pedidos-list th:nth-child(3),
+.licitacao-adesao-pedidos-list td:nth-child(3) { width: 12%; }
+
+.licitacao-adesao-pedidos-list th:nth-child(4),
+.licitacao-adesao-pedidos-list td:nth-child(4) { width: 16%; }
+
+.licitacao-adesao-pedidos-list th:nth-child(5),
+.licitacao-adesao-pedidos-list td:nth-child(5) { width: 11%; }
+
+.licitacao-adesao-pedidos-list th:nth-child(6),
+.licitacao-adesao-pedidos-list td:nth-child(6) { width: 13%; }
+
+.licitacao-adesao-pedidos-list th:nth-child(7),
+.licitacao-adesao-pedidos-list td:nth-child(7) { width: 5%; }
+
+.licitacao-adesao-pedidos-list td:nth-child(2) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
 }
 
 .licitacao-delivery-flag {
