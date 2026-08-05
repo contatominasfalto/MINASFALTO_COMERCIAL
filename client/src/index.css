@@ -1871,7 +1871,7 @@
 .licitacao-table-general th:nth-child(16), .licitacao-table-general td:nth-child(16) { width: 150px; text-align: center; }
 
 .licitacao-table-adjucados {
-  min-width: 2840px;
+  min-width: 2960px;
 }
 
 .licitacao-table-adjucados th:nth-child(17),
@@ -1883,8 +1883,8 @@
 
 .licitacao-table-adjucados th:nth-child(18),
 .licitacao-table-adjucados td:nth-child(18) {
-  width: 180px;
-  min-width: 180px;
+  width: 300px;
+  min-width: 300px;
   text-align: center;
 }
 
