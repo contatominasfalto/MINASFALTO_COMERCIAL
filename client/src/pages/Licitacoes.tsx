@@ -291,6 +291,8 @@ export default function Licitacoes() {
   const [deleteLicitacaoTarget, setDeleteLicitacaoTarget] = useState<Licitacao | null>(null);
   const [deleteSimpleTarget, setDeleteSimpleTarget] = useState<{ kind: "status" | "plataforma" | "vendedor"; item: any; remove: any } | null>(null);
   const [deletePedidoTarget, setDeletePedidoTarget] = useState<{ pedido: any; licitacao: Licitacao } | null>(null);
+  const [deleteAdesaoTarget, setDeleteAdesaoTarget] = useState<{ adesao: any; licitacao: Licitacao } | null>(null);
+  const [deleteAdesaoPedidoTarget, setDeleteAdesaoPedidoTarget] = useState<{ pedido: any; adesao: any } | null>(null);
 
   const opcoes = trpc.licitacoes.opcoes.useQuery();
   const licitacoes = trpc.licitacoes.list.useQuery({
@@ -1008,7 +1010,7 @@ export default function Licitacoes() {
                             <td className="num">{formatSaldoEntrega(item.saldoEntrega)}</td>
                             <td className="actions">
                               <button type="button" className="mini-icon-button" title="Editar adesao" onClick={() => setAdesaoForm({ id: item.id, orgaoAderente: item.orgaoAderente || "", dataAdesao: item.dataAdesao || "", quantidade: numberValue(item.quantidade), entregue: Boolean(item.entregue), dataEntrega: item.dataEntrega || "", observacoes: item.observacoes || "" })}><Pencil size={14} /></button>
-                              <button type="button" className="mini-icon-button danger" title="Excluir adesao" onClick={() => deleteAdesao.mutate({ id: item.id, licitacaoId: selectedLicitacao.id })}><Trash2 size={14} /></button>
+                              <button type="button" className="mini-icon-button danger" title="Excluir adesao" onClick={() => setDeleteAdesaoTarget({ adesao: item, licitacao: selectedLicitacao })}><Trash2 size={14} /></button>
                             </td>
                           </tr>
                           {isOpen && selectedAdesaoId === item.id && (
@@ -1031,7 +1033,7 @@ export default function Licitacoes() {
                                       {(adesaoPedidosCrti.data?.items || []).map((pedido: any) => (
                                         <tr key={pedido.id}>
                                           <td>{pedido.pedidoCrti}</td><td>{normalizeText(pedido.cliente)}</td><td>{formatDateBR(pedido.dataPedido)}</td><td>{normalizeText(pedido.statusPedido)}</td><td className="num">{formatDecimal(pedido.quantidade)}</td><td className="num">{formatCurrency(pedido.valorTotal)}</td>
-                                          <td><button type="button" className="mini-icon-button danger" title="Desvincular pedido" onClick={() => deleteAdesaoPedido.mutate({ id: pedido.id, adesaoId: item.id })}><Trash2 size={14} /></button></td>
+                                          <td><button type="button" className="mini-icon-button danger" title="Desvincular pedido" onClick={() => setDeleteAdesaoPedidoTarget({ pedido, adesao: item })}><Trash2 size={14} /></button></td>
                                         </tr>
                                       ))}
                                       {!adesaoPedidosCrti.isLoading && !(adesaoPedidosCrti.data?.items || []).length && <tr><td colSpan={7} className="desktop-empty">Nenhum pedido CRTI vinculado.</td></tr>}
@@ -1213,6 +1215,60 @@ export default function Licitacoes() {
           deletePedido.mutate(
             { id: pedidoId, licitacaoId },
             { onSuccess: () => setDeletePedidoTarget(null) },
+          );
+        }}
+      />
+
+      <SapDoubleConfirmDialog
+        open={Boolean(deleteAdesaoTarget)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteAdesaoTarget(null);
+        }}
+        title="Confirmar exclusao de adesao"
+        description="Esta acao vai excluir a adesao e todos os pedidos CRTI vinculados a ela."
+        finalDescription="Confirmacao final: a adesao e seus vinculos de entrega serao excluidos definitivamente."
+        finalConfirmLabel="Excluir adesao"
+        details={[
+          { label: "Licitacao", value: normalizeText(deleteAdesaoTarget?.licitacao?.orgao) || "-" },
+          { label: "Orgao aderente", value: normalizeText(deleteAdesaoTarget?.adesao?.orgaoAderente) || "-" },
+          { label: "Quantidade", value: formatDecimal(deleteAdesaoTarget?.adesao?.quantidade || 0) },
+          { label: "Pedidos vinculados", value: deleteAdesaoTarget?.adesao?.totalPedidos ?? 0 },
+        ]}
+        isPending={deleteAdesao.isPending}
+        onConfirm={() => {
+          const adesaoId = Number(deleteAdesaoTarget?.adesao?.id);
+          const licitacaoId = Number(deleteAdesaoTarget?.licitacao?.id);
+          if (!adesaoId || !licitacaoId) return toast.error("Nao foi possivel identificar a adesao para excluir.");
+          deleteAdesao.mutate(
+            { id: adesaoId, licitacaoId },
+            { onSuccess: () => setDeleteAdesaoTarget(null) },
+          );
+        }}
+      />
+
+      <SapDoubleConfirmDialog
+        open={Boolean(deleteAdesaoPedidoTarget)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteAdesaoPedidoTarget(null);
+        }}
+        title="Confirmar desvinculo de pedido CRTI"
+        description="Esta acao vai remover o pedido do controle de entrega do orgao aderente."
+        finalDescription="Confirmacao final: o pedido sera desvinculado e sua quantidade retornara ao saldo da adesao."
+        finalConfirmLabel="Desvincular pedido"
+        details={[
+          { label: "Orgao aderente", value: normalizeText(deleteAdesaoPedidoTarget?.adesao?.orgaoAderente) || "-" },
+          { label: "Pedido", value: deleteAdesaoPedidoTarget?.pedido?.pedidoCrti ?? "-" },
+          { label: "Cliente", value: normalizeText(deleteAdesaoPedidoTarget?.pedido?.cliente) || "-" },
+          { label: "Quantidade", value: formatDecimal(deleteAdesaoPedidoTarget?.pedido?.quantidade || 0) },
+        ]}
+        isPending={deleteAdesaoPedido.isPending}
+        onConfirm={() => {
+          const pedidoId = Number(deleteAdesaoPedidoTarget?.pedido?.id);
+          const adesaoId = Number(deleteAdesaoPedidoTarget?.adesao?.id);
+          if (!pedidoId || !adesaoId) return toast.error("Nao foi possivel identificar o pedido para desvincular.");
+          deleteAdesaoPedido.mutate(
+            { id: pedidoId, adesaoId },
+            { onSuccess: () => setDeleteAdesaoPedidoTarget(null) },
           );
         }}
       />
