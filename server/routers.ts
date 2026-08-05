@@ -299,6 +299,7 @@ const licitacaoAtaSchema = z.object({
   validadeAta: z.string().max(10).optional(),
   quantidadeOriginal: z.coerce.number().nonnegative().optional(),
   observacoes: z.string().max(5000).optional(),
+  alertaVencimento: z.boolean().optional(),
 });
 
 const licitacaoAdesaoSchema = z.object({
@@ -701,6 +702,7 @@ export const appRouter = router({
       delete: costAccessProcedure.input(z.number().int().positive()).mutation(({ input }) => db.deleteLicitacaoVendedor(input)),
     }),
     ata: router({
+      alertasVencimento: costAccessProcedure.query(() => db.listLicitacaoAtasVencendo()),
       get: costAccessProcedure
         .input(z.object({ licitacaoId: z.number().int().positive() }))
         .query(({ input }) => db.getLicitacaoAta(input.licitacaoId)),

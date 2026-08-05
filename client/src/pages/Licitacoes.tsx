@@ -4,6 +4,7 @@ import SapDoubleConfirmDialog from "@/components/SapDoubleConfirmDialog";
 import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
 import {
   ArrowLeft,
+  BellRing,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -282,7 +283,7 @@ export default function Licitacoes() {
   const [selectedLicitacao, setSelectedLicitacao] = useState<Licitacao | null>(null);
   const [pedidoForm, setPedidoForm] = useState<any>(emptyPedidoCrtiForm);
   const [openEntregaGroups, setOpenEntregaGroups] = useState<Record<number, boolean>>({});
-  const [ataForm, setAtaForm] = useState<any>({ vendedorId: null, vendedorNome: "NA", validadeAta: "", quantidadeOriginal: 0, observacoes: "" });
+  const [ataForm, setAtaForm] = useState<any>({ vendedorId: null, vendedorNome: "NA", validadeAta: "", quantidadeOriginal: 0, observacoes: "", alertaVencimento: true });
   const [ataTab, setAtaTab] = useState<"dados" | "adesoes">("dados");
   const [adesaoForm, setAdesaoForm] = useState<any>(emptyAdesaoForm);
   const [selectedAdesaoId, setSelectedAdesaoId] = useState<number | null>(null);
@@ -294,8 +295,15 @@ export default function Licitacoes() {
   const [deletePedidoTarget, setDeletePedidoTarget] = useState<{ pedido: any; licitacao: Licitacao } | null>(null);
   const [deleteAdesaoTarget, setDeleteAdesaoTarget] = useState<{ adesao: any; licitacao: Licitacao } | null>(null);
   const [deleteAdesaoPedidoTarget, setDeleteAdesaoPedidoTarget] = useState<{ pedido: any; adesao: any } | null>(null);
+  const [alertaVencimentoAberto, setAlertaVencimentoAberto] = useState(false);
+  const alertaVencimentoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const opcoes = trpc.licitacoes.opcoes.useQuery();
+  const alertasVencimento = trpc.licitacoes.ata.alertasVencimento.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+  });
+  const alertasVencimentoRefetch = useRef(alertasVencimento.refetch);
+  alertasVencimentoRefetch.current = alertasVencimento.refetch;
   const licitacoes = trpc.licitacoes.list.useQuery({
     search,
     adjudicadas: panelTab === "adjudicadas" ? true : false,
@@ -329,10 +337,35 @@ export default function Licitacoes() {
         validadeAta: savedAta.validadeAta || "",
         quantidadeOriginal: numberValue(savedAta.quantidadeOriginal),
         observacoes: savedAta.observacoes || "",
+        alertaVencimento: savedAta.alertaVencimento !== false && Number(savedAta.alertaVencimento) !== 0,
       });
     }
     hydratedAtaId.current = selectedLicitacao.id;
   }, [ata.data, ata.isFetched, modal, selectedLicitacao]);
+
+  const agendarAlertaVencimento = (delay: number) => {
+    if (alertaVencimentoTimer.current) clearTimeout(alertaVencimentoTimer.current);
+    alertaVencimentoTimer.current = setTimeout(async () => {
+      const result = await alertasVencimentoRefetch.current();
+      if ((result.data || []).length > 0) {
+        setAlertaVencimentoAberto(true);
+      } else {
+        agendarAlertaVencimento(60 * 60 * 1000);
+      }
+    }, delay);
+  };
+
+  useEffect(() => {
+    agendarAlertaVencimento(2000);
+    return () => {
+      if (alertaVencimentoTimer.current) clearTimeout(alertaVencimentoTimer.current);
+    };
+  }, []);
+
+  const confirmarLeituraAlertaVencimento = () => {
+    setAlertaVencimentoAberto(false);
+    agendarAlertaVencimento(60 * 60 * 1000);
+  };
   const invalidateAll = () => {
     void utils.licitacoes.list.invalidate();
     void utils.licitacoes.opcoes.invalidate();
@@ -605,6 +638,7 @@ export default function Licitacoes() {
       validadeAta: "",
       quantidadeOriginal: licitacao.qtdeSc || 0,
       observacoes: "",
+      alertaVencimento: true,
     });
     setModal("ata");
   };
@@ -960,6 +994,18 @@ export default function Licitacoes() {
                 <TextField label="Quantidade Original" type="number" value={ataForm.quantidadeOriginal} onChange={(value) => setAtaForm((current: any) => ({ ...current, quantidadeOriginal: Number(value) }))} />
                 <label className="licitacao-field licitacao-readonly"><span>Limite Individual (50%)</span><strong>{formatDecimal(numberValue(ataForm.quantidadeOriginal) * 0.5)}</strong></label>
                 <label className="licitacao-field licitacao-readonly"><span>Limite Coletivo (200%)</span><strong>{formatDecimal(numberValue(ataForm.quantidadeOriginal) * 2)}</strong></label>
+                <label className="licitacao-alert-toggle">
+                  <span className="licitacao-alert-toggle-text">
+                    <BellRing size={16} />
+                    <span><strong>Alerta de vencimento</strong><small>Avisar 30 dias antes</small></span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(ataForm.alertaVencimento)}
+                    onChange={(event) => setAtaForm((current: any) => ({ ...current, alertaVencimento: event.target.checked }))}
+                  />
+                  <i aria-hidden="true"><b /></i>
+                </label>
               </section>
               <label className="licitacao-field">
                 <span>Observações</span>
@@ -1152,6 +1198,30 @@ export default function Licitacoes() {
             })}
           </section>
         </SimpleModal>
+      )}
+
+      {alertaVencimentoAberto && (alertasVencimento.data || []).length > 0 && (
+        <div className="licitacao-expiry-alert-backdrop" role="presentation">
+          <section className="licitacao-expiry-alert" role="alertdialog" aria-modal="true" aria-labelledby="licitacao-expiry-alert-title">
+            <header>
+              <BellRing size={22} />
+              <h2 id="licitacao-expiry-alert-title">Alerta de vencimento de ATA</h2>
+            </header>
+            <p>As seguintes ATAs vencem nos próximos 30 dias:</p>
+            <div className="licitacao-expiry-alert-list">
+              {(alertasVencimento.data || []).map((item: any) => (
+                <article key={item.licitacaoId}>
+                  <strong>{normalizeText(item.orgao)}{item.cidade ? ` - ${normalizeText(item.cidade)}` : ""}</strong>
+                  <span>Validade: {formatDateBR(item.validadeAta)}</span>
+                  <em>{Number(item.diasParaVencer) === 0 ? "Vence hoje" : `${item.diasParaVencer} dia(s) para vencer`}</em>
+                </article>
+              ))}
+            </div>
+            <footer>
+              <button type="button" className="desktop-action primary" onClick={confirmarLeituraAlertaVencimento}>OK, estou ciente</button>
+            </footer>
+          </section>
+        </div>
       )}
 
       <SapDoubleConfirmDialog

@@ -2483,6 +2483,14 @@ export async function ensureLicitacaoAdesoesSchema(pool: mysql.Pool) {
           INDEX licitacao_adesao_pedidos_licitacao_idx (licitacaoId)
         )
       `);
+      const [alertaColumns] = await pool.query<mysql.RowDataPacket[]>(
+        "SHOW COLUMNS FROM licitacao_atas LIKE 'alertaVencimento'",
+      );
+      if (!Array.isArray(alertaColumns) || alertaColumns.length === 0) {
+        await pool.query(
+          "ALTER TABLE licitacao_atas ADD COLUMN alertaVencimento boolean NOT NULL DEFAULT true AFTER observacoes",
+        );
+      }
     })().catch((error) => {
       _licitacaoAdesoesSchemaPromise = null;
       throw error;
@@ -2747,6 +2755,7 @@ export async function deleteLicitacao(id: number) {
 
 export async function getLicitacaoAta(licitacaoId: number) {
   const pool = await ensureMysqlPool();
+  await ensureLicitacaoAdesoesSchema(pool);
   const [rows] = await pool.query<mysql.RowDataPacket[]>("SELECT * FROM licitacao_atas WHERE licitacaoId = ? LIMIT 1", [licitacaoId]);
   if (rows[0]) return rows[0];
 
@@ -2768,7 +2777,31 @@ export async function getLicitacaoAta(licitacaoId: number) {
     limiteIndividual: quantidadeOriginal * 0.5,
     limiteColetivo: quantidadeOriginal * 2,
     observacoes: "",
+    alertaVencimento: true,
   };
+}
+
+export async function listLicitacaoAtasVencendo() {
+  const pool = await ensureMysqlPool();
+  await ensureLicitacaoAdesoesSchema(pool);
+  const [rows] = await pool.query<mysql.RowDataPacket[]>(
+    `SELECT
+      a.licitacaoId,
+      l.orgao,
+      l.cidade,
+      a.validadeAta,
+      DATEDIFF(
+        COALESCE(STR_TO_DATE(a.validadeAta, '%Y-%m-%d'), STR_TO_DATE(a.validadeAta, '%d/%m/%Y')),
+        CURDATE()
+      ) AS diasParaVencer
+    FROM licitacao_atas a
+    INNER JOIN licitacoes l ON l.id = a.licitacaoId
+    WHERE a.alertaVencimento = true
+      AND COALESCE(STR_TO_DATE(a.validadeAta, '%Y-%m-%d'), STR_TO_DATE(a.validadeAta, '%d/%m/%Y'))
+        BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+    ORDER BY diasParaVencer ASC, l.orgao ASC`,
+  );
+  return rows;
 }
 
 export async function saveLicitacaoAta(data: {
@@ -2778,6 +2811,7 @@ export async function saveLicitacaoAta(data: {
   validadeAta?: string;
   quantidadeOriginal?: number;
   observacoes?: string;
+  alertaVencimento?: boolean;
 }) {
   const pool = await ensureMysqlPool();
   await ensureLicitacaoAdesoesSchema(pool);
@@ -2807,6 +2841,7 @@ export async function saveLicitacaoAta(data: {
     limiteIndividual,
     limiteColetivo,
     data.observacoes || "",
+    data.alertaVencimento !== false,
   ];
   const [existingRows] = await pool.query<mysql.RowDataPacket[]>(
     "SELECT id FROM licitacao_atas WHERE licitacaoId = ? LIMIT 1",
@@ -2822,15 +2857,16 @@ export async function saveLicitacaoAta(data: {
         quantidadeOriginal = ?,
         limiteIndividual = ?,
         limiteColetivo = ?,
-        observacoes = ?
+        observacoes = ?,
+        alertaVencimento = ?
       WHERE licitacaoId = ?`,
       [...values, data.licitacaoId],
     );
   } else {
     await pool.query(
       `INSERT INTO licitacao_atas (
-        vendedorId, vendedorNome, validadeAta, quantidadeOriginal, limiteIndividual, limiteColetivo, observacoes, licitacaoId
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        vendedorId, vendedorNome, validadeAta, quantidadeOriginal, limiteIndividual, limiteColetivo, observacoes, alertaVencimento, licitacaoId
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [...values, data.licitacaoId],
     );
   }

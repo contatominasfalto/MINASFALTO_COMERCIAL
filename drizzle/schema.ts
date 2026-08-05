@@ -326,6 +326,7 @@ export const licitacaoAtas = mysqlTable("licitacao_atas", {
   limiteIndividual: decimal("limiteIndividual", { precision: 18, scale: 3 }).default("0"),
   limiteColetivo: decimal("limiteColetivo", { precision: 18, scale: 3 }).default("0"),
   observacoes: text("observacoes").default(""),
+  alertaVencimento: boolean("alertaVencimento").default(true),
   quantidadeMaximaAdesoes: int("quantidadeMaximaAdesoes").default(0),
   criadoEm: timestamp("criadoEm").defaultNow(),
   atualizadoEm: timestamp("atualizadoEm").defaultNow().onUpdateNow(),
