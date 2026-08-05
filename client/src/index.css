@@ -1967,11 +1967,10 @@
 }
 
 .licitacao-modal-fullscreen {
-  width: 100vw;
-  height: 100vh;
-  min-height: 100vh;
-  max-height: none;
-  border: 0;
+  width: 90vw;
+  height: 90vh;
+  min-height: 90vh;
+  max-height: 90vh;
   padding: 34px 20px 18px;
 }
 
