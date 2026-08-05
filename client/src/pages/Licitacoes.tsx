@@ -322,6 +322,7 @@ export default function Licitacoes() {
   const [selectedLicitacao, setSelectedLicitacao] = useState<Licitacao | null>(null);
   const [pedidoForm, setPedidoForm] = useState<any>(emptyPedidoCrtiForm);
   const [openEntregaGroups, setOpenEntregaGroups] = useState<Record<number, boolean>>({});
+  const [entregaLicitacaoId, setEntregaLicitacaoId] = useState<number | null>(null);
   const [ataForm, setAtaForm] = useState<any>({ vendedorId: null, vendedorNome: "NA", validadeAta: "", quantidadeOriginal: 0, observacoes: "", alertaVencimento: true });
   const [ataTab, setAtaTab] = useState<"dados" | "adesoes">("dados");
   const [adesaoForm, setAdesaoForm] = useState<any>(emptyAdesaoForm);
@@ -562,6 +563,10 @@ export default function Licitacoes() {
     () => (adjudicadas.data || []).filter((licitacao: any) => Math.abs(numberValue(licitacao.saldoEntrega)) >= 0.001),
     [adjudicadas.data],
   );
+  const licitacoesEntrega = useMemo(() => {
+    if (!entregaLicitacaoId) return adjudicadasPendentes;
+    return (adjudicadas.data || []).filter((licitacao: any) => Number(licitacao.id) === entregaLicitacaoId);
+  }, [adjudicadas.data, adjudicadasPendentes, entregaLicitacaoId]);
 
   useEffect(() => {
     setLicitacaoPage(1);
@@ -930,7 +935,16 @@ export default function Licitacoes() {
                   )}
                   <td>
                     <button className="mini-icon-button" onClick={() => openLicitacaoForm(licitacao)}><Pencil size={14} /></button>
-                    <button className="mini-icon-button" onClick={() => { setSelectedLicitacao(licitacao); setOpenEntregaGroups({}); setModal("entrega"); }}><Link2 size={14} /></button>
+                    <button
+                      className="mini-icon-button"
+                      title="Consultar controle de entrega"
+                      onClick={() => {
+                        setEntregaLicitacaoId(licitacao.id);
+                        setSelectedLicitacao(licitacao);
+                        setOpenEntregaGroups({ [licitacao.id]: true });
+                        setModal("entrega");
+                      }}
+                    ><Link2 size={14} /></button>
                     <button className="mini-icon-button danger" onClick={() => setDeleteLicitacaoTarget(licitacao)}><Trash2 size={14} /></button>
                   </td>
                 </tr>
@@ -959,7 +973,7 @@ export default function Licitacoes() {
             <button onClick={() => setModal("plataforma")}><ExternalLink size={18} /> Cadastro Plataforma Pregão</button>
             <button onClick={() => setModal(null)}><Search size={18} /> Acesso ao Painel Principal</button>
             <button onClick={() => setModal("vendedor")}><Plus size={18} /> Cadastro Vendedor</button>
-            <button onClick={() => { setSelectedLicitacao(null); setOpenEntregaGroups({}); setModal("entrega"); }}><Link2 size={18} /> Vincular Pedido CRTI Controle de Entrega</button>
+            <button onClick={() => { setEntregaLicitacaoId(null); setSelectedLicitacao(null); setOpenEntregaGroups({}); setModal("entrega"); }}><Link2 size={18} /> Vincular Pedido CRTI Controle de Entrega</button>
           </div>
         </SimpleModal>
       )}
@@ -1161,7 +1175,11 @@ export default function Licitacoes() {
       )}
 
       {modal === "entrega" && (
-        <SimpleModal title="Vincular Pedido CRTI Controle de Entrega" onClose={() => setModal(null)} delivery>
+        <SimpleModal
+          title={`Vincular Pedido CRTI Controle de Entrega${entregaLicitacaoId && selectedLicitacao ? ` - ${selectedLicitacao.orgao}${selectedLicitacao.cidade ? ` - ${selectedLicitacao.cidade}` : ""}` : ""}`}
+          onClose={() => { setEntregaLicitacaoId(null); setModal(null); }}
+          delivery
+        >
           <section className="licitacao-delivery-list">
             <div className="licitacao-delivery-columns" aria-hidden="true">
               <span></span>
@@ -1172,9 +1190,9 @@ export default function Licitacoes() {
               <strong>Status</strong>
               <strong>Saldo</strong>
             </div>
-            {adjudicadasPendentes.length === 0 ? (
-              <div className="desktop-empty">Nenhuma licitação adjudicada com saldo pendente.</div>
-            ) : adjudicadasPendentes.map((licitacao: any) => {
+            {licitacoesEntrega.length === 0 ? (
+              <div className="desktop-empty">{entregaLicitacaoId ? "Licitação não encontrada." : "Nenhuma licitação adjudicada com saldo pendente."}</div>
+            ) : licitacoesEntrega.map((licitacao: any) => {
               const isOpen = Boolean(openEntregaGroups[licitacao.id]);
               const isSelected = selectedLicitacao?.id === licitacao.id;
               const saldoEntrega = numberValue(licitacao.saldoEntrega);
