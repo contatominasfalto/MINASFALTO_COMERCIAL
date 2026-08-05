@@ -2189,7 +2189,13 @@
 }
 
 .licitacao-adesoes-table-wrap {
-  max-height: min(34vh, 350px);
+  flex: 0 0 auto !important;
+  height: calc(90vh - 350px) !important;
+  min-height: 320px;
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
 }
 
 .licitacao-adesoes-table {
@@ -2225,8 +2231,13 @@
 }
 
 .licitacao-adesao-pedidos-list {
-  max-height: 230px;
+  height: auto !important;
+  min-height: 145px;
+  max-height: 290px;
   margin-top: 10px;
+  overflow-x: auto;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .licitacao-adesao-pedidos-list table {
