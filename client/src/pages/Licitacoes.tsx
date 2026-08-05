@@ -936,7 +936,11 @@ export default function Licitacoes() {
       {modal === "vendedor" && renderAuxCadastro("vendedor")}
 
       {modal === "ata" && selectedLicitacao && (
-        <SimpleModal title={`Controle de Ata - ${selectedLicitacao.orgao}`} onClose={() => setModal(null)} fullscreen>
+        <SimpleModal
+          title={`Controle de Ata - ${selectedLicitacao.orgao}${selectedLicitacao.cidade ? ` - ${selectedLicitacao.cidade}` : ""}`}
+          onClose={() => setModal(null)}
+          fullscreen
+        >
           <nav className="licitacao-ata-tabs">
             <button type="button" className={ataTab === "dados" ? "active" : ""} onClick={() => setAtaTab("dados")}>Dados da Ata</button>
             <button type="button" className={ataTab === "adesoes" ? "active" : ""} onClick={() => setAtaTab("adesoes")}>Controle de Adesões</button>
