@@ -2717,6 +2717,10 @@ export async function updateLicitacao(id: number, data: LicitacaoInput) {
       id,
     ],
   );
+  await pool.query(
+    "UPDATE licitacao_atas SET vendedorId = ?, vendedorNome = ? WHERE licitacaoId = ?",
+    [data.ataVendedorId || null, data.ataVendedorNome || "NA", id],
+  );
   return { success: true };
 }
 
@@ -2744,7 +2748,27 @@ export async function deleteLicitacao(id: number) {
 export async function getLicitacaoAta(licitacaoId: number) {
   const pool = await ensureMysqlPool();
   const [rows] = await pool.query<mysql.RowDataPacket[]>("SELECT * FROM licitacao_atas WHERE licitacaoId = ? LIMIT 1", [licitacaoId]);
-  return rows[0] || null;
+  if (rows[0]) return rows[0];
+
+  const [licitacaoRows] = await pool.query<mysql.RowDataPacket[]>(
+    `SELECT id AS licitacaoId, ataVendedorId AS vendedorId, ataVendedorNome AS vendedorNome, qtdeSc AS quantidadeOriginal
+     FROM licitacoes
+     WHERE id = ? AND ataVendedorId IS NOT NULL
+     LIMIT 1`,
+    [licitacaoId],
+  );
+  const licitacao = licitacaoRows[0];
+  if (!licitacao) return null;
+
+  const quantidadeOriginal = Number(licitacao.quantidadeOriginal) || 0;
+  return {
+    ...licitacao,
+    validadeAta: "",
+    quantidadeOriginal,
+    limiteIndividual: quantidadeOriginal * 0.5,
+    limiteColetivo: quantidadeOriginal * 2,
+    observacoes: "",
+  };
 }
 
 export async function saveLicitacaoAta(data: {
@@ -2784,7 +2808,11 @@ export async function saveLicitacaoAta(data: {
     limiteColetivo,
     data.observacoes || "",
   ];
-  const existing = await getLicitacaoAta(data.licitacaoId);
+  const [existingRows] = await pool.query<mysql.RowDataPacket[]>(
+    "SELECT id FROM licitacao_atas WHERE licitacaoId = ? LIMIT 1",
+    [data.licitacaoId],
+  );
+  const existing = existingRows[0];
   if (existing) {
     await pool.query(
       `UPDATE licitacao_atas SET
@@ -2945,7 +2973,13 @@ export async function listLicitacaoAdesoes(licitacaoId: number) {
   const pool = await ensureMysqlPool();
   await ensureLicitacaoAdesoesSchema(pool);
   const [ataRows] = await pool.query<mysql.RowDataPacket[]>(
-    "SELECT limiteIndividual, limiteColetivo FROM licitacao_atas WHERE licitacaoId = ? LIMIT 1",
+    `SELECT
+      COALESCE(a.limiteIndividual, l.qtdeSc * 0.5) AS limiteIndividual,
+      COALESCE(a.limiteColetivo, l.qtdeSc * 2) AS limiteColetivo
+    FROM licitacoes l
+    LEFT JOIN licitacao_atas a ON a.licitacaoId = l.id
+    WHERE l.id = ?
+    LIMIT 1`,
     [licitacaoId],
   );
   const [rows] = await pool.query<mysql.RowDataPacket[]>(
@@ -2979,11 +3013,17 @@ export async function listLicitacaoAdesoes(licitacaoId: number) {
 async function prepareLicitacaoAdesao(pool: mysql.Pool, data: LicitacaoAdesaoInput, currentId?: number) {
   await ensureLicitacaoAdesoesSchema(pool);
   const [ataRows] = await pool.query<mysql.RowDataPacket[]>(
-    "SELECT limiteIndividual, limiteColetivo FROM licitacao_atas WHERE licitacaoId = ? LIMIT 1",
+    `SELECT
+      COALESCE(a.limiteIndividual, l.qtdeSc * 0.5) AS limiteIndividual,
+      COALESCE(a.limiteColetivo, l.qtdeSc * 2) AS limiteColetivo
+    FROM licitacoes l
+    LEFT JOIN licitacao_atas a ON a.licitacaoId = l.id
+    WHERE l.id = ? AND l.ataVendedorId IS NOT NULL
+    LIMIT 1`,
     [data.licitacaoId],
   );
   const ata = ataRows[0];
-  if (!ata) throw new Error("Salve os dados da Ata antes de cadastrar adesões.");
+  if (!ata) throw new Error("Vincule um vendedor à licitação antes de cadastrar adesões.");
 
   const quantidade = normalizeMoney(data.quantidade);
   const limiteIndividual = Number(ata.limiteIndividual) || 0;
