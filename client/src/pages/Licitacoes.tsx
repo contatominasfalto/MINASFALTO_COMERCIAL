@@ -990,14 +990,21 @@ export default function Licitacoes() {
                   <option value="NA">NA</option>
                   {vendedores.map((vendedor: any) => <option key={vendedor.id} value={vendedor.id}>{normalizeText(vendedor.nome)}</option>)}
                 </SelectField>
-                <TextField label="Validade Ata" type="date" value={ataForm.validadeAta} onChange={(value) => setAtaForm((current: any) => ({ ...current, validadeAta: value }))} />
+                <TextField label="Validade Ata" type="date" value={ataForm.validadeAta} onChange={(value) => setAtaForm((current: any) => ({
+                  ...current,
+                  validadeAta: value,
+                  alertaVencimento: value ? true : current.alertaVencimento,
+                }))} />
                 <TextField label="Quantidade Original" type="number" value={ataForm.quantidadeOriginal} onChange={(value) => setAtaForm((current: any) => ({ ...current, quantidadeOriginal: Number(value) }))} />
                 <label className="licitacao-field licitacao-readonly"><span>Limite Individual (50%)</span><strong>{formatDecimal(numberValue(ataForm.quantidadeOriginal) * 0.5)}</strong></label>
                 <label className="licitacao-field licitacao-readonly"><span>Limite Coletivo (200%)</span><strong>{formatDecimal(numberValue(ataForm.quantidadeOriginal) * 2)}</strong></label>
                 <label className="licitacao-alert-toggle">
                   <span className="licitacao-alert-toggle-text">
                     <BellRing size={16} />
-                    <span><strong>Alerta de vencimento</strong><small>Avisar 30 dias antes</small></span>
+                    <span>
+                      <strong>Alerta de vencimento</strong>
+                      <small>{ataForm.alertaVencimento ? "Ativo - avisar 30 dias antes" : "Desativado"}</small>
+                    </span>
                   </span>
                   <input
                     type="checkbox"
