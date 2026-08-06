@@ -11,6 +11,14 @@ const source = await mysql.createConnection(sourceUrl);
 const target = await mysql.createConnection(targetUrl);
 const report = { modo: apply ? "APPLY" : "DRY-RUN", origem: {}, inconsistencias: [] };
 try {
+  const [[targetDatabase]] = await target.query("SELECT DATABASE() banco");
+  if (String(targetDatabase?.banco || "") === "minasfalto_alimentacao") {
+    throw new Error("Operação bloqueada: o destino não pode ser o banco legado.");
+  }
+  const [[targetSchema]] = await target.query("SELECT COUNT(*) total FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name LIKE 'alimentacao_%'");
+  if (Number(targetSchema.total) !== 5) {
+    throw new Error("Estrutura de destino ausente. Execute: npm run alimentacao:schema -- --apply");
+  }
   for (const table of ["funcionarios", "fornecedores", "refeicoes", "custos"]) {
     const [[row]] = await source.query(`SELECT COUNT(*) total FROM \`${table}\``);
     report.origem[table] = Number(row.total);

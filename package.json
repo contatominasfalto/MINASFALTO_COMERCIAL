@@ -27,7 +27,8 @@
     "crti:find": "node scripts/find-crti-pedido.mjs",
     "crti:inspect": "node scripts/inspect-crti-table.mjs",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
-    "alimentacao:migrate": "node scripts/migrate-alimentacao.mjs"
+    "alimentacao:migrate": "node scripts/migrate-alimentacao.mjs",
+    "alimentacao:schema": "node scripts/create-alimentacao-schema.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",
