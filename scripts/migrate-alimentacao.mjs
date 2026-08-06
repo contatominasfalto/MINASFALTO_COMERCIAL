@@ -10,6 +10,20 @@ if (sourceUrl === targetUrl) throw new Error("Origem e destino não podem ser o 
 const source = await mysql.createConnection(sourceUrl);
 const target = await mysql.createConnection(targetUrl);
 const report = { modo: apply ? "APPLY" : "DRY-RUN", origem: {}, inconsistencias: [] };
+
+function toSqlDate(value) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+  const text = String(value ?? "").trim();
+  const iso = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (iso) return iso[1];
+  throw new Error(`Data legada inválida: ${text || "vazia"}`);
+}
+
 try {
   const [[targetDatabase]] = await target.query("SELECT DATABASE() banco");
   if (String(targetDatabase?.banco || "") === "minasfalto_alimentacao") {
@@ -38,10 +52,11 @@ try {
     for (const r of custos) await target.execute(`INSERT INTO alimentacao_custos_extras(descricao,categoria,valor,data_custo,criado_por,origem_sistema,origem_id) VALUES(?,?,?,?,'Migração','legado_alimentacao',?) ON DUPLICATE KEY UPDATE descricao=VALUES(descricao),categoria=VALUES(categoria),valor=VALUES(valor),data_custo=VALUES(data_custo)`, [r.descricao,r.categoria,r.valor,r.data_custo,String(r.id)]);
     const [refeicoes] = await source.query("SELECT * FROM refeicoes ORDER BY id");
     for (const r of refeicoes) {
-      const origemGrupo = r.numero_nota ? `nota:${r.fornecedor_id}:${String(r.data_refeicao).slice(0,10)}:${r.numero_nota}` : `refeicao:${r.id}`;
+      const dataRefeicao = toSqlDate(r.data_refeicao);
+      const origemGrupo = r.numero_nota ? `nota:${r.fornecedor_id}:${dataRefeicao}:${r.numero_nota}` : `refeicao:${r.id}`;
       const [[forn]] = await target.query("SELECT id FROM alimentacao_fornecedores WHERE origem_sistema='legado_alimentacao' AND origem_id=?", [String(r.fornecedor_id)]);
       const [[func]] = await target.query("SELECT id FROM alimentacao_funcionarios WHERE origem_sistema='legado_alimentacao' AND origem_id=?", [String(r.funcionario_id)]);
-      await target.execute(`INSERT INTO alimentacao_lancamentos(fornecedor_id,numero_nota,tipo,data_refeicao,valor_extra,observacao,token_idempotencia,criado_por,atualizado_por,origem_sistema,origem_id) VALUES(?,?,?,?,?,?,?,'Migração','Migração','legado_alimentacao',?) ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id)`, [forn.id,r.numero_nota,r.tipo,String(r.data_refeicao).slice(0,10),r.valor_extra||0,r.observacao,`legacy-${origemGrupo}`,origemGrupo]);
+      await target.execute(`INSERT INTO alimentacao_lancamentos(fornecedor_id,numero_nota,tipo,data_refeicao,valor_extra,observacao,token_idempotencia,criado_por,atualizado_por,origem_sistema,origem_id) VALUES(?,?,?,?,?,?,?,'Migração','Migração','legado_alimentacao',?) ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id)`, [forn.id,r.numero_nota,r.tipo,dataRefeicao,r.valor_extra||0,r.observacao,`legacy-${origemGrupo}`,origemGrupo]);
       const [[lanc]] = await target.query("SELECT id FROM alimentacao_lancamentos WHERE origem_sistema='legado_alimentacao' AND origem_id=?", [origemGrupo]);
       await target.execute(`INSERT INTO alimentacao_lancamento_itens(lancamento_id,funcionario_id,quantidade,valor_unitario,valor_total,origem_sistema,origem_id) VALUES(?,?,?,?,?,'legado_alimentacao',?) ON DUPLICATE KEY UPDATE quantidade=VALUES(quantidade),valor_unitario=VALUES(valor_unitario),valor_total=VALUES(valor_total)`, [lanc.id,func.id,r.quantidade,r.valor_unitario,r.valor_total,String(r.id)]);
     }
