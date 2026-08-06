@@ -865,24 +865,31 @@ function Relatorios({ cad, rows, filtros, setFiltros }: any) {
       <section className="report-chart">
         <h2>{config.titulo}</h2>
         <p>{resumoFiltros}</p>
+        {dados.length > 20 && (
+          <small className="chart-hint">
+            ↔ Use a barra do gráfico para visualizar os demais registros.
+          </small>
+        )}
         <div className="chart-scroll">
           <div
-            style={{ minWidth: Math.max(760, dados.length * 58), height: 360 }}
+            className="chart-canvas"
+            style={{ width: Math.max(760, dados.length * 52) }}
           >
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={dados}
-                margin={{ top: 20, right: 20, left: 20, bottom: 90 }}
+                margin={{ top: 12, right: 18, left: 12, bottom: 62 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis
                   dataKey="nome"
-                  angle={-45}
+                  angle={-38}
                   textAnchor="end"
                   interval={0}
-                  height={90}
+                  height={68}
                 />
                 <YAxis
+                  width={72}
                   tickFormatter={value =>
                     config.modo === "total"
                       ? `R$ ${Number(value).toLocaleString("pt-BR")}`

@@ -1,5 +1,9 @@
 .food-page {
   min-height: 100vh;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  box-sizing: border-box;
   background: #eef3f8;
   color: #08233e;
   font:
@@ -217,12 +221,15 @@
 .report-page {
   display: grid;
   gap: 14px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 .report-page .report-filters {
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: repeat(4, minmax(170px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   padding: 14px;
   border: 1px solid #9db3c8;
@@ -239,12 +246,15 @@
   z-index: 3;
   pointer-events: auto;
   cursor: pointer;
+  box-sizing: border-box;
+  height: 42px;
 }
 .report-actions {
-  grid-column: 1/-1;
+  grid-column: auto;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  min-width: 0;
 }
 .report-metrics {
   display: grid;
@@ -267,6 +277,10 @@
   border: 1px solid #9db3c8;
   background: #fff;
   padding: 14px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 .report-chart h2,
 .report-data h2 {
@@ -279,10 +293,23 @@
 }
 .chart-scroll {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
   border-top: 1px solid #d5e0e9;
   padding-top: 8px;
+  overscroll-behavior-x: contain;
+}
+.chart-canvas {
+  height: 280px;
+  min-width: 760px;
+  max-width: none;
+}
+.chart-hint {
+  display: block;
+  color: #526b80;
+  margin-bottom: 6px;
 }
 .report-data .table-wrap {
   max-height: 420px;
@@ -292,7 +319,10 @@
 }
 @media (max-width: 1050px) {
   .report-page .report-filters {
-    grid-template-columns: repeat(2, minmax(180px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .report-actions {
+    grid-column: 1/-1;
   }
 }
 @media (max-width: 620px) {
