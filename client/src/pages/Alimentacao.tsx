@@ -11,6 +11,15 @@ import {
   Utensils,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import "./alimentacao.css";
 
 const moeda = (v: unknown) =>
@@ -599,94 +608,225 @@ function Cadastros({ data, concluir }: any) {
 }
 
 function Relatorios({ cad, rows, filtros, setFiltros }: any) {
-  const total = useMemo(
-    () => rows.reduce((s: number, x: any) => s + Number(x.valorTotal), 0),
-    [rows]
-  );
-  const exportar = () => {
-    const html = `<table><tr>${["Data", "Funcionário", "Setor", "Fornecedor", "Tipo", "Quantidade", "Valor"].map(x => `<th>${x}</th>`).join("")}</tr>${rows.map((x: any) => `<tr><td>${x.dataRefeicao}</td><td>${x.funcionario}</td><td>${x.setor}</td><td>${x.fornecedor}</td><td>${x.tipo}</td><td>${x.quantidade}</td><td>${x.valorTotal}</td></tr>`).join("")}</table>`;
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(
-      new Blob([`<meta charset="utf-8">${html}`], {
-        type: "application/vnd.ms-excel",
-      })
+  const [rascunho, setRascunho] = useState<any>({ ...filtros });
+  const [tipoRelatorio, setTipoRelatorio] = useState("funcionario");
+  const configuracoes: Record<
+    string,
+    {
+      titulo: string;
+      rotulo: string;
+      chave: (row: any) => string;
+      modo: "quantidade" | "total";
+    }
+  > = {
+    funcionario: {
+      titulo: "Alimentações por funcionário",
+      rotulo: "Funcionário",
+      chave: row => row.funcionario,
+      modo: "quantidade",
+    },
+    fornecedor: {
+      titulo: "Custo por fornecedor",
+      rotulo: "Fornecedor",
+      chave: row => row.fornecedor,
+      modo: "total",
+    },
+    mensal: {
+      titulo: "Custo mensal com alimentação",
+      rotulo: "Mês",
+      chave: row => String(row.dataRefeicao).slice(0, 7),
+      modo: "total",
+    },
+    setor: {
+      titulo: "Custo por setor",
+      rotulo: "Setor",
+      chave: row => row.setor,
+      modo: "total",
+    },
+    tipo: {
+      titulo: "Custo por tipo de alimentação",
+      rotulo: "Tipo",
+      chave: row => row.tipo,
+      modo: "total",
+    },
+  };
+  const config = configuracoes[tipoRelatorio];
+  const dados = useMemo(() => {
+    const grupos = new Map<
+      string,
+      { nome: string; quantidade: number; total: number }
+    >();
+    rows.forEach((row: any) => {
+      const nome = config.chave(row) || "Não informado";
+      const atual = grupos.get(nome) || { nome, quantidade: 0, total: 0 };
+      atual.quantidade += Number(row.quantidade || 0);
+      atual.total += Number(row.valorTotal || 0);
+      grupos.set(nome, atual);
+    });
+    return Array.from(grupos.values()).sort(
+      (a, b) => b[config.modo] - a[config.modo]
     );
+  }, [rows, tipoRelatorio]);
+  const totalQuantidade = useMemo(
+    () => dados.reduce((s, x) => s + x.quantidade, 0),
+    [dados]
+  );
+  const totalValor = useMemo(
+    () => dados.reduce((s, x) => s + x.total, 0),
+    [dados]
+  );
+  const aplicarFiltros = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (rascunho.inicio && rascunho.fim && rascunho.inicio > rascunho.fim) {
+      toast.error("A data inicial não pode ser posterior à data final.");
+      return;
+    }
+    setFiltros(
+      Object.fromEntries(
+        Object.entries(rascunho).filter(
+          ([, value]) => value !== "" && value !== undefined
+        )
+      )
+    );
+  };
+  const nomeFiltro = (lista: any[], id: unknown) =>
+    lista.find(x => x.id === Number(id))?.nome || "Todos";
+  const resumoFiltros = `Período: ${filtros.inicio || "início"} até ${filtros.fim || "hoje"} | Fornecedor: ${nomeFiltro(cad?.fornecedores || [], filtros.fornecedorId)} | Funcionário: ${nomeFiltro(cad?.funcionarios || [], filtros.funcionarioId)} | Setor: ${filtros.setor || "Todos"} | Tipo: ${filtros.tipo || "Todos"}`;
+  const tabelaHtml = dados
+    .map(
+      x =>
+        `<tr><td>${x.nome}</td><td>${x.quantidade}</td><td>${x.total.toFixed(2)}</td></tr>`
+    )
+    .join("");
+  const exportar = () => {
+    const html = `<meta charset="utf-8"><h2>${config.titulo}</h2><p>${resumoFiltros}</p><table><tr><th>${config.rotulo}</th><th>Quantidade</th><th>Total</th></tr>${tabelaHtml}<tr><th>Total geral</th><th>${totalQuantidade}</th><th>${totalValor.toFixed(2)}</th></tr></table>`;
+    const url = URL.createObjectURL(
+      new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" })
+    );
+    const a = document.createElement("a");
+    a.href = url;
     a.download = "relatorio-alimentacao.xls";
     a.click();
+    URL.revokeObjectURL(url);
   };
   const imprimir = () => {
     const w = window.open("", "_blank");
-    if (!w) return;
+    if (!w) {
+      toast.error("O navegador bloqueou a janela de impressão.");
+      return;
+    }
+    const max = Math.max(...dados.map(x => x[config.modo]), 1);
+    const barras = dados
+      .map(
+        x =>
+          `<div style="display:grid;grid-template-columns:220px 1fr 100px;gap:8px;margin:5px 0"><span>${x.nome}</span><div style="background:#e8eef4"><div style="width:${Math.max(1, (x[config.modo] / max) * 100)}%;height:16px;background:#e2a514"></div></div><b>${config.modo === "total" ? moeda(x.total) : x.quantidade}</b></div>`
+      )
+      .join("");
     w.document.write(
-      `<meta charset="utf-8"><title>Relatório de Alimentação</title><h1>Relatório de Alimentação</h1><p>Total: ${moeda(total)}</p><pre>${rows.map((x: any) => `${x.dataRefeicao} | ${x.funcionario} | ${x.fornecedor} | ${x.quantidade} | ${moeda(x.valorTotal)}`).join("\n")}</pre>`
+      `<meta charset="utf-8"><title>${config.titulo}</title><style>body{font:12px Arial;color:#08233e;padding:24px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #9db3c8;padding:7px;text-align:left}th{background:#dce9f4}</style><h1>${config.titulo}</h1><p>${resumoFiltros}</p><h3>Total: ${moeda(totalValor)} | Alimentações: ${totalQuantidade}</h3><section>${barras}</section><table><tr><th>${config.rotulo}</th><th>Quantidade</th><th>Total</th></tr>${tabelaHtml}</table>`
     );
     w.document.close();
+    w.focus();
     w.print();
   };
   return (
-    <section className="food-content">
-      <div className="report-filters">
+    <section className="food-content report-page">
+      <form className="report-filters" onSubmit={aplicarFiltros}>
+        <label>
+          Tipo de relatório
+          <select
+            value={tipoRelatorio}
+            onChange={e => setTipoRelatorio(e.target.value)}
+          >
+            <option value="funcionario">Alimentações por funcionário</option>
+            <option value="fornecedor">Custo por fornecedor</option>
+            <option value="mensal">Custo mensal</option>
+            <option value="setor">Custo por setor</option>
+            <option value="tipo">Custo por tipo</option>
+          </select>
+        </label>
         <label>
           Início
           <input
             type="date"
-            value={filtros.inicio}
-            onChange={e => setFiltros({ ...filtros, inicio: e.target.value })}
+            value={rascunho.inicio || ""}
+            onChange={e => setRascunho({ ...rascunho, inicio: e.target.value })}
           />
         </label>
         <label>
           Fim
           <input
             type="date"
-            value={filtros.fim}
-            onChange={e => setFiltros({ ...filtros, fim: e.target.value })}
+            value={rascunho.fim || ""}
+            onChange={e => setRascunho({ ...rascunho, fim: e.target.value })}
           />
         </label>
         <label>
           Fornecedor
           <select
+            value={rascunho.fornecedorId || ""}
             onChange={e =>
-              setFiltros({
-                ...filtros,
+              setRascunho({
+                ...rascunho,
                 fornecedorId: Number(e.target.value) || undefined,
               })
             }
           >
             <option value="">Todos</option>
             {(cad?.fornecedores || []).map((x: any) => (
-              <option value={x.id}>{x.nome}</option>
+              <option key={x.id} value={x.id}>
+                {x.nome}
+              </option>
             ))}
           </select>
         </label>
         <label>
           Funcionário
           <select
+            value={rascunho.funcionarioId || ""}
             onChange={e =>
-              setFiltros({
-                ...filtros,
+              setRascunho({
+                ...rascunho,
                 funcionarioId: Number(e.target.value) || undefined,
               })
             }
           >
             <option value="">Todos</option>
             {(cad?.funcionarios || []).map((x: any) => (
-              <option value={x.id}>{x.nome}</option>
+              <option key={x.id} value={x.id}>
+                {x.nome}
+              </option>
             ))}
           </select>
         </label>
         <label>
           Setor
-          <input
+          <select
+            value={rascunho.setor || ""}
             onChange={e =>
-              setFiltros({ ...filtros, setor: e.target.value || undefined })
+              setRascunho({ ...rascunho, setor: e.target.value || undefined })
             }
-          />
+          >
+            <option value="">Todos</option>
+            {Array.from(
+              new Set(
+                (cad?.funcionarios || []).map((x: any) => String(x.setor))
+              )
+            )
+              .sort()
+              .map((setor: any) => (
+                <option key={setor} value={setor}>
+                  {setor}
+                </option>
+              ))}
+          </select>
         </label>
         <label>
           Tipo
           <select
+            value={rascunho.tipo || ""}
             onChange={e =>
-              setFiltros({ ...filtros, tipo: e.target.value || undefined })
+              setRascunho({ ...rascunho, tipo: e.target.value || undefined })
             }
           >
             <option value="">Todos</option>
@@ -696,45 +836,105 @@ function Relatorios({ cad, rows, filtros, setFiltros }: any) {
             <option value="lanche">Lanche</option>
           </select>
         </label>
-        <button onClick={exportar}>
-          <Download /> Excel
-        </button>
-        <button onClick={imprimir}>
-          <Download /> PDF/Imprimir
-        </button>
+        <div className="report-actions">
+          <button className="primary" type="submit">
+            Gerar relatório
+          </button>
+          <button type="button" onClick={exportar}>
+            <Download /> Excel
+          </button>
+          <button type="button" onClick={imprimir}>
+            <Download /> PDF/Imprimir
+          </button>
+        </div>
+      </form>
+      <div className="report-metrics">
+        <article>
+          <small>Total de alimentações</small>
+          <strong>{totalQuantidade.toLocaleString("pt-BR")}</strong>
+        </article>
+        <article>
+          <small>Valor total</small>
+          <strong>{moeda(totalValor)}</strong>
+        </article>
+        <article>
+          <small>{config.rotulo}s listados</small>
+          <strong>{dados.length}</strong>
+        </article>
       </div>
-      <div className="report-summary">
-        <b>{rows.length} item(ns)</b>
-        <b>Total: {moeda(total)}</b>
-      </div>
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Funcionário</th>
-              <th>Setor</th>
-              <th>Fornecedor</th>
-              <th>Tipo</th>
-              <th>Qtd.</th>
-              <th>Valor</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((x: any) => (
+      <section className="report-chart">
+        <h2>{config.titulo}</h2>
+        <p>{resumoFiltros}</p>
+        <div className="chart-scroll">
+          <div
+            style={{ minWidth: Math.max(760, dados.length * 58), height: 360 }}
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={dados}
+                margin={{ top: 20, right: 20, left: 20, bottom: 90 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="nome"
+                  angle={-45}
+                  textAnchor="end"
+                  interval={0}
+                  height={90}
+                />
+                <YAxis
+                  tickFormatter={value =>
+                    config.modo === "total"
+                      ? `R$ ${Number(value).toLocaleString("pt-BR")}`
+                      : Number(value).toLocaleString("pt-BR")
+                  }
+                />
+                <Tooltip
+                  formatter={(value: any) =>
+                    config.modo === "total"
+                      ? moeda(value)
+                      : Number(value).toLocaleString("pt-BR")
+                  }
+                />
+                <Bar
+                  dataKey={config.modo}
+                  name={config.modo === "total" ? "Valor" : "Quantidade"}
+                  fill="#d99b00"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </section>
+      <section className="report-data">
+        <h2>Dados do relatório</h2>
+        <div className="table-wrap">
+          <table>
+            <thead>
               <tr>
-                <td>{x.dataRefeicao}</td>
-                <td>{x.funcionario}</td>
-                <td>{x.setor}</td>
-                <td>{x.fornecedor}</td>
-                <td>{x.tipo}</td>
-                <td>{x.quantidade}</td>
-                <td>{moeda(x.valorTotal)}</td>
+                <th>{config.rotulo}</th>
+                <th>Qtd.</th>
+                <th>Total</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {dados.length ? (
+                dados.map(x => (
+                  <tr key={x.nome}>
+                    <td>{x.nome}</td>
+                    <td>{x.quantidade.toLocaleString("pt-BR")}</td>
+                    <td>{moeda(x.total)}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={3}>Sem dados no período selecionado.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </section>
   );
 }
