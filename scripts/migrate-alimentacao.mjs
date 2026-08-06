@@ -1,5 +1,6 @@
 import "dotenv/config";
 import mysql from "mysql2/promise";
+import { aggregateLegacyMeals } from "./alimentacao-migration-utils.mjs";
 
 const apply = process.argv.includes("--apply");
 const sourceUrl = process.env.ALIMENTACAO_LEGACY_DATABASE_URL;
@@ -9,20 +10,7 @@ if (sourceUrl === targetUrl) throw new Error("Origem e destino não podem ser o 
 
 const source = await mysql.createConnection(sourceUrl);
 const target = await mysql.createConnection(targetUrl);
-const report = { modo: apply ? "APPLY" : "DRY-RUN", origem: {}, inconsistencias: [] };
-
-function toSqlDate(value) {
-  if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    const year = value.getFullYear();
-    const month = String(value.getMonth() + 1).padStart(2, "0");
-    const day = String(value.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }
-  const text = String(value ?? "").trim();
-  const iso = text.match(/^(\d{4}-\d{2}-\d{2})/);
-  if (iso) return iso[1];
-  throw new Error(`Data legada inválida: ${text || "vazia"}`);
-}
+const report = { modo: apply ? "APPLY" : "DRY-RUN", origem: {}, consolidacao: {}, inconsistencias: [] };
 
 try {
   const [[targetDatabase]] = await target.query("SELECT DATABASE() banco");
@@ -39,6 +27,9 @@ try {
   }
   const [orphans] = await source.query(`SELECT r.id FROM refeicoes r LEFT JOIN funcionarios f ON f.id=r.funcionario_id LEFT JOIN fornecedores x ON x.id=r.fornecedor_id WHERE f.id IS NULL OR x.id IS NULL`);
   if (orphans.length) report.inconsistencias.push({ tipo: "refeicoes_orfas", ids: orphans.map(r => r.id) });
+  const [refeicoes] = await source.query("SELECT * FROM refeicoes ORDER BY id");
+  const agregados = aggregateLegacyMeals(refeicoes);
+  report.consolidacao = { lancamentos: agregados.headers.length, itens: agregados.items.length, linhasRepetidasSomadas: agregados.consolidatedRows, quantidadeTotal: agregados.sourceQuantity };
   console.log(JSON.stringify(report, null, 2));
   if (!apply) { console.log("Dry-run concluído. Nenhum dado foi alterado. Use --apply após validar o relatório."); process.exitCode = report.inconsistencias.length ? 2 : 0; }
   else {
@@ -50,16 +41,25 @@ try {
     for (const r of forns) await target.execute(`INSERT INTO alimentacao_fornecedores(nome,valor_refeicao,ativo,origem_sistema,origem_id) VALUES(?,?,?,'legado_alimentacao',?) ON DUPLICATE KEY UPDATE nome=VALUES(nome),valor_refeicao=VALUES(valor_refeicao),ativo=VALUES(ativo)`, [r.nome,r.valor_refeicao,Boolean(r.ativo),String(r.id)]);
     const [custos] = await source.query("SELECT id,descricao,categoria,valor,data_custo FROM custos");
     for (const r of custos) await target.execute(`INSERT INTO alimentacao_custos_extras(descricao,categoria,valor,data_custo,criado_por,origem_sistema,origem_id) VALUES(?,?,?,?,'Migração','legado_alimentacao',?) ON DUPLICATE KEY UPDATE descricao=VALUES(descricao),categoria=VALUES(categoria),valor=VALUES(valor),data_custo=VALUES(data_custo)`, [r.descricao,r.categoria,r.valor,r.data_custo,String(r.id)]);
-    const [refeicoes] = await source.query("SELECT * FROM refeicoes ORDER BY id");
-    for (const r of refeicoes) {
-      const dataRefeicao = toSqlDate(r.data_refeicao);
-      const origemGrupo = r.numero_nota ? `nota:${r.fornecedor_id}:${dataRefeicao}:${r.numero_nota}` : `refeicao:${r.id}`;
-      const [[forn]] = await target.query("SELECT id FROM alimentacao_fornecedores WHERE origem_sistema='legado_alimentacao' AND origem_id=?", [String(r.fornecedor_id)]);
-      const [[func]] = await target.query("SELECT id FROM alimentacao_funcionarios WHERE origem_sistema='legado_alimentacao' AND origem_id=?", [String(r.funcionario_id)]);
-      await target.execute(`INSERT INTO alimentacao_lancamentos(fornecedor_id,numero_nota,tipo,data_refeicao,valor_extra,observacao,token_idempotencia,criado_por,atualizado_por,origem_sistema,origem_id) VALUES(?,?,?,?,?,?,?,'Migração','Migração','legado_alimentacao',?) ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id)`, [forn.id,r.numero_nota,r.tipo,dataRefeicao,r.valor_extra||0,r.observacao,`legacy-${origemGrupo}`,origemGrupo]);
-      const [[lanc]] = await target.query("SELECT id FROM alimentacao_lancamentos WHERE origem_sistema='legado_alimentacao' AND origem_id=?", [origemGrupo]);
-      await target.execute(`INSERT INTO alimentacao_lancamento_itens(lancamento_id,funcionario_id,quantidade,valor_unitario,valor_total,origem_sistema,origem_id) VALUES(?,?,?,?,?,'legado_alimentacao',?) ON DUPLICATE KEY UPDATE quantidade=VALUES(quantidade),valor_unitario=VALUES(valor_unitario),valor_total=VALUES(valor_total)`, [lanc.id,func.id,r.quantidade,r.valor_unitario,r.valor_total,String(r.id)]);
+    const [targetForns] = await target.query("SELECT id,origem_id FROM alimentacao_fornecedores WHERE origem_sistema='legado_alimentacao'");
+    const [targetFuncs] = await target.query("SELECT id,origem_id FROM alimentacao_funcionarios WHERE origem_sistema='legado_alimentacao'");
+    const fornecedorMap = new Map(targetForns.map(row => [String(row.origem_id), row.id]));
+    const funcionarioMap = new Map(targetFuncs.map(row => [String(row.origem_id), row.id]));
+    const lancamentoMap = new Map();
+    for (const header of agregados.headers) {
+      const fornecedorId = fornecedorMap.get(String(header.fornecedorId));
+      await target.execute(`INSERT INTO alimentacao_lancamentos(fornecedor_id,numero_nota,tipo,data_refeicao,valor_extra,observacao,token_idempotencia,criado_por,atualizado_por,origem_sistema,origem_id) VALUES(?,?,?,?,?,?,?,'Migração','Migração','legado_alimentacao',?) ON DUPLICATE KEY UPDATE fornecedor_id=VALUES(fornecedor_id),numero_nota=VALUES(numero_nota),tipo=VALUES(tipo),data_refeicao=VALUES(data_refeicao),valor_extra=VALUES(valor_extra),observacao=VALUES(observacao),atualizado_por='Migração'`, [fornecedorId,header.numeroNota,header.tipo,header.date,header.valorExtra,header.observacao,`legacy-${header.groupKey}`,header.groupKey]);
+      const [[lanc]] = await target.query("SELECT id FROM alimentacao_lancamentos WHERE origem_sistema='legado_alimentacao' AND origem_id=?", [header.groupKey]);
+      lancamentoMap.set(header.groupKey, lanc.id);
     }
+    for (const item of agregados.items) {
+      const lancamentoId = lancamentoMap.get(item.groupKey);
+      const funcionarioId = funcionarioMap.get(String(item.funcionarioId));
+      const valorUnitario = item.quantidade ? item.valorBase / item.quantidade : 0;
+      await target.execute(`INSERT INTO alimentacao_lancamento_itens(lancamento_id,funcionario_id,quantidade,valor_unitario,valor_total,origem_sistema,origem_id) VALUES(?,?,?,?,?,'legado_alimentacao',?) ON DUPLICATE KEY UPDATE quantidade=VALUES(quantidade),valor_unitario=VALUES(valor_unitario),valor_total=VALUES(valor_total),origem_id=VALUES(origem_id)`, [lancamentoId,funcionarioId,item.quantidade,valorUnitario,item.valorBase,item.origemId]);
+    }
+    const [[reconciliacao]] = await target.query("SELECT COALESCE(SUM(i.quantidade),0) quantidade FROM alimentacao_lancamento_itens i JOIN alimentacao_lancamentos l ON l.id=i.lancamento_id WHERE l.origem_sistema='legado_alimentacao' AND l.excluido_em IS NULL");
+    if (Number(reconciliacao.quantidade) !== agregados.sourceQuantity) throw new Error(`Reconciliação falhou: origem=${agregados.sourceQuantity}, destino=${reconciliacao.quantidade}`);
     await target.commit(); console.log("Migração aplicada com sucesso.");
   }
 } catch (error) { if (apply) await target.rollback().catch(()=>{}); throw error; }
