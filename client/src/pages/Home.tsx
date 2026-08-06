@@ -10,6 +10,7 @@ import {
   Menu,
   UserCircle,
   Warehouse,
+  Utensils,
 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -118,6 +119,12 @@ export default function Home({ view = "welcome" }: { view?: HomeView }) {
                 >
                   <FileText size={22} />
                   <span>Licitacoes</span>
+                </button>
+              )}
+              {!collapsed && (
+                <button type="button" className="home-menu-trigger" onClick={() => navigate("/alimentacao")} title="Controle de Alimentação">
+                  <Utensils size={22} />
+                  <span>Alimentação</span>
                 </button>
               )}
             </>

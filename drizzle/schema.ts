@@ -501,6 +501,46 @@ export const estoqueMovimentacoes = mysqlTable("estoque_movimentacoes", {
 export type EstoqueMovimentacao = typeof estoqueMovimentacoes.$inferSelect;
 export type InsertEstoqueMovimentacao = typeof estoqueMovimentacoes.$inferInsert;
 
+
+export const alimentacaoFuncionarios = mysqlTable("alimentacao_funcionarios", {
+  id: int("id").autoincrement().primaryKey(), nome: varchar("nome", { length: 180 }).notNull(),
+  setor: varchar("setor", { length: 120 }).notNull(), ativo: boolean("ativo").default(true).notNull(),
+  origemSistema: varchar("origem_sistema", { length: 40 }), origemId: varchar("origem_id", { length: 80 }),
+  criadoEm: timestamp("criado_em").defaultNow().notNull(), atualizadoEm: timestamp("atualizado_em").defaultNow().onUpdateNow().notNull(),
+}, t => ({ nomeIdx: index("alimentacao_func_nome_idx").on(t.nome), origemUq: uniqueIndex("alimentacao_func_origem_uq").on(t.origemSistema, t.origemId) }));
+
+export const alimentacaoFornecedores = mysqlTable("alimentacao_fornecedores", {
+  id: int("id").autoincrement().primaryKey(), nome: varchar("nome", { length: 180 }).notNull(),
+  valorRefeicao: decimal("valor_refeicao", { precision: 12, scale: 2 }).default("0").notNull(), ativo: boolean("ativo").default(true).notNull(),
+  origemSistema: varchar("origem_sistema", { length: 40 }), origemId: varchar("origem_id", { length: 80 }),
+  criadoEm: timestamp("criado_em").defaultNow().notNull(), atualizadoEm: timestamp("atualizado_em").defaultNow().onUpdateNow().notNull(),
+}, t => ({ nomeIdx: index("alimentacao_forn_nome_idx").on(t.nome), origemUq: uniqueIndex("alimentacao_forn_origem_uq").on(t.origemSistema, t.origemId) }));
+
+export const alimentacaoLancamentos = mysqlTable("alimentacao_lancamentos", {
+  id: int("id").autoincrement().primaryKey(), fornecedorId: int("fornecedor_id").notNull(), numeroNota: varchar("numero_nota", { length: 80 }),
+  tipo: varchar("tipo", { length: 30 }).notNull(), dataRefeicao: date("data_refeicao", { mode: "string" }).notNull(),
+  valorExtra: decimal("valor_extra", { precision: 12, scale: 2 }).default("0").notNull(), observacao: text("observacao"),
+  tokenIdempotencia: varchar("token_idempotencia", { length: 80 }).notNull(), criadoPor: varchar("criado_por", { length: 120 }).notNull(),
+  atualizadoPor: varchar("atualizado_por", { length: 120 }).notNull(), excluidoEm: timestamp("excluido_em"), excluidoPor: varchar("excluido_por", { length: 120 }),
+  motivoExclusao: varchar("motivo_exclusao", { length: 500 }), origemSistema: varchar("origem_sistema", { length: 40 }), origemId: varchar("origem_id", { length: 120 }),
+  criadoEm: timestamp("criado_em").defaultNow().notNull(), atualizadoEm: timestamp("atualizado_em").defaultNow().onUpdateNow().notNull(),
+}, t => ({ tokenUq: uniqueIndex("alimentacao_lanc_token_uq").on(t.tokenIdempotencia), dataIdx: index("alimentacao_lanc_data_idx").on(t.dataRefeicao) }));
+
+export const alimentacaoLancamentoItens = mysqlTable("alimentacao_lancamento_itens", {
+  id: int("id").autoincrement().primaryKey(), lancamentoId: int("lancamento_id").notNull(), funcionarioId: int("funcionario_id").notNull(),
+  quantidade: int("quantidade").notNull(), valorUnitario: decimal("valor_unitario", { precision: 12, scale: 2 }).notNull(),
+  valorTotal: decimal("valor_total", { precision: 14, scale: 2 }).notNull(), origemSistema: varchar("origem_sistema", { length: 40 }), origemId: varchar("origem_id", { length: 80 }),
+  criadoEm: timestamp("criado_em").defaultNow().notNull(), atualizadoEm: timestamp("atualizado_em").defaultNow().onUpdateNow().notNull(),
+}, t => ({ lancFuncUq: uniqueIndex("alimentacao_item_func_uq").on(t.lancamentoId, t.funcionarioId), funcIdx: index("alimentacao_item_func_idx").on(t.funcionarioId) }));
+
+export const alimentacaoCustosExtras = mysqlTable("alimentacao_custos_extras", {
+  id: int("id").autoincrement().primaryKey(), descricao: varchar("descricao", { length: 220 }).notNull(), categoria: varchar("categoria", { length: 100 }).notNull(),
+  valor: decimal("valor", { precision: 12, scale: 2 }).notNull(), dataCusto: date("data_custo", { mode: "string" }).notNull(), criadoPor: varchar("criado_por", { length: 120 }).notNull(),
+  excluidoEm: timestamp("excluido_em"), excluidoPor: varchar("excluido_por", { length: 120 }), motivoExclusao: varchar("motivo_exclusao", { length: 500 }),
+  origemSistema: varchar("origem_sistema", { length: 40 }), origemId: varchar("origem_id", { length: 80 }),
+  criadoEm: timestamp("criado_em").defaultNow().notNull(), atualizadoEm: timestamp("atualizado_em").defaultNow().onUpdateNow().notNull(),
+}, t => ({ dataIdx: index("alimentacao_custo_data_idx").on(t.dataCusto) }));
+
 // Relations
 export const pedidosRelations = relations(pedidos, ({ many }) => ({
   historico: many(historico),

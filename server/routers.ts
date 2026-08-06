@@ -6,6 +6,8 @@ import { z } from "zod";
 import * as db from "./db";
 import * as crtiSync from "./crti-sync";
 import * as csvImport from "./csv-import";
+import * as alimentacao from "./alimentacao";
+import { TIPOS_REFEICAO } from "./alimentacao-rules";
 import { TRPCError } from "@trpc/server";
 import { ONE_YEAR_MS } from "@shared/const";
 import { ENV } from "./_core/env";
@@ -65,6 +67,14 @@ const costAccessProcedure = protectedProcedure.use(async ({ ctx, next }) => {
     throw new TRPCError({ code: "FORBIDDEN", message: "Usuario sem permissao para acessar este painel." });
   }
   return next({ ctx });
+});
+
+const alimentacaoAccessProcedure = costAccessProcedure;
+const dataIsoSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida");
+const alimentacaoFiltrosSchema = z.object({
+  inicio: dataIsoSchema.optional(), fim: dataIsoSchema.optional(),
+  fornecedorId: z.number().int().positive().optional(), funcionarioId: z.number().int().positive().optional(),
+  setor: z.string().max(120).optional(), tipo: z.enum(TIPOS_REFEICAO).optional(),
 });
 
 function triggerCostPanelLoginAutomation(username: string) {
@@ -761,6 +771,19 @@ export const appRouter = router({
         .input(z.object({ id: z.number().int().positive(), licitacaoId: z.number().int().positive() }))
         .mutation(({ input }) => db.deleteLicitacaoPedidoCrti(input.id, input.licitacaoId)),
     }),
+  }),
+
+  alimentacao: router({
+    cadastros: alimentacaoAccessProcedure.query(() => alimentacao.cadastros()),
+    painel: alimentacaoAccessProcedure.query(() => alimentacao.painel()),
+    relatorio: alimentacaoAccessProcedure.input(alimentacaoFiltrosSchema.optional()).query(({ input }) => alimentacao.relatorio(input)),
+    salvarFuncionario: alimentacaoAccessProcedure.input(z.object({ id:z.number().int().positive().optional(),nome:z.string().trim().min(2).max(180),setor:z.string().trim().min(2).max(120),ativo:z.boolean() })).mutation(({input})=>alimentacao.salvarFuncionario(input)),
+    salvarFornecedor: alimentacaoAccessProcedure.input(z.object({ id:z.number().int().positive().optional(),nome:z.string().trim().min(2).max(180),valorRefeicao:z.number().nonnegative().max(9999999999),ativo:z.boolean() })).mutation(({input})=>alimentacao.salvarFornecedor(input)),
+    criarCusto: alimentacaoAccessProcedure.input(z.object({ descricao:z.string().trim().min(2).max(220),categoria:z.string().trim().min(2).max(100),valor:z.number().positive(),dataCusto:dataIsoSchema })).mutation(({input,ctx})=>alimentacao.criarCusto(input,ctx.user.name||"Sistema")),
+    criarLancamento: alimentacaoAccessProcedure.input(z.object({ fornecedorId:z.number().int().positive(),numeroNota:z.string().trim().max(80).optional(),tipo:z.enum(TIPOS_REFEICAO),dataRefeicao:dataIsoSchema,valorExtra:z.number().nonnegative(),observacao:z.string().max(5000).optional(),token:z.string().uuid(),itens:z.array(z.object({funcionarioId:z.number().int().positive(),quantidade:z.number().int().positive(),valorUnitario:z.number().nonnegative()})).min(1).max(100) })).mutation(({input,ctx})=>alimentacao.criarLancamento(input,ctx.user.name||"Sistema")),
+    obterLancamento: alimentacaoAccessProcedure.input(z.object({id:z.number().int().positive()})).query(({input})=>alimentacao.obterLancamento(input.id)),
+    atualizarLancamento: alimentacaoAccessProcedure.input(z.object({id:z.number().int().positive(),data:z.object({fornecedorId:z.number().int().positive(),numeroNota:z.string().trim().max(80).optional(),tipo:z.enum(TIPOS_REFEICAO),dataRefeicao:dataIsoSchema,valorExtra:z.number().nonnegative(),observacao:z.string().max(5000).optional(),itens:z.array(z.object({funcionarioId:z.number().int().positive(),quantidade:z.number().int().positive(),valorUnitario:z.number().nonnegative()})).min(1).max(100)})})).mutation(({input,ctx})=>alimentacao.atualizarLancamento(input.id,input.data,ctx.user.name||"Sistema")),
+    excluirLancamento: alimentacaoAccessProcedure.input(z.object({id:z.number().int().positive(),motivo:z.string().trim().min(3).max(500)})).mutation(({input,ctx})=>alimentacao.excluirLancamento(input.id,input.motivo,ctx.user.name||"Sistema")),
   }),
 
   // INDICADORES

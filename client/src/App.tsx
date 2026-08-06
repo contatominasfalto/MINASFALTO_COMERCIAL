@@ -7,6 +7,7 @@ import StockPage from "@/pages/Stock";
 import Login from "@/pages/Login";
 import CustoObras from "@/pages/CustoObras";
 import Licitacoes from "@/pages/Licitacoes";
+import Alimentacao from "@/pages/Alimentacao";
 import { Route, Router as WouterRouter, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -100,6 +101,9 @@ function Router() {
       <Route path={"/custo-obras"} component={CustoObras} />
       <Route path={"/licitacoes"}>
         {canAccessCosts ? <Licitacoes /> : <Home />}
+      </Route>
+      <Route path={"/alimentacao"}>
+        {canAccessCosts ? <Alimentacao /> : <Home />}
       </Route>
       <Route path={"/estoque"}>
         <StockProvider>

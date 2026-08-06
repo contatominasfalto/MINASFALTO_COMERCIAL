@@ -106,6 +106,13 @@ export async function getDb() {
   return _db;
 }
 
+/** Pool compartilhado para módulos que precisam de transações SQL explícitas. */
+export async function getMysqlPool() {
+  await getDb();
+  if (!_pool) throw new Error("Banco de dados não configurado.");
+  return _pool;
+}
+
 function shouldUseDemoData() {
   const hasLocalLogin =
     Boolean(process.env.LOCAL_LOGIN_ADMFULL) ||
