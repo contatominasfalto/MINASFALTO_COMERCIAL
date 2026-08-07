@@ -299,7 +299,7 @@ export async function buildAlimentacaoPdf(
     const signatureWidth = assinatura.width * signatureScale;
     const signatureHeight = assinatura.height * signatureScale;
     const signatureX = (PDF_PAGE_WIDTH - signatureWidth) / 2;
-    const signatureY = 155;
+    const signatureY = 146;
     content += `q ${signatureWidth.toFixed(2)} 0 0 ${signatureHeight.toFixed(2)} ${signatureX.toFixed(2)} ${signatureY} cm /SIG Do Q\n0 0 0 RG 190 147 m 405 147 l S\n`;
     content += drawCenteredText("Maxwell Viana", 133, 8, false, "0 0 0");
     content += drawCenteredText(
