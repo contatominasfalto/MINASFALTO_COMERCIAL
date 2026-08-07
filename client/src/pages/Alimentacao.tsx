@@ -610,6 +610,7 @@ function Cadastros({ data, concluir }: any) {
 function Relatorios({ cad, rows, filtros, setFiltros }: any) {
   const [rascunho, setRascunho] = useState<any>({ ...filtros });
   const [tipoRelatorio, setTipoRelatorio] = useState("funcionario");
+  const pdf = trpc.alimentacao.exportarPdf.useMutation();
   const configuracoes: Record<
     string,
     {
@@ -710,24 +711,44 @@ function Relatorios({ cad, rows, filtros, setFiltros }: any) {
     URL.revokeObjectURL(url);
   };
   const imprimir = () => {
-    const w = window.open("", "_blank");
-    if (!w) {
-      toast.error("O navegador bloqueou a janela de impressão.");
-      return;
-    }
-    const max = Math.max(...dados.map(x => x[config.modo]), 1);
-    const barras = dados
-      .map(
-        x =>
-          `<div style="display:grid;grid-template-columns:220px 1fr 100px;gap:8px;margin:5px 0"><span>${x.nome}</span><div style="background:#e8eef4"><div style="width:${Math.max(1, (x[config.modo] / max) * 100)}%;height:16px;background:#e2a514"></div></div><b>${config.modo === "total" ? moeda(x.total) : x.quantidade}</b></div>`
-      )
-      .join("");
-    w.document.write(
-      `<meta charset="utf-8"><title>${config.titulo}</title><style>body{font:12px Arial;color:#08233e;padding:24px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #9db3c8;padding:7px;text-align:left}th{background:#dce9f4}</style><h1>${config.titulo}</h1><p>${resumoFiltros}</p><h3>Total: ${moeda(totalValor)} | Alimentações: ${totalQuantidade}</h3><section>${barras}</section><table><tr><th>${config.rotulo}</th><th>Quantidade</th><th>Total</th></tr>${tabelaHtml}</table>`
+    const preview = window.open("", "_blank");
+    pdf.mutate(
+      {
+        filtros: Object.fromEntries(
+          Object.entries(filtros).filter(
+            ([, value]) => value !== "" && value !== undefined
+          )
+        ),
+        tipoRelatorio: tipoRelatorio as
+          | "funcionario"
+          | "fornecedor"
+          | "mensal"
+          | "setor"
+          | "tipo",
+      },
+      {
+        onSuccess: result => {
+          const bytes = Uint8Array.from(atob(result.base64), char =>
+            char.charCodeAt(0)
+          );
+          const url = URL.createObjectURL(
+            new Blob([bytes], { type: "application/pdf" })
+          );
+          if (preview) preview.location.href = url;
+          else {
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = result.filename;
+            link.click();
+          }
+          window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        },
+        onError: error => {
+          preview?.close();
+          toast.error(`Erro ao gerar PDF: ${error.message}`);
+        },
+      }
     );
-    w.document.close();
-    w.focus();
-    w.print();
   };
   return (
     <section className="food-content report-page">
@@ -843,8 +864,8 @@ function Relatorios({ cad, rows, filtros, setFiltros }: any) {
           <button type="button" onClick={exportar}>
             <Download /> Excel
           </button>
-          <button type="button" onClick={imprimir}>
-            <Download /> PDF/Imprimir
+          <button type="button" onClick={imprimir} disabled={pdf.isPending}>
+            <Download /> {pdf.isPending ? "Gerando PDF..." : "PDF/Imprimir"}
           </button>
         </div>
       </form>

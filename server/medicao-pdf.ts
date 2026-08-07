@@ -4,19 +4,21 @@ import path from "path";
 import * as db from "./db";
 import { getAppBasePath } from "./_core/basePath";
 
-type PdfImage = {
+export type PdfImage = {
   data: Buffer;
   width: number;
   height: number;
 };
 
-const PAGE_WIDTH = 595.28;
-const PAGE_HEIGHT = 841.89;
+export const PDF_PAGE_WIDTH = 595.28;
+const PAGE_WIDTH = PDF_PAGE_WIDTH;
+export const PDF_PAGE_HEIGHT = 841.89;
+const PAGE_HEIGHT = PDF_PAGE_HEIGHT;
 const TIMBRADO_MARGIN = 18;
 const TIMBRADO_VERTICAL_OFFSET = -12;
 const CONTENT_BOTTOM_Y = 150;
 
-const money = (value: unknown) => {
+export const money = (value: unknown) => {
   const amount = Number(value) || 0;
   const formatted = Math.abs(amount).toLocaleString("pt-BR", {
     minimumFractionDigits: 2,
@@ -25,7 +27,7 @@ const money = (value: unknown) => {
   return `${amount < 0 ? "-" : ""}R$ ${formatted}`;
 };
 
-const dateBR = (value: unknown) => {
+export const dateBR = (value: unknown) => {
   const text = String(value ?? "").trim();
   if (!text) return "";
   const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -34,7 +36,7 @@ const dateBR = (value: unknown) => {
   return Number.isNaN(date.getTime()) ? text : date.toLocaleDateString("pt-BR");
 };
 
-const dateTimeBR = (value: Date) =>
+export const dateTimeBR = (value: Date) =>
   value.toLocaleString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
@@ -87,12 +89,12 @@ function readJpegSize(data: Buffer) {
   return { width: 1, height: 1 };
 }
 
-async function loadJpeg(relativePath: string): Promise<PdfImage> {
+export async function loadJpeg(relativePath: string): Promise<PdfImage> {
   const data = await readFile(path.resolve(process.cwd(), relativePath));
   return { data, ...readJpegSize(data) };
 }
 
-function wrap(text: unknown, maxChars: number, maxLines = 2) {
+export function wrap(text: unknown, maxChars: number, maxLines = 2) {
   const words = String(text ?? "").split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let line = "";
@@ -109,7 +111,7 @@ function wrap(text: unknown, maxChars: number, maxLines = 2) {
   return (lines.length ? lines : [""]).slice(0, maxLines);
 }
 
-function createPdf(pages: string[], timbrado: PdfImage, assinatura: PdfImage, logo: PdfImage) {
+export function createPdf(pages: string[], timbrado: PdfImage, assinatura: PdfImage, logo: PdfImage) {
   const chunks: Buffer[] = [];
   const offsets: number[] = [];
   let position = 0;
@@ -151,7 +153,7 @@ function createPdf(pages: string[], timbrado: PdfImage, assinatura: PdfImage, lo
   return Buffer.concat(chunks);
 }
 
-function drawText(text: unknown, x: number, y: number, size = 9, bold = false, color = "0 0 0") {
+export function drawText(text: unknown, x: number, y: number, size = 9, bold = false, color = "0 0 0") {
   return `BT /${bold ? "F2" : "F1"} ${size} Tf ${color} rg ${x} ${y} Td (${pdfText(text)}) Tj ET\n`;
 }
 
@@ -159,16 +161,16 @@ function estimateTextWidth(text: unknown, size: number, bold = false) {
   return String(text ?? "").length * size * (bold ? 0.58 : 0.52);
 }
 
-function drawCenteredText(text: unknown, y: number, size = 9, bold = false, color = "0 0 0", centerX = 297.64) {
+export function drawCenteredText(text: unknown, y: number, size = 9, bold = false, color = "0 0 0", centerX = 297.64) {
   const x = Math.max(50, centerX - estimateTextWidth(text, size, bold) / 2);
   return drawText(text, x, y, size, bold, color);
 }
 
-function drawRect(x: number, y: number, w: number, h: number, fill = "1 1 1", stroke = "0.65 0.72 0.80") {
+export function drawRect(x: number, y: number, w: number, h: number, fill = "1 1 1", stroke = "0.65 0.72 0.80") {
   return `${fill} rg ${stroke} RG ${x} ${y} ${w} ${h} re B\n`;
 }
 
-function drawPageBackground(image: PdfImage) {
+export function drawPageBackground(image: PdfImage) {
   const availableWidth = PAGE_WIDTH - TIMBRADO_MARGIN * 2;
   const availableHeight = PAGE_HEIGHT - TIMBRADO_MARGIN * 2;
   const scale = Math.min(availableWidth / image.width, availableHeight / image.height);

@@ -8,6 +8,7 @@ import * as crtiSync from "./crti-sync";
 import * as csvImport from "./csv-import";
 import * as alimentacao from "./alimentacao";
 import { TIPOS_REFEICAO } from "./alimentacao-rules";
+import { buildAlimentacaoPdf } from "./alimentacao-pdf";
 import { TRPCError } from "@trpc/server";
 import { ONE_YEAR_MS } from "@shared/const";
 import { ENV } from "./_core/env";
@@ -777,6 +778,10 @@ export const appRouter = router({
     cadastros: alimentacaoAccessProcedure.query(() => alimentacao.cadastros()),
     painel: alimentacaoAccessProcedure.query(() => alimentacao.painel()),
     relatorio: alimentacaoAccessProcedure.input(alimentacaoFiltrosSchema.optional()).query(({ input }) => alimentacao.relatorio(input)),
+    exportarPdf: alimentacaoAccessProcedure.input(z.object({ filtros: alimentacaoFiltrosSchema, tipoRelatorio: z.enum(["funcionario", "fornecedor", "mensal", "setor", "tipo"]) })).mutation(async ({ input }) => {
+      const pdf = await buildAlimentacaoPdf(input.filtros, input.tipoRelatorio);
+      return { filename: pdf.filename, base64: pdf.buffer.toString("base64") };
+    }),
     salvarFuncionario: alimentacaoAccessProcedure.input(z.object({ id:z.number().int().positive().optional(),nome:z.string().trim().min(2).max(180),setor:z.string().trim().min(2).max(120),ativo:z.boolean() })).mutation(({input})=>alimentacao.salvarFuncionario(input)),
     salvarFornecedor: alimentacaoAccessProcedure.input(z.object({ id:z.number().int().positive().optional(),nome:z.string().trim().min(2).max(180),valorRefeicao:z.number().nonnegative().max(9999999999),ativo:z.boolean() })).mutation(({input})=>alimentacao.salvarFornecedor(input)),
     criarCusto: alimentacaoAccessProcedure.input(z.object({ descricao:z.string().trim().min(2).max(220),categoria:z.string().trim().min(2).max(100),valor:z.number().positive(),dataCusto:dataIsoSchema })).mutation(({input,ctx})=>alimentacao.criarCusto(input,ctx.user.name||"Sistema")),
