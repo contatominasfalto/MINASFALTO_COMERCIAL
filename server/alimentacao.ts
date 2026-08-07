@@ -76,6 +76,26 @@ export async function salvarFuncionario(data: {
     );
   return { ok: true };
 }
+
+export async function excluirFuncionario(id: number) {
+  const pool = await getMysqlPool();
+  const [vinculos] = await pool.query<mysql.RowDataPacket[]>(
+    "SELECT COUNT(*) total FROM alimentacao_lancamento_itens WHERE funcionario_id=?",
+    [id]
+  );
+  if (Number(vinculos[0]?.total || 0) > 0) {
+    throw new Error(
+      "Funcionário possui lançamentos vinculados. Inative o cadastro para preservar o histórico."
+    );
+  }
+  const [result] = await pool.execute<mysql.ResultSetHeader>(
+    "DELETE FROM alimentacao_funcionarios WHERE id=?",
+    [id]
+  );
+  if (!result.affectedRows) throw new Error("Funcionário não encontrado.");
+  return { ok: true };
+}
+
 export async function salvarFornecedor(data: {
   id?: number;
   nome: string;
@@ -95,8 +115,29 @@ export async function salvarFornecedor(data: {
     );
   return { ok: true };
 }
-export async function criarCusto(
+
+export async function excluirFornecedor(id: number) {
+  const pool = await getMysqlPool();
+  const [vinculos] = await pool.query<mysql.RowDataPacket[]>(
+    "SELECT COUNT(*) total FROM alimentacao_lancamentos WHERE fornecedor_id=?",
+    [id]
+  );
+  if (Number(vinculos[0]?.total || 0) > 0) {
+    throw new Error(
+      "Fornecedor possui lançamentos vinculados. Inative o cadastro para preservar o histórico."
+    );
+  }
+  const [result] = await pool.execute<mysql.ResultSetHeader>(
+    "DELETE FROM alimentacao_fornecedores WHERE id=?",
+    [id]
+  );
+  if (!result.affectedRows) throw new Error("Fornecedor não encontrado.");
+  return { ok: true };
+}
+
+export async function salvarCusto(
   data: {
+    id?: number;
     descricao: string;
     categoria: string;
     valor: number;
@@ -105,16 +146,44 @@ export async function criarCusto(
   usuario: string
 ) {
   const pool = await getMysqlPool();
-  await pool.execute(
-    "INSERT INTO alimentacao_custos_extras(descricao,categoria,valor,data_custo,criado_por) VALUES(?,?,?,?,?)",
-    [
-      data.descricao.trim(),
-      data.categoria.trim(),
-      dinheiro(data.valor),
-      data.dataCusto,
-      usuario,
-    ]
+  if (data.id) {
+    const [result] = await pool.execute<mysql.ResultSetHeader>(
+      "UPDATE alimentacao_custos_extras SET descricao=?,categoria=?,valor=?,data_custo=? WHERE id=? AND excluido_em IS NULL",
+      [
+        data.descricao.trim(),
+        data.categoria.trim(),
+        dinheiro(data.valor),
+        data.dataCusto,
+        data.id,
+      ]
+    );
+    if (!result.affectedRows) throw new Error("Custo extra não encontrado.");
+  } else {
+    await pool.execute(
+      "INSERT INTO alimentacao_custos_extras(descricao,categoria,valor,data_custo,criado_por) VALUES(?,?,?,?,?)",
+      [
+        data.descricao.trim(),
+        data.categoria.trim(),
+        dinheiro(data.valor),
+        data.dataCusto,
+        usuario,
+      ]
+    );
+  }
+  return { ok: true };
+}
+
+export async function excluirCusto(
+  id: number,
+  motivo: string,
+  usuario: string
+) {
+  const pool = await getMysqlPool();
+  const [result] = await pool.execute<mysql.ResultSetHeader>(
+    "UPDATE alimentacao_custos_extras SET excluido_em=NOW(),excluido_por=?,motivo_exclusao=? WHERE id=? AND excluido_em IS NULL",
+    [usuario, motivo, id]
   );
+  if (!result.affectedRows) throw new Error("Custo extra não encontrado.");
   return { ok: true };
 }
 

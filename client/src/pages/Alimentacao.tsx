@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import SapDoubleConfirmDialog from "@/components/SapDoubleConfirmDialog";
 import {
   ArrowLeft,
   BarChart3,
@@ -10,6 +11,7 @@ import {
   Save,
   Trash2,
   Utensils,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -631,6 +633,14 @@ function Lancamentos({ cad, concluir }: any) {
 }
 
 function Cadastros({ data, concluir }: any) {
+  const funcionarioVazio = { nome: "", setor: "", ativo: true };
+  const fornecedorVazio = { nome: "", valorRefeicao: 0, ativo: true };
+  const custoVazio = {
+    descricao: "",
+    categoria: "Operacional",
+    valor: 0,
+    dataCusto: hoje(),
+  };
   const [fn, setFn] = useState<any>({ nome: "", setor: "", ativo: true });
   const [fo, setFo] = useState<any>({
     nome: "",
@@ -643,26 +653,54 @@ function Cadastros({ data, concluir }: any) {
     valor: 0,
     dataCusto: hoje(),
   });
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const mf = trpc.alimentacao.salvarFuncionario.useMutation({
     onSuccess: async () => {
-      setFn({ nome: "", setor: "", ativo: true });
+      setFn(funcionarioVazio);
       await concluir();
       toast.success("Funcionário salvo.");
     },
+    onError: error => toast.error(error.message),
   });
   const mo = trpc.alimentacao.salvarFornecedor.useMutation({
     onSuccess: async () => {
-      setFo({ nome: "", valorRefeicao: 0, ativo: true });
+      setFo(fornecedorVazio);
       await concluir();
       toast.success("Fornecedor salvo.");
     },
+    onError: error => toast.error(error.message),
   });
-  const mc = trpc.alimentacao.criarCusto.useMutation({
+  const mc = trpc.alimentacao.salvarCusto.useMutation({
     onSuccess: async () => {
-      setCu({ ...cu, descricao: "", valor: 0 });
+      setCu(custoVazio);
       await concluir();
       toast.success("Custo salvo.");
     },
+    onError: error => toast.error(error.message),
+  });
+  const excluirFuncionario = trpc.alimentacao.excluirFuncionario.useMutation({
+    onSuccess: async () => {
+      setDeleteTarget(null);
+      await concluir();
+      toast.success("Funcionário excluído.");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const excluirFornecedor = trpc.alimentacao.excluirFornecedor.useMutation({
+    onSuccess: async () => {
+      setDeleteTarget(null);
+      await concluir();
+      toast.success("Fornecedor excluído.");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const excluirCusto = trpc.alimentacao.excluirCusto.useMutation({
+    onSuccess: async () => {
+      setDeleteTarget(null);
+      await concluir();
+      toast.success("Custo extra excluído.");
+    },
+    onError: error => toast.error(error.message),
   });
   return (
     <section className="food-content">
@@ -683,18 +721,59 @@ function Cadastros({ data, concluir }: any) {
               onChange={e => setFn({ ...fn, setor: e.target.value })}
             />
           </label>
-          <button className="primary" onClick={() => mf.mutate(fn)}>
-            Salvar
-          </button>
+          <label className="cad-active-field">
+            <input
+              type="checkbox"
+              checked={fn.ativo}
+              onChange={e => setFn({ ...fn, ativo: e.target.checked })}
+            />
+            Cadastro ativo
+          </label>
+          <div className="cad-form-actions">
+            {fn.id && (
+              <button type="button" onClick={() => setFn(funcionarioVazio)}>
+                <X /> Cancelar
+              </button>
+            )}
+            <button
+              type="button"
+              className="primary"
+              disabled={mf.isPending}
+              onClick={() => mf.mutate(fn)}
+            >
+              <Save /> {fn.id ? "Atualizar" : "Salvar"}
+            </button>
+          </div>
           {(data?.funcionarios || []).map((x: any) => (
-            <div className="rank">
+            <div className="rank" key={x.id}>
               <span>
                 {x.nome}
-                <small>{x.setor}</small>
+                <small>
+                  {x.setor} · {x.ativo ? "Ativo" : "Inativo"}
+                </small>
               </span>
-              <button onClick={() => mf.mutate({ ...x, ativo: !x.ativo })}>
-                {x.ativo ? "Inativar" : "Ativar"}
-              </button>
+              <span className="cad-row-actions">
+                <button
+                  type="button"
+                  className="cad-action-button"
+                  title="Editar funcionário"
+                  aria-label="Editar funcionário"
+                  onClick={() => setFn({ ...x, ativo: Boolean(x.ativo) })}
+                >
+                  <Pencil />
+                </button>
+                <button
+                  type="button"
+                  className="cad-action-button danger"
+                  title="Excluir funcionário"
+                  aria-label="Excluir funcionário"
+                  onClick={() =>
+                    setDeleteTarget({ tipo: "funcionario", item: x })
+                  }
+                >
+                  <Trash2 />
+                </button>
+              </span>
             </div>
           ))}
         </article>
@@ -718,26 +797,65 @@ function Cadastros({ data, concluir }: any) {
               }
             />
           </label>
-          <button className="primary" onClick={() => mo.mutate(fo)}>
-            Salvar
-          </button>
+          <label className="cad-active-field">
+            <input
+              type="checkbox"
+              checked={fo.ativo}
+              onChange={e => setFo({ ...fo, ativo: e.target.checked })}
+            />
+            Cadastro ativo
+          </label>
+          <div className="cad-form-actions">
+            {fo.id && (
+              <button type="button" onClick={() => setFo(fornecedorVazio)}>
+                <X /> Cancelar
+              </button>
+            )}
+            <button
+              type="button"
+              className="primary"
+              disabled={mo.isPending}
+              onClick={() => mo.mutate(fo)}
+            >
+              <Save /> {fo.id ? "Atualizar" : "Salvar"}
+            </button>
+          </div>
           {(data?.fornecedores || []).map((x: any) => (
-            <div className="rank">
+            <div className="rank" key={x.id}>
               <span>
                 {x.nome}
-                <small>{moeda(x.valorRefeicao)}</small>
+                <small>
+                  {moeda(x.valorRefeicao)} · {x.ativo ? "Ativo" : "Inativo"}
+                </small>
               </span>
-              <button
-                onClick={() =>
-                  mo.mutate({
-                    ...x,
-                    valorRefeicao: Number(x.valorRefeicao),
-                    ativo: !x.ativo,
-                  })
-                }
-              >
-                {x.ativo ? "Inativar" : "Ativar"}
-              </button>
+              <span className="cad-row-actions">
+                <button
+                  type="button"
+                  className="cad-action-button"
+                  title="Editar fornecedor"
+                  aria-label="Editar fornecedor"
+                  onClick={() =>
+                    setFo({
+                      ...x,
+                      valorRefeicao: Number(x.valorRefeicao),
+                      ativo: Boolean(x.ativo),
+                    })
+                  }
+                >
+                  <Pencil />
+                </button>
+                <button
+                  type="button"
+                  className="cad-action-button danger"
+                  title="Excluir fornecedor"
+                  aria-label="Excluir fornecedor"
+                  onClick={() =>
+                    setDeleteTarget({ tipo: "fornecedor", item: x })
+                  }
+                >
+                  <Trash2 />
+                </button>
+              </span>
             </div>
           ))}
         </article>
@@ -776,20 +894,106 @@ function Cadastros({ data, concluir }: any) {
               />
             </label>
           </div>
-          <button className="primary" onClick={() => mc.mutate(cu)}>
-            Salvar
-          </button>
+          <div className="cad-form-actions">
+            {cu.id && (
+              <button type="button" onClick={() => setCu(custoVazio)}>
+                <X /> Cancelar
+              </button>
+            )}
+            <button
+              type="button"
+              className="primary"
+              disabled={mc.isPending}
+              onClick={() => mc.mutate(cu)}
+            >
+              <Save /> {cu.id ? "Atualizar" : "Salvar"}
+            </button>
+          </div>
           {(data?.custos || []).map((x: any) => (
-            <div className="rank">
+            <div className="rank" key={x.id}>
               <span>
                 {x.descricao}
-                <small>{x.categoria}</small>
+                <small>
+                  {x.categoria} · {dataBR(x.dataCusto)}
+                </small>
               </span>
-              <b>{moeda(x.valor)}</b>
+              <span className="cad-cost-actions">
+                <b>{moeda(x.valor)}</b>
+                <span className="cad-row-actions">
+                  <button
+                    type="button"
+                    className="cad-action-button"
+                    title="Editar custo extra"
+                    aria-label="Editar custo extra"
+                    onClick={() =>
+                      setCu({
+                        ...x,
+                        valor: Number(x.valor),
+                        dataCusto: String(x.dataCusto).slice(0, 10),
+                      })
+                    }
+                  >
+                    <Pencil />
+                  </button>
+                  <button
+                    type="button"
+                    className="cad-action-button danger"
+                    title="Excluir custo extra"
+                    aria-label="Excluir custo extra"
+                    onClick={() => setDeleteTarget({ tipo: "custo", item: x })}
+                  >
+                    <Trash2 />
+                  </button>
+                </span>
+              </span>
             </div>
           ))}
         </article>
       </div>
+      <SapDoubleConfirmDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={open => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="Confirmar exclusão de cadastro"
+        description="Esta ação vai excluir o cadastro selecionado do Controle de Alimentação."
+        finalDescription="Confirmação final: depois de continuar, o cadastro será excluído."
+        details={[
+          {
+            label: "Tipo",
+            value:
+              deleteTarget?.tipo === "funcionario"
+                ? "Funcionário"
+                : deleteTarget?.tipo === "fornecedor"
+                  ? "Fornecedor"
+                  : "Custo extra",
+          },
+          {
+            label: "Cadastro",
+            value:
+              deleteTarget?.item?.nome || deleteTarget?.item?.descricao || "-",
+          },
+        ]}
+        isPending={
+          excluirFuncionario.isPending ||
+          excluirFornecedor.isPending ||
+          excluirCusto.isPending
+        }
+        onConfirm={() => {
+          const id = Number(deleteTarget?.item?.id);
+          if (!id) return;
+          if (deleteTarget.tipo === "funcionario") {
+            excluirFuncionario.mutate({ id });
+          } else if (deleteTarget.tipo === "fornecedor") {
+            excluirFornecedor.mutate({ id });
+          } else {
+            excluirCusto.mutate({
+              id,
+              motivo: "Exclusão confirmada pelo usuário em duas etapas.",
+            });
+          }
+        }}
+      />
     </section>
   );
 }

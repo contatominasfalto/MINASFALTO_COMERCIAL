@@ -213,6 +213,57 @@
   max-height: 650px;
   overflow: auto;
 }
+.cad-active-field {
+  display: flex !important;
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+}
+.food-page .cad-active-field input {
+  width: 15px;
+  min-height: 15px;
+  margin: 0;
+}
+.cad-form-actions,
+.cad-row-actions,
+.cad-cost-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cad-form-actions {
+  margin: 8px 0 5px;
+}
+.cad-form-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.cad-form-actions svg,
+.cad-row-actions svg {
+  width: 14px;
+  height: 14px;
+}
+.cad-row-actions {
+  flex: 0 0 auto;
+}
+.cad-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid #8098ad;
+  background: linear-gradient(#fff, #e8eef4);
+}
+.cad-action-button.danger {
+  color: #7e1212;
+}
+.cad-cost-actions {
+  justify-content: flex-end;
+  flex: 0 0 auto;
+}
 .report-filters {
   display: grid;
   grid-template-columns: repeat(6, 1fr) auto auto;
