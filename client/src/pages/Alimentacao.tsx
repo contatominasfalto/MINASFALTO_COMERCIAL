@@ -28,6 +28,27 @@ const moeda = (v: unknown) =>
     currency: "BRL",
   });
 const hoje = () => new Date().toISOString().slice(0, 10);
+const gerarTokenIdempotencia = () => {
+  const webCrypto = globalThis.crypto;
+  if (typeof webCrypto?.randomUUID === "function") {
+    return webCrypto.randomUUID();
+  }
+
+  const bytes = new Uint8Array(16);
+  if (typeof webCrypto?.getRandomValues === "function") {
+    webCrypto.getRandomValues(bytes);
+  } else {
+    for (let index = 0; index < bytes.length; index += 1) {
+      bytes[index] = Math.floor(Math.random() * 256);
+    }
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hexadecimal = Array.from(bytes, byte =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+  return `${hexadecimal.slice(0, 8)}-${hexadecimal.slice(8, 12)}-${hexadecimal.slice(12, 16)}-${hexadecimal.slice(16, 20)}-${hexadecimal.slice(20)}`;
+};
 type Tab = "painel" | "lancamentos" | "cadastros" | "relatorios";
 
 export default function Alimentacao() {
@@ -178,6 +199,7 @@ function Lancamentos({ cad, concluir }: any) {
       toast.success("Lançamento salvo.");
       setItens([]);
       setForm({ ...form, numeroNota: "", valorExtra: 0, observacao: "" });
+      await historico.refetch();
       await concluir();
     },
     onError: e => toast.error(e.message),
@@ -275,7 +297,7 @@ function Lancamentos({ cad, concluir }: any) {
       itens: itens.map(({ nome, ...i }) => i),
     };
     if (editandoId) atualizar.mutate({ id: editandoId, data });
-    else criar.mutate({ ...data, token: crypto.randomUUID() });
+    else criar.mutate({ ...data, token: gerarTokenIdempotencia() });
   };
   return (
     <section className="food-content food-launch">
