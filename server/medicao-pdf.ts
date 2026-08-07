@@ -10,6 +10,12 @@ export type PdfImage = {
   height: number;
 };
 
+export type PdfPage = {
+  content: string;
+  width?: number;
+  height?: number;
+};
+
 export const PDF_PAGE_WIDTH = 595.28;
 const PAGE_WIDTH = PDF_PAGE_WIDTH;
 export const PDF_PAGE_HEIGHT = 841.89;
@@ -111,7 +117,7 @@ export function wrap(text: unknown, maxChars: number, maxLines = 2) {
   return (lines.length ? lines : [""]).slice(0, maxLines);
 }
 
-export function createPdf(pages: string[], timbrado: PdfImage, assinatura: PdfImage, logo: PdfImage) {
+export function createPdf(pages: Array<string | PdfPage>, timbrado: PdfImage, assinatura: PdfImage, logo: PdfImage) {
   const chunks: Buffer[] = [];
   const offsets: number[] = [];
   let position = 0;
@@ -136,11 +142,13 @@ export function createPdf(pages: string[], timbrado: PdfImage, assinatura: PdfIm
   obj(4, `<< /Type /XObject /Subtype /Image /Width ${assinatura.width} /Height ${assinatura.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${assinatura.data.length} >>\nstream\n${assinatura.data.toString("binary")}\nendstream`);
   obj(5, `<< /Type /XObject /Subtype /Image /Width ${logo.width} /Height ${logo.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.data.length} >>\nstream\n${logo.data.toString("binary")}\nendstream`);
 
-  pages.forEach((content, index) => {
+  pages.forEach((page, index) => {
+    const { content, width = PAGE_WIDTH, height = PAGE_HEIGHT } =
+      typeof page === "string" ? { content: page } : page;
     const pageId = 6 + index * 2;
     const contentId = 7 + index * 2;
     const contentBytes = Buffer.from(content, "binary");
-    obj(pageId, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >> >> /XObject << /BG 3 0 R /SIG 4 0 R /LOGO 5 0 R >> >> /Contents ${contentId} 0 R >>`);
+    obj(pageId, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >> >> /XObject << /BG 3 0 R /SIG 4 0 R /LOGO 5 0 R >> >> /Contents ${contentId} 0 R >>`);
     obj(contentId, `<< /Length ${contentBytes.length} >>\nstream\n${content}\nendstream`);
   });
 
@@ -170,14 +178,14 @@ export function drawRect(x: number, y: number, w: number, h: number, fill = "1 1
   return `${fill} rg ${stroke} RG ${x} ${y} ${w} ${h} re B\n`;
 }
 
-export function drawPageBackground(image: PdfImage) {
-  const availableWidth = PAGE_WIDTH - TIMBRADO_MARGIN * 2;
-  const availableHeight = PAGE_HEIGHT - TIMBRADO_MARGIN * 2;
+export function drawPageBackground(image: PdfImage, pageWidth = PAGE_WIDTH, pageHeight = PAGE_HEIGHT) {
+  const availableWidth = pageWidth - TIMBRADO_MARGIN * 2;
+  const availableHeight = pageHeight - TIMBRADO_MARGIN * 2;
   const scale = Math.min(availableWidth / image.width, availableHeight / image.height);
   const width = image.width * scale;
   const height = image.height * scale;
-  const x = (PAGE_WIDTH - width) / 2;
-  const y = Math.max(4, (PAGE_HEIGHT - height) / 2 + TIMBRADO_VERTICAL_OFFSET);
+  const x = (pageWidth - width) / 2;
+  const y = Math.max(4, (pageHeight - height) / 2 + TIMBRADO_VERTICAL_OFFSET);
   return `q ${width.toFixed(2)} 0 0 ${height.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /BG Do Q\n`;
 }
 

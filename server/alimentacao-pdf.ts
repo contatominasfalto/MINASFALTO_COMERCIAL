@@ -10,6 +10,9 @@ import {
   drawText,
   loadJpeg,
   money,
+  PDF_PAGE_HEIGHT,
+  PDF_PAGE_WIDTH,
+  type PdfPage,
 } from "./medicao-pdf";
 
 export type TipoRelatorioAlimentacao =
@@ -101,7 +104,7 @@ export async function buildAlimentacaoPdf(
   );
   const assinatura = await loadJpeg("client/src/assets/assinatura-diretor.jpg");
   const logo = await loadJpeg("client/src/assets/minasfalto-logo.jpg");
-  const pages: string[] = [];
+  const pages: PdfPage[] = [];
 
   const header = (subtitle: string = config.titulo) => {
     let content = drawPageBackground(timbrado);
@@ -124,95 +127,115 @@ export async function buildAlimentacaoPdf(
     content += "0.95 0.65 0.10 RG 50 740 m 545 740 l S\n";
     return content;
   };
-  const card = (label: string, value: unknown, x: number, width: number) =>
-    drawRect(x, 688, width, 40, "1 1 1") +
-    drawText(label, x + 7, 713, 6, true, "0.38 0.45 0.54") +
-    drawText(value, x + 7, 696, 10, true, "0 0.10 0.20");
-
-  const chartChunks = data.length
-    ? Array.from({ length: Math.ceil(data.length / 12) }, (_, index) =>
-        data.slice(index * 12, index * 12 + 12)
-      )
-    : [[]];
   const globalMax = Math.max(...data.map(item => Number(item[config.mode])), 1);
-  chartChunks.forEach((chunk, pageIndex) => {
-    let content = header(
-      pageIndex ? `${config.titulo} - CONTINUACAO` : config.titulo
+  const landscapeWidth = PDF_PAGE_HEIGHT;
+  const landscapeHeight = PDF_PAGE_WIDTH;
+  let chartContent = drawPageBackground(
+    timbrado,
+    landscapeWidth,
+    landscapeHeight
+  );
+  chartContent += "q 72 0 0 72 38 505 cm /LOGO Do Q\n";
+  chartContent += drawCenteredText(
+    "RELATORIO DE ALIMENTACAO",
+    550,
+    16,
+    true,
+    "0 0.10 0.20",
+    landscapeWidth / 2
+  );
+  chartContent += drawCenteredText(
+    config.titulo,
+    530,
+    9,
+    true,
+    "0.20 0.28 0.36",
+    landscapeWidth / 2
+  );
+  chartContent += drawCenteredText(
+    `PERIODO ${period}`,
+    515,
+    7,
+    false,
+    "0.20 0.28 0.36",
+    landscapeWidth / 2
+  );
+  chartContent += "0.95 0.65 0.10 RG 40 500 m 802 500 l S\n";
+  const landscapeCard = (label: string, value: unknown, x: number) =>
+    drawRect(x, 452, 244, 36, "1 1 1") +
+    drawText(label, x + 7, 475, 6, true, "0.38 0.45 0.54") +
+    drawText(value, x + 7, 460, 10, true, "0 0.10 0.20");
+  chartContent += landscapeCard(
+    "TOTAL DE ALIMENTACOES",
+    totalQuantity.toLocaleString("pt-BR"),
+    40
+  );
+  chartContent += landscapeCard("VALOR TOTAL", money(totalValue), 299);
+  chartContent += landscapeCard(`${config.rotulo}S LISTADOS`, data.length, 558);
+  chartContent += drawText(filterLineA, 40, 438, 6, false, "0.30 0.38 0.47");
+  chartContent += drawText(filterLineB, 40, 429, 6, false, "0.30 0.38 0.47");
+  chartContent += drawRect(40, 70, 762, 345, "1 1 1");
+  chartContent += drawText(
+    "GRAFICO DO RELATORIO SELECIONADO",
+    48,
+    398,
+    8,
+    true,
+    "0 0.10 0.20"
+  );
+  if (!data.length) {
+    chartContent += drawCenteredText(
+      "SEM DADOS PARA O PERIODO SELECIONADO",
+      250,
+      10,
+      false,
+      "0.38 0.45 0.54",
+      landscapeWidth / 2
     );
-    if (!pageIndex) {
-      content += card(
-        "TOTAL DE ALIMENTACOES",
-        totalQuantity.toLocaleString("pt-BR"),
-        50,
-        150
-      );
-      content += card("VALOR TOTAL", money(totalValue), 210, 165);
-      content += card(`${config.rotulo}S LISTADOS`, data.length, 385, 160);
-    }
-    const top = pageIndex ? 690 : 650;
-    content += drawText(filterLineA, 50, top + 17, 6, false, "0.30 0.38 0.47");
-    content += drawText(filterLineB, 50, top + 8, 6, false, "0.30 0.38 0.47");
-    content += drawRect(50, top - 250, 495, 250, "1 1 1");
-    content += drawText(
-      "GRAFICO DO RELATORIO SELECIONADO",
-      56,
-      top - 16,
-      8,
-      true,
-      "0 0.10 0.20"
-    );
-    if (!chunk.length)
-      content += drawCenteredText(
-        "SEM DADOS PARA O PERIODO SELECIONADO",
-        top - 130,
-        10,
-        false,
-        "0.38 0.45 0.54"
-      );
-    const plotX = 65,
-      plotY = top - 210,
-      plotWidth = 465,
-      plotHeight = 160;
-    const slot = plotWidth / Math.max(chunk.length, 1);
-    chunk.forEach((item, index) => {
+  } else {
+    const plotX = 52;
+    const plotY = 105;
+    const plotWidth = 738;
+    const plotHeight = 245;
+    const slot = plotWidth / data.length;
+    const gap = Math.min(5, slot * 0.22);
+    const labelSize = Math.max(2.8, Math.min(5, slot / 4.2));
+    const labelLength = Math.max(4, Math.floor(slot / (labelSize * 0.53)));
+    data.forEach((item, index) => {
       const value = Number(item[config.mode]);
-      const height = Math.max(1, (value / globalMax) * plotHeight);
-      const x = plotX + index * slot + 4;
-      const width = Math.max(8, slot - 8);
-      content += drawRect(
+      const barHeight = Math.max(1, (value / globalMax) * plotHeight);
+      const x = plotX + index * slot + gap / 2;
+      const width = Math.max(2, slot - gap);
+      chartContent += drawRect(
         x,
         plotY,
         width,
-        height,
+        barHeight,
         "0.88 0.61 0.00",
         "0.88 0.61 0.00"
       );
-      content += drawText(
+      chartContent += drawText(
         config.mode === "total" ? money(value) : value.toLocaleString("pt-BR"),
         x,
-        plotY + height + 5,
-        5,
+        plotY + barHeight + 4,
+        labelSize,
         true,
         "0 0.10 0.20"
       );
-      content += drawText(
-        String(item.nome).slice(0, 12),
+      chartContent += drawText(
+        String(item.nome).slice(0, labelLength),
         x,
         plotY - 12,
-        5,
+        labelSize,
         false,
         "0.20 0.28 0.36"
       );
     });
-    content += drawText(
-      `PAGINA DO GRAFICO ${pageIndex + 1}/${chartChunks.length}`,
-      50,
-      top - 270,
-      6,
-      false,
-      "0.38 0.45 0.54"
-    );
-    pages.push(content);
+  }
+  pages.push({
+    content: chartContent,
+    width: landscapeWidth,
+    height: landscapeHeight,
   });
 
   const rowsPerPage = 24;
@@ -274,7 +297,7 @@ export async function buildAlimentacaoPdf(
       false,
       "0 0 0"
     );
-    pages.push(content);
+    pages.push({ content });
   });
 
   return {

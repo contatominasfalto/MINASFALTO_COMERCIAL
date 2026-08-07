@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { aggregateAlimentacaoPdfRows } from "./alimentacao-pdf";
+import {
+  createPdf,
+  PDF_PAGE_HEIGHT,
+  PDF_PAGE_WIDTH,
+  type PdfImage,
+} from "./medicao-pdf";
 
 const rows = [
   {
@@ -44,5 +50,29 @@ describe("PDF do relatorio de alimentacao", () => {
       { nome: "2026-07", quantidade: 3, total: 60 },
       { nome: "2026-08", quantidade: 1, total: 25 },
     ]);
+  });
+
+  it("combina grafico paisagem e dados em formato vertical", () => {
+    const image: PdfImage = { data: Buffer.alloc(0), width: 1, height: 1 };
+    const pdf = createPdf(
+      [
+        {
+          content: "",
+          width: PDF_PAGE_HEIGHT,
+          height: PDF_PAGE_WIDTH,
+        },
+        { content: "" },
+      ],
+      image,
+      image,
+      image
+    ).toString("binary");
+
+    expect(pdf).toContain(
+      `/MediaBox [0 0 ${PDF_PAGE_HEIGHT} ${PDF_PAGE_WIDTH}]`
+    );
+    expect(pdf).toContain(
+      `/MediaBox [0 0 ${PDF_PAGE_WIDTH} ${PDF_PAGE_HEIGHT}]`
+    );
   });
 });
