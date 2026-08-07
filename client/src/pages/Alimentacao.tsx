@@ -232,8 +232,19 @@ function Lancamentos({ cad, concluir }: any) {
   };
   const fornecedor = forns.find((x: any) => x.id === Number(form.fornecedorId));
   const add = () => {
+    if (!func) {
+      toast.error("Selecione um funcionário antes de incluir.");
+      return;
+    }
     const f = ativos.find((x: any) => x.id === Number(func));
-    if (!f || itens.some(x => x.funcionarioId === f.id)) return;
+    if (!f) {
+      toast.error("Funcionário inexistente ou inativo.");
+      return;
+    }
+    if (itens.some(x => x.funcionarioId === f.id)) {
+      toast.error("Este funcionário já foi incluído no grupo.");
+      return;
+    }
     setItens([
       ...itens,
       {
@@ -243,6 +254,28 @@ function Lancamentos({ cad, concluir }: any) {
         valorUnitario: Number(fornecedor?.valorRefeicao || 0),
       },
     ]);
+    setFunc("");
+  };
+  const salvar = () => {
+    if (!form.fornecedorId) {
+      toast.error("Selecione o fornecedor.");
+      return;
+    }
+    if (!itens.length) {
+      toast.error("Inclua pelo menos um funcionário no grupo.");
+      return;
+    }
+    if (!form.dataRefeicao) {
+      toast.error("Informe a data da refeição.");
+      return;
+    }
+    const data = {
+      ...form,
+      fornecedorId: Number(form.fornecedorId),
+      itens: itens.map(({ nome, ...i }) => i),
+    };
+    if (editandoId) atualizar.mutate({ id: editandoId, data });
+    else criar.mutate({ ...data, token: crypto.randomUUID() });
   };
   return (
     <section className="food-content food-launch">
@@ -319,17 +352,10 @@ function Lancamentos({ cad, concluir }: any) {
           />
         </label>
         <button
+          type="button"
           className="primary"
-          disabled={!form.fornecedorId || !itens.length || criar.isPending}
-          onClick={() => {
-            const data = {
-              ...form,
-              fornecedorId: Number(form.fornecedorId),
-              itens: itens.map(({ nome, ...i }) => i),
-            };
-            if (editandoId) atualizar.mutate({ id: editandoId, data });
-            else criar.mutate({ ...data, token: crypto.randomUUID() });
-          }}
+          disabled={criar.isPending || atualizar.isPending}
+          onClick={salvar}
         >
           <Save /> {editandoId ? "Atualizar grupo" : "Salvar grupo"}
         </button>
@@ -345,7 +371,7 @@ function Lancamentos({ cad, concluir }: any) {
               </option>
             ))}
           </select>
-          <button onClick={add}>
+          <button type="button" onClick={add}>
             <Plus /> Incluir
           </button>
         </div>
@@ -383,6 +409,7 @@ function Lancamentos({ cad, concluir }: any) {
             />
             <strong>{moeda(x.quantidade * x.valorUnitario)}</strong>
             <button
+              type="button"
               aria-label="Remover"
               onClick={() => setItens(itens.filter((_, j) => j !== i))}
             >
