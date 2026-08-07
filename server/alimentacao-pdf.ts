@@ -108,7 +108,9 @@ export async function buildAlimentacaoPdf(
   const timbrado = await loadJpeg(
     "client/src/assets/papel-timbrado-minasfalto.jpeg"
   );
-  const assinatura = await loadJpeg("client/src/assets/assinatura-diretor.jpg");
+  const assinatura = await loadJpeg(
+    "client/src/assets/assinatura-maxwell-relatorio.jpg"
+  );
   const logo = await loadJpeg("client/src/assets/minasfalto-logo.jpg");
   const pages: PdfPage[] = [];
 
@@ -288,16 +290,20 @@ export async function buildAlimentacaoPdf(
       false,
       "0.38 0.45 0.54"
     );
-    content += `q 190 0 0 25 203 155 cm /SIG Do Q\n0 0 0 RG 190 147 m 405 147 l S\n`;
-    content += drawCenteredText(
-      "MINASFALTO INDÚSTRIA E COMÉRCIO LTDA",
-      133,
-      8,
-      false,
-      "0 0 0"
+    const signatureMaxWidth = 160;
+    const signatureMaxHeight = 52;
+    const signatureScale = Math.min(
+      signatureMaxWidth / assinatura.width,
+      signatureMaxHeight / assinatura.height
     );
+    const signatureWidth = assinatura.width * signatureScale;
+    const signatureHeight = assinatura.height * signatureScale;
+    const signatureX = (PDF_PAGE_WIDTH - signatureWidth) / 2;
+    const signatureY = 155;
+    content += `q ${signatureWidth.toFixed(2)} 0 0 ${signatureHeight.toFixed(2)} ${signatureX.toFixed(2)} ${signatureY} cm /SIG Do Q\n0 0 0 RG 190 147 m 405 147 l S\n`;
+    content += drawCenteredText("Maxwell Viana", 133, 8, false, "0 0 0");
     content += drawCenteredText(
-      "Marco Aurélio Barreto Modesto",
+      "Técnico de Planejamento",
       119,
       8,
       false,
