@@ -257,6 +257,67 @@
   font-size: 14px;
   margin: 0 0 10px;
 }
+.food-history-groups .num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.food-history-groups .history-toggle-column {
+  width: 42px;
+  padding: 5px;
+  text-align: center;
+}
+.history-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+.history-toggle svg,
+.history-actions svg {
+  width: 14px;
+  height: 14px;
+}
+.history-group-row:hover td {
+  background: #f3f8fc;
+}
+.history-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.history-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 30px;
+}
+.history-detail-row > td {
+  padding: 10px 14px 14px;
+  background: #eef5fa;
+}
+.history-detail-meta {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 8px;
+  color: #38536b;
+}
+.food-page .history-detail-table {
+  min-width: 680px;
+  background: #fff;
+}
+.history-detail-table th {
+  background: #e5eef6;
+}
+.history-empty {
+  padding: 28px !important;
+  color: #607486;
+  text-align: center !important;
+}
 @media (max-width: 1000px) {
   .food-cards {
     grid-template-columns: repeat(2, 1fr);

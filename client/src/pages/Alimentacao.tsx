@@ -1,10 +1,13 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import {
   ArrowLeft,
   BarChart3,
+  ChevronDown,
+  ChevronRight,
   Download,
+  Pencil,
   Plus,
   Save,
   Trash2,
@@ -28,6 +31,11 @@ const moeda = (v: unknown) =>
     currency: "BRL",
   });
 const hoje = () => new Date().toISOString().slice(0, 10);
+const dataBR = (value: unknown) => {
+  const text = String(value || "");
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : text;
+};
 const gerarTokenIdempotencia = () => {
   const webCrypto = globalThis.crypto;
   if (typeof webCrypto?.randomUUID === "function") {
@@ -194,6 +202,9 @@ function Lancamentos({ cad, concluir }: any) {
   const [itens, setItens] = useState<any[]>([]);
   const [func, setFunc] = useState("");
   const [editandoId, setEditandoId] = useState<number | null>(null);
+  const [gruposAbertos, setGruposAbertos] = useState<Record<number, boolean>>(
+    {}
+  );
   const criar = trpc.alimentacao.criarLancamento.useMutation({
     onSuccess: async () => {
       toast.success("Lançamento salvo.");
@@ -253,6 +264,28 @@ function Lancamentos({ cad, concluir }: any) {
       excluir.mutate({ id, motivo: motivo.trim() });
   };
   const fornecedor = forns.find((x: any) => x.id === Number(form.fornecedorId));
+  const gruposHistorico = useMemo(() => {
+    const grupos = new Map<number, any>();
+    for (const item of (historico.data || []) as any[]) {
+      const id = Number(item.id);
+      const grupo = grupos.get(id) || {
+        id,
+        dataRefeicao: item.dataRefeicao,
+        fornecedor: item.fornecedor,
+        tipo: item.tipo,
+        numeroNota: item.numeroNota,
+        valorExtra: Number(item.valorExtra || 0),
+        quantidadeTotal: 0,
+        valorTotal: 0,
+        itens: [],
+      };
+      grupo.quantidadeTotal += Number(item.quantidade || 0);
+      grupo.valorTotal += Number(item.valorTotal || 0);
+      grupo.itens.push(item);
+      grupos.set(id, grupo);
+    }
+    return Array.from(grupos.values());
+  }, [historico.data]);
   const add = () => {
     if (!func) {
       toast.error("Selecione um funcionário antes de incluir.");
@@ -474,38 +507,121 @@ function Lancamentos({ cad, concluir }: any) {
       </div>
       <div className="food-history table-wrap">
         <h2>Histórico de lançamentos</h2>
-        <table>
+        <table className="food-history-groups">
           <thead>
             <tr>
+              <th className="history-toggle-column" aria-label="Expandir"></th>
               <th>Data</th>
-              <th>Funcionário</th>
               <th>Fornecedor</th>
               <th>Tipo</th>
-              <th>Quantidade</th>
-              <th>Valor</th>
+              <th className="num">Quantidade total</th>
+              <th className="num">Valor total</th>
               <th>Ações</th>
             </tr>
           </thead>
           <tbody>
-            {(historico.data || []).map((x: any) => (
-              <tr key={`${x.id}-${x.funcionario}`}>
-                <td>{x.dataRefeicao}</td>
-                <td>{x.funcionario}</td>
-                <td>{x.fornecedor}</td>
-                <td>{x.tipo}</td>
-                <td>{x.quantidade}</td>
-                <td>{moeda(x.valorTotal)}</td>
-                <td>
-                  <button onClick={() => void editar(x.id)}>Editar</button>
-                  <button
-                    aria-label="Excluir lançamento"
-                    onClick={() => confirmarExclusao(x.id)}
-                  >
-                    <Trash2 />
-                  </button>
+            {gruposHistorico.map((grupo: any) => {
+              const aberto = Boolean(gruposAbertos[grupo.id]);
+              return (
+                <Fragment key={grupo.id}>
+                  <tr className="history-group-row">
+                    <td className="history-toggle-column">
+                      <button
+                        type="button"
+                        className="history-toggle"
+                        title={
+                          aberto ? "Recolher detalhes" : "Expandir detalhes"
+                        }
+                        aria-label={
+                          aberto ? "Recolher detalhes" : "Expandir detalhes"
+                        }
+                        aria-expanded={aberto}
+                        onClick={() =>
+                          setGruposAbertos(current => ({
+                            ...current,
+                            [grupo.id]: !aberto,
+                          }))
+                        }
+                      >
+                        {aberto ? <ChevronDown /> : <ChevronRight />}
+                      </button>
+                    </td>
+                    <td>{dataBR(grupo.dataRefeicao)}</td>
+                    <td>{grupo.fornecedor}</td>
+                    <td>{grupo.tipo}</td>
+                    <td className="num">{grupo.quantidadeTotal}</td>
+                    <td className="num">{moeda(grupo.valorTotal)}</td>
+                    <td className="history-actions">
+                      <button
+                        type="button"
+                        title="Editar lançamento"
+                        onClick={() => void editar(grupo.id)}
+                      >
+                        <Pencil /> Editar
+                      </button>
+                      <button
+                        type="button"
+                        title="Excluir lançamento"
+                        aria-label="Excluir lançamento"
+                        onClick={() => confirmarExclusao(grupo.id)}
+                      >
+                        <Trash2 />
+                      </button>
+                    </td>
+                  </tr>
+                  {aberto && (
+                    <tr className="history-detail-row">
+                      <td colSpan={7}>
+                        <div className="history-detail-meta">
+                          <span>
+                            Nota: <b>{grupo.numeroNota || "Não informada"}</b>
+                          </span>
+                          <span>
+                            Custo extra: <b>{moeda(grupo.valorExtra)}</b>
+                          </span>
+                          <span>
+                            Pessoas: <b>{grupo.itens.length}</b>
+                          </span>
+                        </div>
+                        <table className="history-detail-table">
+                          <thead>
+                            <tr>
+                              <th>Funcionário</th>
+                              <th>Setor</th>
+                              <th className="num">Quantidade</th>
+                              <th className="num">Valor unitário</th>
+                              <th className="num">Subtotal</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {grupo.itens.map((item: any) => (
+                              <tr key={`${grupo.id}-${item.funcionario}`}>
+                                <td>{item.funcionario}</td>
+                                <td>{item.setor || "-"}</td>
+                                <td className="num">{item.quantidade}</td>
+                                <td className="num">
+                                  {moeda(item.valorUnitario)}
+                                </td>
+                                <td className="num">
+                                  {moeda(item.valorItens)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+            {!historico.isLoading && gruposHistorico.length === 0 && (
+              <tr>
+                <td colSpan={7} className="history-empty">
+                  Nenhum lançamento encontrado.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
