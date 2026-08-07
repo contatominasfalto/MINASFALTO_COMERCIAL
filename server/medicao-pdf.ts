@@ -165,6 +165,21 @@ export function drawText(text: unknown, x: number, y: number, size = 9, bold = f
   return `BT /${bold ? "F2" : "F1"} ${size} Tf ${color} rg ${x} ${y} Td (${pdfText(text)}) Tj ET\n`;
 }
 
+export function drawRotatedText(
+  text: unknown,
+  x: number,
+  y: number,
+  angleDegrees: number,
+  size = 9,
+  bold = false,
+  color = "0 0 0"
+) {
+  const radians = (angleDegrees * Math.PI) / 180;
+  const cos = Math.cos(radians).toFixed(5);
+  const sin = Math.sin(radians).toFixed(5);
+  return `BT /${bold ? "F2" : "F1"} ${size} Tf ${color} rg ${cos} ${sin} -${sin} ${cos} ${x} ${y} Tm (${pdfText(text)}) Tj ET\n`;
+}
+
 function estimateTextWidth(text: unknown, size: number, bold = false) {
   return String(text ?? "").length * size * (bold ? 0.58 : 0.52);
 }
