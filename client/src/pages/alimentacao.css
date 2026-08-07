@@ -142,16 +142,67 @@
   grid-template-columns: 1fr auto;
   gap: 8px;
 }
+.food-item-list {
+  margin-top: 10px;
+  overflow-x: auto;
+  border: 1px solid #b9cad9;
+  background: #fff;
+}
 .item-row {
   display: grid;
-  grid-template-columns: 1fr 90px 120px 110px 42px;
+  grid-template-columns: minmax(220px, 1fr) 110px 145px 135px 52px;
   align-items: center;
-  gap: 7px;
+  gap: 0;
+  min-width: 720px;
   border-bottom: 1px solid #d5e0e9;
-  padding: 6px;
+}
+.item-row:last-child {
+  border-bottom: 0;
+}
+.item-row > * {
+  min-width: 0;
+  padding: 9px 10px;
+  border-right: 1px solid #d5e0e9;
+}
+.item-row > *:last-child {
+  border-right: 0;
+}
+.item-row-header {
+  background: #dce9f4;
+  color: #08233e;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+}
+.item-row-header span:first-child {
+  text-align: left;
 }
 .item-row input {
-  margin: 0;
+  width: calc(100% - 12px);
+  min-height: 34px;
+  margin: 6px;
+  padding: 6px 8px;
+  border: 1px solid #91a9c0;
+  box-sizing: border-box;
+}
+.item-row .item-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.item-subtotal {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.item-row .item-remove {
+  display: inline-flex;
+  justify-self: center;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
 }
 .food-items footer {
   text-align: right;

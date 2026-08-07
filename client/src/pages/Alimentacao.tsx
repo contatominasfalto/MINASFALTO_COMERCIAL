@@ -388,7 +388,7 @@ function Lancamentos({ cad, concluir }: any) {
           <select value={func} onChange={e => setFunc(e.target.value)}>
             <option value="">Selecione um funcionário</option>
             {ativos.map((x: any) => (
-              <option value={x.id}>
+              <option key={x.id} value={x.id}>
                 {x.nome} — {x.setor}
               </option>
             ))}
@@ -397,48 +397,69 @@ function Lancamentos({ cad, concluir }: any) {
             <Plus /> Incluir
           </button>
         </div>
-        {itens.map((x, i) => (
-          <div className="item-row">
-            <b>{x.nome}</b>
-            <input
-              aria-label={`Quantidade de ${x.nome}`}
-              type="number"
-              min="1"
-              value={x.quantidade}
-              onChange={e =>
-                setItens(
-                  itens.map((a, j) =>
-                    j === i ? { ...a, quantidade: Number(e.target.value) } : a
-                  )
-                )
-              }
-            />
-            <input
-              aria-label={`Valor de ${x.nome}`}
-              type="number"
-              min="0"
-              step=".01"
-              value={x.valorUnitario}
-              onChange={e =>
-                setItens(
-                  itens.map((a, j) =>
-                    j === i
-                      ? { ...a, valorUnitario: Number(e.target.value) }
-                      : a
-                  )
-                )
-              }
-            />
-            <strong>{moeda(x.quantidade * x.valorUnitario)}</strong>
-            <button
-              type="button"
-              aria-label="Remover"
-              onClick={() => setItens(itens.filter((_, j) => j !== i))}
-            >
-              <Trash2 />
-            </button>
+        {itens.length > 0 && (
+          <div className="food-item-list">
+            <div className="item-row item-row-header" aria-hidden="true">
+              <span>Funcionário</span>
+              <span>Quantidade</span>
+              <span>Valor unitário (R$)</span>
+              <span>Subtotal</span>
+              <span>Ações</span>
+            </div>
+            {itens.map((x, i) => (
+              <div className="item-row" key={x.funcionarioId}>
+                <b>{x.nome}</b>
+                <input
+                  className="item-number"
+                  aria-label={`Quantidade de ${x.nome}`}
+                  title="Quantidade de refeições"
+                  type="number"
+                  min="1"
+                  value={x.quantidade}
+                  onChange={e =>
+                    setItens(
+                      itens.map((a, j) =>
+                        j === i
+                          ? { ...a, quantidade: Number(e.target.value) }
+                          : a
+                      )
+                    )
+                  }
+                />
+                <input
+                  className="item-number"
+                  aria-label={`Valor unitário de ${x.nome}`}
+                  title="Valor unitário em reais"
+                  type="number"
+                  min="0"
+                  step=".01"
+                  value={x.valorUnitario}
+                  onChange={e =>
+                    setItens(
+                      itens.map((a, j) =>
+                        j === i
+                          ? { ...a, valorUnitario: Number(e.target.value) }
+                          : a
+                      )
+                    )
+                  }
+                />
+                <strong className="item-subtotal">
+                  {moeda(x.quantidade * x.valorUnitario)}
+                </strong>
+                <button
+                  type="button"
+                  className="item-remove"
+                  title={`Remover ${x.nome}`}
+                  aria-label={`Remover ${x.nome}`}
+                  onClick={() => setItens(itens.filter((_, j) => j !== i))}
+                >
+                  <Trash2 />
+                </button>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
         <footer>
           Total do grupo:{" "}
           <b>
