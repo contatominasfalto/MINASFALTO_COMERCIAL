@@ -4,8 +4,6 @@ import { trpc } from "@/lib/trpc";
 import {
   ArrowLeft,
   BarChart3,
-  ChevronDown,
-  ChevronRight,
   Download,
   Pencil,
   Plus,
@@ -543,7 +541,7 @@ function Lancamentos({ cad, concluir }: any) {
                           }))
                         }
                       >
-                        {aberto ? <ChevronDown /> : <ChevronRight />}
+                        {aberto ? "−" : "+"}
                       </button>
                     </td>
                     <td>{dataBR(grupo.dataRefeicao)}</td>
@@ -554,13 +552,16 @@ function Lancamentos({ cad, concluir }: any) {
                     <td className="history-actions">
                       <button
                         type="button"
+                        className="history-action-button"
                         title="Editar lançamento"
+                        aria-label="Editar lançamento"
                         onClick={() => void editar(grupo.id)}
                       >
-                        <Pencil /> Editar
+                        <Pencil />
                       </button>
                       <button
                         type="button"
+                        className="history-action-button danger"
                         title="Excluir lançamento"
                         aria-label="Excluir lançamento"
                         onClick={() => confirmarExclusao(grupo.id)}
