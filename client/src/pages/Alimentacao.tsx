@@ -752,10 +752,10 @@ function Cadastros({ data, concluir }: any) {
                   {x.setor} · {x.ativo ? "Ativo" : "Inativo"}
                 </small>
               </span>
-              <span className="cad-row-actions">
+              <span className="cad-row-actions history-actions">
                 <button
                   type="button"
-                  className="cad-action-button"
+                  className="history-action-button"
                   title="Editar funcionário"
                   aria-label="Editar funcionário"
                   onClick={() => setFn({ ...x, ativo: Boolean(x.ativo) })}
@@ -764,7 +764,7 @@ function Cadastros({ data, concluir }: any) {
                 </button>
                 <button
                   type="button"
-                  className="cad-action-button danger"
+                  className="history-action-button danger"
                   title="Excluir funcionário"
                   aria-label="Excluir funcionário"
                   onClick={() =>
@@ -828,10 +828,10 @@ function Cadastros({ data, concluir }: any) {
                   {moeda(x.valorRefeicao)} · {x.ativo ? "Ativo" : "Inativo"}
                 </small>
               </span>
-              <span className="cad-row-actions">
+              <span className="cad-row-actions history-actions">
                 <button
                   type="button"
-                  className="cad-action-button"
+                  className="history-action-button"
                   title="Editar fornecedor"
                   aria-label="Editar fornecedor"
                   onClick={() =>
@@ -846,7 +846,7 @@ function Cadastros({ data, concluir }: any) {
                 </button>
                 <button
                   type="button"
-                  className="cad-action-button danger"
+                  className="history-action-button danger"
                   title="Excluir fornecedor"
                   aria-label="Excluir fornecedor"
                   onClick={() =>
@@ -919,10 +919,10 @@ function Cadastros({ data, concluir }: any) {
               </span>
               <span className="cad-cost-actions">
                 <b>{moeda(x.valor)}</b>
-                <span className="cad-row-actions">
+                <span className="cad-row-actions history-actions">
                   <button
                     type="button"
-                    className="cad-action-button"
+                    className="history-action-button"
                     title="Editar custo extra"
                     aria-label="Editar custo extra"
                     onClick={() =>
@@ -937,7 +937,7 @@ function Cadastros({ data, concluir }: any) {
                   </button>
                   <button
                     type="button"
-                    className="cad-action-button danger"
+                    className="history-action-button danger"
                     title="Excluir custo extra"
                     aria-label="Excluir custo extra"
                     onClick={() => setDeleteTarget({ tipo: "custo", item: x })}
