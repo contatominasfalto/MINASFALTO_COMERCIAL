@@ -77,6 +77,112 @@
   font-size: 21px;
   margin-top: 9px;
 }
+.food-dashboard {
+  min-height: calc(100vh - 145px);
+}
+.dashboard-kpis {
+  grid-template-columns: repeat(6, minmax(145px, 1fr));
+}
+.dashboard-kpi {
+  position: relative;
+  min-height: 86px;
+  overflow: hidden;
+  border-top: 3px solid #d99b00 !important;
+}
+.dashboard-kpi::after {
+  content: "";
+  position: absolute;
+  right: -18px;
+  bottom: -24px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(217, 155, 0, 0.08);
+}
+.dashboard-kpi small {
+  color: #526b82;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+}
+.dashboard-kpi strong {
+  color: #08233e;
+  position: relative;
+  z-index: 1;
+}
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(360px, 1fr);
+  gap: 14px;
+  margin-top: 16px;
+}
+.dashboard-panel {
+  min-width: 0;
+  border: 1px solid #9db3c8;
+  background: #f8fbfe;
+  padding: 16px;
+}
+.dashboard-panel h2 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding-bottom: 9px;
+  border-bottom: 1px solid #abc0d2;
+  font-size: 14px;
+}
+.dashboard-panel h2 svg {
+  width: 17px;
+  height: 17px;
+  color: #b77c00;
+}
+.dashboard-panel > p {
+  margin: 8px 0 4px;
+  color: #5f7180;
+  font-size: 11px;
+}
+.dashboard-chart {
+  width: 100%;
+  min-width: 0;
+}
+.dashboard-chart-large {
+  height: 300px;
+}
+.dashboard-employees {
+  grid-column: 1 / -1;
+}
+.dashboard-chart-ranking {
+  height: 360px;
+}
+.dashboard-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 260px;
+  color: #63778a;
+  border: 1px dashed #b5c5d4;
+  background: #f4f8fb;
+}
+@media (max-width: 1180px) {
+  .dashboard-kpis {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  .dashboard-employees {
+    grid-column: auto;
+  }
+}
+@media (max-width: 720px) {
+  .dashboard-kpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .dashboard-chart-large,
+  .dashboard-chart-ranking {
+    height: 300px;
+  }
+}
 .food-panels {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

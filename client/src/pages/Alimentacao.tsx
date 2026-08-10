@@ -15,9 +15,15 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -130,9 +136,30 @@ export default function Alimentacao() {
 
 function Painel({ data }: any) {
   const m = data?.metricas || {};
+  const evolucao = [...(data?.evolucao || [])]
+    .reverse()
+    .map((item: any) => ({
+      ...item,
+      total: Number(item.total || 0),
+      periodo: String(item.mes || "").replace(/^(\d{4})-(\d{2})$/, "$2/$1"),
+    }));
+  const funcionarios = (data?.ranking || []).map((item: any) => ({
+    ...item,
+    total: Number(item.total || 0),
+    quantidade: Number(item.quantidade || 0),
+  }));
+  const fornecedores = (data?.fornecedores || []).map((item: any) => ({
+    ...item,
+    total: Number(item.total || 0),
+  }));
+  const cores = ["#d99b00", "#315f86", "#6f8fa9", "#e2b84e", "#56758f"];
+  const vazio = (
+    <div className="dashboard-empty">Ainda não há dados para este indicador.</div>
+  );
+
   return (
-    <section className="food-content">
-      <div className="food-cards">
+    <section className="food-content food-dashboard">
+      <div className="food-cards dashboard-kpis">
         {[
           ["Lançamentos", m.lancamentos || 0],
           ["Refeições", m.refeicoes || 0],
@@ -140,46 +167,74 @@ function Painel({ data }: any) {
           ["Média por refeição", moeda(m.media)],
           ["Funcionários atendidos", m.funcionariosAtivos || 0],
           ["Custos operacionais", moeda(m.custosOperacionais)],
-        ].map(([l, v]) => (
-          <article>
+        ].map(([l, v], index) => (
+          <article key={String(l)} className={`dashboard-kpi kpi-${index + 1}`}>
             <small>{l}</small>
             <strong>{v}</strong>
           </article>
         ))}
       </div>
-      <div className="food-panels">
-        <article>
+      <div className="dashboard-grid">
+        <article className="dashboard-panel dashboard-evolution">
           <h2>
-            <BarChart3 /> Evolução mensal
+            <BarChart3 /> Evolução mensal dos custos
           </h2>
-          {(data?.evolucao || []).map((x: any) => (
-            <div className="rank">
-              <span>{x.mes}</span>
-              <b>{moeda(x.total)}</b>
+          <p>Comportamento financeiro dos últimos 12 meses</p>
+          {evolucao.length ? (
+            <div className="dashboard-chart dashboard-chart-large">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={evolucao} margin={{ top: 12, right: 18, left: 8, bottom: 4 }}>
+                  <defs>
+                    <linearGradient id="foodCostGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#d99b00" stopOpacity={0.42} />
+                      <stop offset="95%" stopColor="#d99b00" stopOpacity={0.04} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#cbd8e4" />
+                  <XAxis dataKey="periodo" tick={{ fontSize: 10 }} />
+                  <YAxis width={78} tick={{ fontSize: 10 }} tickFormatter={value => `R$ ${Number(value).toLocaleString("pt-BR")}`} />
+                  <Tooltip labelFormatter={label => `Período: ${label}`} formatter={(value: any) => [moeda(value), "Custo"]} />
+                  <Area type="monotone" dataKey="total" stroke="#c88900" strokeWidth={2.5} fill="url(#foodCostGradient)" />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
-          ))}
+          ) : vazio}
         </article>
-        <article>
-          <h2>Ranking de funcionários</h2>
-          {(data?.ranking || []).map((x: any, i: number) => (
-            <div className="rank">
-              <span>
-                {i + 1}. {x.nome}
-              </span>
-              <b>{moeda(x.total)}</b>
+        <article className="dashboard-panel dashboard-suppliers">
+          <h2>Participação por fornecedor</h2>
+          <p>Distribuição do custo entre os fornecedores</p>
+          {fornecedores.length ? (
+            <div className="dashboard-chart dashboard-chart-large">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={fornecedores} dataKey="total" nameKey="nome" innerRadius="42%" outerRadius="70%" paddingAngle={2}>
+                    {fornecedores.map((item: any, index: number) => (
+                      <Cell key={item.nome} fill={cores[index % cores.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: any) => moeda(value)} />
+                  <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 10 }} />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
-          ))}
+          ) : vazio}
         </article>
-        <article>
-          <h2>Ranking de fornecedores</h2>
-          {(data?.fornecedores || []).map((x: any, i: number) => (
-            <div className="rank">
-              <span>
-                {i + 1}. {x.nome}
-              </span>
-              <b>{moeda(x.total)}</b>
+        <article className="dashboard-panel dashboard-employees">
+          <h2>Funcionários com maior consumo acumulado</h2>
+          <p>Top 10 por valor das refeições lançadas</p>
+          {funcionarios.length ? (
+            <div className="dashboard-chart dashboard-chart-ranking">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={funcionarios} layout="vertical" margin={{ top: 4, right: 28, left: 28, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#cbd8e4" />
+                  <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={value => `R$ ${Number(value).toLocaleString("pt-BR")}`} />
+                  <YAxis type="category" dataKey="nome" width={145} tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={(value: any) => [moeda(value), "Custo"]} />
+                  <Bar dataKey="total" fill="#315f86" radius={[0, 3, 3, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-          ))}
+          ) : vazio}
         </article>
       </div>
     </section>
