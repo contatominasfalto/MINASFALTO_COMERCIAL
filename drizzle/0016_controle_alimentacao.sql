@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS `alimentacao_funcionarios` (
   `id` int NOT NULL AUTO_INCREMENT, `nome` varchar(180) NOT NULL, `setor` varchar(120) NOT NULL,
   `ativo` boolean NOT NULL DEFAULT true, `origem_sistema` varchar(40), `origem_id` varchar(80),
+  `excluido_em` timestamp NULL, `excluido_por` varchar(120), `motivo_exclusao` varchar(500),
   `criado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`), UNIQUE KEY `alimentacao_func_origem_uq` (`origem_sistema`,`origem_id`), KEY `alimentacao_func_nome_idx` (`nome`), KEY `alimentacao_func_ativo_idx` (`ativo`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -8,6 +9,7 @@ CREATE TABLE IF NOT EXISTS `alimentacao_funcionarios` (
 CREATE TABLE IF NOT EXISTS `alimentacao_fornecedores` (
   `id` int NOT NULL AUTO_INCREMENT, `nome` varchar(180) NOT NULL, `valor_refeicao` decimal(12,2) NOT NULL DEFAULT 0,
   `ativo` boolean NOT NULL DEFAULT true, `origem_sistema` varchar(40), `origem_id` varchar(80),
+  `excluido_em` timestamp NULL, `excluido_por` varchar(120), `motivo_exclusao` varchar(500),
   `criado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`), UNIQUE KEY `alimentacao_forn_origem_uq` (`origem_sistema`,`origem_id`), KEY `alimentacao_forn_nome_idx` (`nome`), KEY `alimentacao_forn_ativo_idx` (`ativo`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

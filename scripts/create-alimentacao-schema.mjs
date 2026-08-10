@@ -26,6 +26,26 @@ try {
 
   for (const statement of statements) await connection.query(statement);
 
+  const exclusionColumns = [
+    ["alimentacao_funcionarios", "excluido_em", "timestamp NULL"],
+    ["alimentacao_funcionarios", "excluido_por", "varchar(120) NULL"],
+    ["alimentacao_funcionarios", "motivo_exclusao", "varchar(500) NULL"],
+    ["alimentacao_fornecedores", "excluido_em", "timestamp NULL"],
+    ["alimentacao_fornecedores", "excluido_por", "varchar(120) NULL"],
+    ["alimentacao_fornecedores", "motivo_exclusao", "varchar(500) NULL"],
+  ];
+  for (const [table, column, definition] of exclusionColumns) {
+    const [[existingColumn]] = await connection.query(
+      `SELECT COUNT(*) total FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=? AND column_name=?`,
+      [table, column]
+    );
+    if (!Number(existingColumn?.total || 0)) {
+      await connection.query(
+        `ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`
+      );
+    }
+  }
+
   const [tables] = await connection.query(`
     SELECT table_name
     FROM information_schema.tables

@@ -45,10 +45,10 @@ export async function cadastros() {
   const pool = await getMysqlPool();
   const [[funcionarios], [fornecedores], [custos]] = await Promise.all([
     pool.query(
-      "SELECT id,nome,setor,ativo FROM alimentacao_funcionarios ORDER BY ativo DESC,nome"
+      "SELECT id,nome,setor,ativo FROM alimentacao_funcionarios WHERE excluido_em IS NULL ORDER BY ativo DESC,nome"
     ),
     pool.query(
-      "SELECT id,nome,valor_refeicao valorRefeicao,ativo FROM alimentacao_fornecedores ORDER BY ativo DESC,nome"
+      "SELECT id,nome,valor_refeicao valorRefeicao,ativo FROM alimentacao_fornecedores WHERE excluido_em IS NULL ORDER BY ativo DESC,nome"
     ),
     pool.query(
       "SELECT id,descricao,categoria,valor,data_custo dataCusto FROM alimentacao_custos_extras WHERE excluido_em IS NULL ORDER BY data_custo DESC,id DESC"
@@ -77,23 +77,30 @@ export async function salvarFuncionario(data: {
   return { ok: true };
 }
 
-export async function excluirFuncionario(id: number) {
+export async function excluirFuncionario(
+  id: number,
+  motivo: string,
+  usuario: string
+) {
   const pool = await getMysqlPool();
   const [vinculos] = await pool.query<mysql.RowDataPacket[]>(
     "SELECT COUNT(*) total FROM alimentacao_lancamento_itens WHERE funcionario_id=?",
     [id]
   );
   if (Number(vinculos[0]?.total || 0) > 0) {
-    throw new Error(
-      "Funcionário possui lançamentos vinculados. Inative o cadastro para preservar o histórico."
+    const [result] = await pool.execute<mysql.ResultSetHeader>(
+      "UPDATE alimentacao_funcionarios SET ativo=FALSE,excluido_em=NOW(),excluido_por=?,motivo_exclusao=? WHERE id=? AND excluido_em IS NULL",
+      [usuario, motivo, id]
     );
+    if (!result.affectedRows) throw new Error("Funcionário não encontrado.");
+    return { ok: true, tipoExclusao: "logica" as const };
   }
   const [result] = await pool.execute<mysql.ResultSetHeader>(
     "DELETE FROM alimentacao_funcionarios WHERE id=?",
     [id]
   );
   if (!result.affectedRows) throw new Error("Funcionário não encontrado.");
-  return { ok: true };
+  return { ok: true, tipoExclusao: "fisica" as const };
 }
 
 export async function salvarFornecedor(data: {
@@ -116,23 +123,30 @@ export async function salvarFornecedor(data: {
   return { ok: true };
 }
 
-export async function excluirFornecedor(id: number) {
+export async function excluirFornecedor(
+  id: number,
+  motivo: string,
+  usuario: string
+) {
   const pool = await getMysqlPool();
   const [vinculos] = await pool.query<mysql.RowDataPacket[]>(
     "SELECT COUNT(*) total FROM alimentacao_lancamentos WHERE fornecedor_id=?",
     [id]
   );
   if (Number(vinculos[0]?.total || 0) > 0) {
-    throw new Error(
-      "Fornecedor possui lançamentos vinculados. Inative o cadastro para preservar o histórico."
+    const [result] = await pool.execute<mysql.ResultSetHeader>(
+      "UPDATE alimentacao_fornecedores SET ativo=FALSE,excluido_em=NOW(),excluido_por=?,motivo_exclusao=? WHERE id=? AND excluido_em IS NULL",
+      [usuario, motivo, id]
     );
+    if (!result.affectedRows) throw new Error("Fornecedor não encontrado.");
+    return { ok: true, tipoExclusao: "logica" as const };
   }
   const [result] = await pool.execute<mysql.ResultSetHeader>(
     "DELETE FROM alimentacao_fornecedores WHERE id=?",
     [id]
   );
   if (!result.affectedRows) throw new Error("Fornecedor não encontrado.");
-  return { ok: true };
+  return { ok: true, tipoExclusao: "fisica" as const };
 }
 
 export async function salvarCusto(

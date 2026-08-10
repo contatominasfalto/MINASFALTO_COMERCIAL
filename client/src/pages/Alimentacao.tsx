@@ -679,18 +679,26 @@ function Cadastros({ data, concluir }: any) {
     onError: error => toast.error(error.message),
   });
   const excluirFuncionario = trpc.alimentacao.excluirFuncionario.useMutation({
-    onSuccess: async () => {
+    onSuccess: async resultado => {
       setDeleteTarget(null);
       await concluir();
-      toast.success("Funcionário excluído.");
+      toast.success(
+        resultado.tipoExclusao === "logica"
+          ? "Funcionário excluído. O histórico foi preservado."
+          : "Funcionário excluído."
+      );
     },
     onError: error => toast.error(error.message),
   });
   const excluirFornecedor = trpc.alimentacao.excluirFornecedor.useMutation({
-    onSuccess: async () => {
+    onSuccess: async resultado => {
       setDeleteTarget(null);
       await concluir();
-      toast.success("Fornecedor excluído.");
+      toast.success(
+        resultado.tipoExclusao === "logica"
+          ? "Fornecedor excluído. O histórico foi preservado."
+          : "Fornecedor excluído."
+      );
     },
     onError: error => toast.error(error.message),
   });
@@ -983,9 +991,15 @@ function Cadastros({ data, concluir }: any) {
           const id = Number(deleteTarget?.item?.id);
           if (!id) return;
           if (deleteTarget.tipo === "funcionario") {
-            excluirFuncionario.mutate({ id });
+            excluirFuncionario.mutate({
+              id,
+              motivo: "Exclusão confirmada pelo usuário em duas etapas.",
+            });
           } else if (deleteTarget.tipo === "fornecedor") {
-            excluirFornecedor.mutate({ id });
+            excluirFornecedor.mutate({
+              id,
+              motivo: "Exclusão confirmada pelo usuário em duas etapas.",
+            });
           } else {
             excluirCusto.mutate({
               id,
