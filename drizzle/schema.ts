@@ -386,6 +386,7 @@ export const licitacaoPedidosCrti = mysqlTable("licitacao_pedidos_crti", {
   id: int("id").autoincrement().primaryKey(),
   licitacaoId: int("licitacaoId").notNull(),
   pedidoCrti: varchar("pedidoCrti", { length: 50 }).notNull(),
+  origem: varchar("origem", { length: 20 }).notNull().default("CRTI"),
   cliente: varchar("cliente", { length: 255 }),
   dataPedido: varchar("dataPedido", { length: 10 }),
   statusPedido: varchar("statusPedido", { length: 80 }),

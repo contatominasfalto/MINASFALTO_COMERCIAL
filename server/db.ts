@@ -2498,6 +2498,14 @@ export async function ensureLicitacaoAdesoesSchema(pool: mysql.Pool) {
           "ALTER TABLE licitacao_atas ADD COLUMN alertaVencimento boolean NOT NULL DEFAULT true AFTER observacoes",
         );
       }
+      const [pedidoOrigemColumns] = await pool.query<mysql.RowDataPacket[]>(
+        "SHOW COLUMNS FROM licitacao_pedidos_crti LIKE 'origem'",
+      );
+      if (!Array.isArray(pedidoOrigemColumns) || pedidoOrigemColumns.length === 0) {
+        await pool.query(
+          "ALTER TABLE licitacao_pedidos_crti ADD COLUMN origem varchar(20) NOT NULL DEFAULT 'CRTI' AFTER pedidoCrti",
+        );
+      }
     })().catch((error) => {
       _licitacaoAdesoesSchemaPromise = null;
       throw error;
@@ -3190,6 +3198,7 @@ export async function deleteLicitacaoAdesaoPedidoCrti(id: number, adesaoId: numb
 
 export async function listLicitacaoPedidosCrti(licitacaoId: number) {
   const pool = await ensureMysqlPool();
+  await ensureLicitacaoAdesoesSchema(pool);
   const [licitacaoRows] = await pool.query<mysql.RowDataPacket[]>("SELECT qtdeSc FROM licitacoes WHERE id = ? LIMIT 1", [licitacaoId]);
   const quantidadeBase = Number(licitacaoRows[0]?.qtdeSc) || 0;
   const [rows] = await pool.query<mysql.RowDataPacket[]>(
@@ -3197,6 +3206,7 @@ export async function listLicitacaoPedidosCrti(licitacaoId: number) {
       lp.id,
       lp.licitacaoId,
       lp.pedidoCrti,
+      COALESCE(NULLIF(lp.origem, ''), 'CRTI') AS origem,
       COALESCE(NULLIF(lp.cliente, ''), p.cliente, '') AS cliente,
       COALESCE(NULLIF(lp.dataPedido, ''), p.dataPedido, '') AS dataPedido,
       COALESCE(NULLIF(lp.statusPedido, ''), NULLIF(p.status, ''), NULLIF(p.situacao, ''), '') AS statusPedido,
@@ -3251,6 +3261,76 @@ export async function createLicitacaoPedidoCrti(data: {
       normalizeMoney(enriched.valorTotal),
       data.observacoes || "",
       data.criadoPor || "Sistema",
+    ],
+  );
+  return listLicitacaoPedidosCrti(data.licitacaoId);
+}
+
+type LicitacaoPedidoManualInput = {
+  licitacaoId: number;
+  pedidoCrti: string;
+  cliente: string;
+  dataPedido?: string;
+  statusPedido?: string;
+  quantidade: number;
+  valorTotal?: number;
+  observacoes?: string;
+  criadoPor?: string;
+};
+
+export async function createLicitacaoPedidoManual(data: LicitacaoPedidoManualInput) {
+  const pool = await ensureMysqlPool();
+  await ensureLicitacaoAdesoesSchema(pool);
+  const codigo = String(data.pedidoCrti || "").trim();
+  await assertPedidoCrtiDisponivel(pool, codigo);
+  await pool.query(
+    `INSERT INTO licitacao_pedidos_crti (
+      licitacaoId, pedidoCrti, origem, cliente, dataPedido, statusPedido,
+      quantidade, valorTotal, saldoEntrega, observacoes, criadoPor
+    ) VALUES (?, ?, 'MANUAL', ?, ?, ?, ?, ?, 0, ?, ?)`,
+    [
+      data.licitacaoId,
+      codigo,
+      String(data.cliente || "").trim(),
+      data.dataPedido || "",
+      String(data.statusPedido || "PEDIDO MANUAL").trim(),
+      normalizeMoney(data.quantidade),
+      normalizeMoney(data.valorTotal),
+      data.observacoes || "",
+      data.criadoPor || "Sistema",
+    ],
+  );
+  return listLicitacaoPedidosCrti(data.licitacaoId);
+}
+
+export async function updateLicitacaoPedidoManual(id: number, data: LicitacaoPedidoManualInput) {
+  const pool = await ensureMysqlPool();
+  await ensureLicitacaoAdesoesSchema(pool);
+  const [rows] = await pool.query<mysql.RowDataPacket[]>(
+    "SELECT id, origem FROM licitacao_pedidos_crti WHERE id = ? AND licitacaoId = ? LIMIT 1",
+    [id, data.licitacaoId],
+  );
+  if (!rows[0]) throw new Error("Pedido manual não encontrado nesta licitação.");
+  if (String(rows[0].origem || "CRTI").toUpperCase() !== "MANUAL") {
+    throw new Error("Pedidos integrados ao CRTI não podem ser alterados manualmente.");
+  }
+  const codigo = String(data.pedidoCrti || "").trim();
+  await assertPedidoCrtiDisponivel(pool, codigo, id);
+  await pool.query(
+    `UPDATE licitacao_pedidos_crti SET
+      pedidoCrti = ?, cliente = ?, dataPedido = ?, statusPedido = ?, quantidade = ?,
+      valorTotal = ?, observacoes = ?
+    WHERE id = ? AND licitacaoId = ? AND origem = 'MANUAL'`,
+    [
+      codigo,
+      String(data.cliente || "").trim(),
+      data.dataPedido || "",
+      String(data.statusPedido || "PEDIDO MANUAL").trim(),
+      normalizeMoney(data.quantidade),
+      normalizeMoney(data.valorTotal),
+      data.observacoes || "",
+      id,
+      data.licitacaoId,
     ],
   );
   return listLicitacaoPedidosCrti(data.licitacaoId);

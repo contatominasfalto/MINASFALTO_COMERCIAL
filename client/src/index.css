@@ -1958,6 +1958,11 @@
   background: rgba(0, 18, 36, 0.22);
 }
 
+.licitacao-modal-backdrop-nested {
+  z-index: 100;
+  background: rgba(0, 18, 36, 0.42);
+}
+
 .licitacao-modal {
   position: relative;
   width: min(1180px, calc(100vw - 52px));
@@ -2635,9 +2640,41 @@
 
 .licitacao-delivery-form {
   display: grid;
-  grid-template-columns: minmax(220px, 440px) minmax(160px, 360px) max-content;
+  grid-template-columns: minmax(220px, 1.4fr) minmax(130px, 0.7fr) minmax(150px, 0.8fr) max-content;
   align-items: end;
   gap: 12px;
+}
+
+.licitacao-manual-order-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.licitacao-manual-order-observations {
+  grid-column: 1 / -1;
+}
+
+.licitacao-manual-order-observations textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.licitacao-manual-order-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.licitacao-manual-order-actions .desktop-action {
+  min-width: 170px;
+}
+
+.licitacao-delivery-table td:last-child .mini-icon-button + .mini-icon-button {
+  margin-left: 4px;
 }
 
 .licitacao-delivery-form .desktop-action {

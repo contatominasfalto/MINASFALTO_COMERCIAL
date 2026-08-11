@@ -334,6 +334,17 @@ const licitacaoPedidoCrtiSchema = z.object({
   observacoes: z.string().max(5000).optional(),
 });
 
+const licitacaoPedidoManualSchema = z.object({
+  licitacaoId: z.number().int().positive(),
+  pedidoCrti: z.string().trim().min(1).max(50),
+  cliente: z.string().trim().min(1).max(255),
+  dataPedido: z.string().max(10).optional(),
+  statusPedido: z.string().trim().max(80).optional(),
+  quantidade: z.coerce.number().positive(),
+  valorTotal: z.coerce.number().nonnegative().optional(),
+  observacoes: z.string().max(5000).optional(),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -765,6 +776,13 @@ export const appRouter = router({
         ...input,
         criadoPor: ctx.user?.name || "Sistema",
       })),
+      createManual: costAccessProcedure.input(licitacaoPedidoManualSchema).mutation(({ input, ctx }) => db.createLicitacaoPedidoManual({
+        ...input,
+        criadoPor: ctx.user?.name || "Sistema",
+      })),
+      updateManual: costAccessProcedure
+        .input(z.object({ id: z.number().int().positive(), data: licitacaoPedidoManualSchema }))
+        .mutation(({ input }) => db.updateLicitacaoPedidoManual(input.id, input.data)),
       update: costAccessProcedure
         .input(z.object({ id: z.number().int().positive(), data: licitacaoPedidoCrtiSchema }))
         .mutation(({ input }) => db.updateLicitacaoPedidoCrti(input.id, input.data)),

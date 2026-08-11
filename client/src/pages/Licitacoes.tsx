@@ -49,6 +49,16 @@ const emptyPedidoCrtiForm = {
   observacoes: "",
 };
 
+const emptyPedidoManualForm = {
+  pedidoCrti: "",
+  cliente: "",
+  dataPedido: "",
+  statusPedido: "PEDIDO MANUAL",
+  quantidade: 0,
+  valorTotal: 0,
+  observacoes: "",
+};
+
 const emptyAdesaoForm = {
   id: null as number | null,
   orgaoAderente: "",
@@ -212,6 +222,7 @@ function SimpleModal({
   menu = false,
   delivery = false,
   fullscreen = false,
+  nested = false,
 }: {
   title: string;
   children: React.ReactNode;
@@ -220,9 +231,10 @@ function SimpleModal({
   menu?: boolean;
   delivery?: boolean;
   fullscreen?: boolean;
+  nested?: boolean;
 }) {
   return (
-    <div className={`desktop-modal-backdrop licitacao-modal-backdrop${fullscreen ? " licitacao-modal-backdrop-fullscreen" : ""}`}>
+    <div className={`desktop-modal-backdrop licitacao-modal-backdrop${fullscreen ? " licitacao-modal-backdrop-fullscreen" : ""}${nested ? " licitacao-modal-backdrop-nested" : ""}`}>
       <section className={fullscreen ? "licitacao-modal licitacao-modal-fullscreen" : delivery ? "licitacao-modal licitacao-modal-delivery" : wide ? "licitacao-modal licitacao-modal-wide" : menu ? "licitacao-modal licitacao-modal-menu" : "licitacao-modal"}>
         {delivery && <img className="licitacao-modal-logo" src={minasfaltoLogo} alt="Minasfalto" />}
         <button type="button" className="desktop-modal-close" onClick={onClose} aria-label="Fechar">
@@ -321,6 +333,9 @@ export default function Licitacoes() {
   const [simpleForm, setSimpleForm] = useState<any>({ nome: "", link: "" });
   const [selectedLicitacao, setSelectedLicitacao] = useState<Licitacao | null>(null);
   const [pedidoForm, setPedidoForm] = useState<any>(emptyPedidoCrtiForm);
+  const [pedidoManualOpen, setPedidoManualOpen] = useState(false);
+  const [editingPedidoManualId, setEditingPedidoManualId] = useState<number | null>(null);
+  const [pedidoManualForm, setPedidoManualForm] = useState<any>(emptyPedidoManualForm);
   const [openEntregaGroups, setOpenEntregaGroups] = useState<Record<number, boolean>>({});
   const [entregaLicitacaoId, setEntregaLicitacaoId] = useState<number | null>(null);
   const [ataForm, setAtaForm] = useState<any>({ vendedorId: null, vendedorNome: "NA", validadeAta: "", quantidadeOriginal: 0, observacoes: "", alertaVencimento: true });
@@ -490,6 +505,21 @@ export default function Licitacoes() {
       invalidateAll();
     },
     onError: (error) => toast.error(`Erro ao vincular pedido: ${error.message}`),
+  });
+  const savePedidoManualSuccess = () => {
+    toast.success(editingPedidoManualId ? "Pedido manual atualizado." : "Pedido manual cadastrado.");
+    setPedidoManualOpen(false);
+    setEditingPedidoManualId(null);
+    setPedidoManualForm(emptyPedidoManualForm);
+    invalidateAll();
+  };
+  const createPedidoManual = trpc.licitacoes.pedidosCrti.createManual.useMutation({
+    onSuccess: savePedidoManualSuccess,
+    onError: (error) => toast.error(`Erro ao cadastrar pedido manual: ${error.message}`),
+  });
+  const updatePedidoManual = trpc.licitacoes.pedidosCrti.updateManual.useMutation({
+    onSuccess: savePedidoManualSuccess,
+    onError: (error) => toast.error(`Erro ao atualizar pedido manual: ${error.message}`),
   });
   const deletePedido = trpc.licitacoes.pedidosCrti.delete.useMutation({
     onSuccess: () => {
@@ -721,6 +751,44 @@ export default function Licitacoes() {
     };
 
     createPedido.mutate(payload);
+  };
+
+  const openPedidoManual = (licitacao: Licitacao, pedido?: any) => {
+    setSelectedLicitacao(licitacao);
+    setEditingPedidoManualId(pedido?.id ? Number(pedido.id) : null);
+    setPedidoManualForm(pedido ? {
+      ...emptyPedidoManualForm,
+      pedidoCrti: pedido.pedidoCrti || "",
+      cliente: pedido.cliente || "",
+      dataPedido: pedido.dataPedido || "",
+      statusPedido: pedido.statusPedido || "PEDIDO MANUAL",
+      quantidade: numberValue(pedido.quantidade),
+      valorTotal: numberValue(pedido.valorTotal),
+      observacoes: pedido.observacoes || "",
+    } : { ...emptyPedidoManualForm });
+    setPedidoManualOpen(true);
+  };
+
+  const submitPedidoManual = () => {
+    if (!selectedLicitacao) return;
+    const pedidoCrti = String(pedidoManualForm.pedidoCrti || "").trim();
+    const cliente = String(pedidoManualForm.cliente || "").trim();
+    const quantidade = numberValue(pedidoManualForm.quantidade);
+    if (!pedidoCrti) return toast.error("Informe o código do pedido.");
+    if (!cliente) return toast.error("Informe o cliente.");
+    if (quantidade <= 0) return toast.error("Informe uma quantidade maior que zero.");
+    const payload = {
+      licitacaoId: selectedLicitacao.id,
+      pedidoCrti,
+      cliente,
+      dataPedido: pedidoManualForm.dataPedido || "",
+      statusPedido: String(pedidoManualForm.statusPedido || "PEDIDO MANUAL").trim(),
+      quantidade,
+      valorTotal: numberValue(pedidoManualForm.valorTotal),
+      observacoes: String(pedidoManualForm.observacoes || ""),
+    };
+    if (editingPedidoManualId) updatePedidoManual.mutate({ id: editingPedidoManualId, data: payload });
+    else createPedidoManual.mutate(payload);
   };
 
   const renderAuxCadastro = (kind: "status" | "plataforma" | "vendedor") => {
@@ -1221,6 +1289,13 @@ export default function Licitacoes() {
                         >
                           <Save size={14} /> Salvar
                         </button>
+                        <button
+                          type="button"
+                          className="desktop-action"
+                          onClick={() => openPedidoManual(licitacao)}
+                        >
+                          <Plus size={14} /> Pedido manual
+                        </button>
                         <div className="licitacao-delivery-quantity">
                           <span>Quantidade Licitação</span>
                           <strong>{formatDecimal(licitacao.qtdeSc)}</strong>
@@ -1243,6 +1318,20 @@ export default function Licitacoes() {
                                   <td className="num">{formatCurrency(pedido.valorTotal)}</td>
                                   <td className="num">{formatSaldoEntrega(pedidosCrti.data?.saldoEntrega || 0)}</td>
                                   <td>
+                                    {String(pedido.origem || "CRTI").toUpperCase() === "MANUAL" && (
+                                      <button
+                                        type="button"
+                                        className="mini-icon-button"
+                                        onClick={(event) => {
+                                          event.preventDefault();
+                                          event.stopPropagation();
+                                          openPedidoManual(licitacao, pedido);
+                                        }}
+                                        title="Editar pedido manual"
+                                      >
+                                        <Pencil size={14} />
+                                      </button>
+                                    )}
                                     <button
                                       type="button"
                                       className="mini-icon-button danger"
@@ -1252,7 +1341,7 @@ export default function Licitacoes() {
                                         setSelectedLicitacao(licitacao);
                                         setDeletePedidoTarget({ pedido, licitacao });
                                       }}
-                                      title="Desvincular pedido"
+                                      title={String(pedido.origem || "CRTI").toUpperCase() === "MANUAL" ? "Excluir pedido manual" : "Desvincular pedido"}
                                     >
                                       <Trash2 size={14} />
                                     </button>
@@ -1268,6 +1357,53 @@ export default function Licitacoes() {
                 </article>
               );
             })}
+          </section>
+        </SimpleModal>
+      )}
+
+      {pedidoManualOpen && selectedLicitacao && (
+        <SimpleModal
+          title={`${editingPedidoManualId ? "Editar" : "Cadastrar"} pedido manual - ${normalizeText(selectedLicitacao.orgao)}${selectedLicitacao.cidade ? ` - ${normalizeText(selectedLicitacao.cidade)}` : ""}`}
+          onClose={() => {
+            setPedidoManualOpen(false);
+            setEditingPedidoManualId(null);
+            setPedidoManualForm(emptyPedidoManualForm);
+          }}
+          wide
+          nested
+        >
+          <section className="licitacao-manual-order-form">
+            <TextField label="Código do pedido" value={pedidoManualForm.pedidoCrti} onChange={(value) => setPedidoManualForm((current: any) => ({ ...current, pedidoCrti: value }))} />
+            <TextField label="Cliente" value={pedidoManualForm.cliente} onChange={(value) => setPedidoManualForm((current: any) => ({ ...current, cliente: normalizeText(value) }))} />
+            <TextField label="Data do pedido" type="date" value={pedidoManualForm.dataPedido} onChange={(value) => setPedidoManualForm((current: any) => ({ ...current, dataPedido: value }))} />
+            <TextField label="Status" value={pedidoManualForm.statusPedido} onChange={(value) => setPedidoManualForm((current: any) => ({ ...current, statusPedido: normalizeText(value) }))} />
+            <TextField label="Quantidade" type="number" value={pedidoManualForm.quantidade} onChange={(value) => setPedidoManualForm((current: any) => ({ ...current, quantidade: value }))} />
+            <TextField label="Valor total" type="number" value={pedidoManualForm.valorTotal} onChange={(value) => setPedidoManualForm((current: any) => ({ ...current, valorTotal: value }))} />
+            <label className="licitacao-field licitacao-manual-order-observations">
+              <span>Observações</span>
+              <textarea value={pedidoManualForm.observacoes} onChange={(event) => setPedidoManualForm((current: any) => ({ ...current, observacoes: event.target.value }))} />
+            </label>
+            <div className="licitacao-manual-order-actions">
+              <button
+                type="button"
+                className="desktop-action"
+                onClick={() => {
+                  setPedidoManualOpen(false);
+                  setEditingPedidoManualId(null);
+                  setPedidoManualForm(emptyPedidoManualForm);
+                }}
+              >
+                <X size={14} /> Cancelar
+              </button>
+              <button
+                type="button"
+                className="desktop-action primary"
+                disabled={createPedidoManual.isPending || updatePedidoManual.isPending}
+                onClick={submitPedidoManual}
+              >
+                <Save size={14} /> {editingPedidoManualId ? "Atualizar pedido" : "Cadastrar pedido"}
+              </button>
+            </div>
           </section>
         </SimpleModal>
       )}
@@ -1340,10 +1476,10 @@ export default function Licitacoes() {
         onOpenChange={(open) => {
           if (!open) setDeletePedidoTarget(null);
         }}
-        title="Confirmar desvínculo de pedido CRTI"
-        description="Esta ação vai desvincular o pedido do controle de entrega."
-        finalDescription="Confirmação final: depois de continuar, o pedido CRTI será desvinculado desta licitação."
-        finalConfirmLabel="Desvincular pedido"
+        title={String(deletePedidoTarget?.pedido?.origem || "CRTI").toUpperCase() === "MANUAL" ? "Confirmar exclusão de pedido manual" : "Confirmar desvínculo de pedido CRTI"}
+        description={String(deletePedidoTarget?.pedido?.origem || "CRTI").toUpperCase() === "MANUAL" ? "Esta ação vai excluir o pedido manual do controle de entrega." : "Esta ação vai desvincular o pedido do controle de entrega."}
+        finalDescription={String(deletePedidoTarget?.pedido?.origem || "CRTI").toUpperCase() === "MANUAL" ? "Confirmação final: depois de continuar, o pedido manual será excluído desta licitação." : "Confirmação final: depois de continuar, o pedido CRTI será desvinculado desta licitação."}
+        finalConfirmLabel={String(deletePedidoTarget?.pedido?.origem || "CRTI").toUpperCase() === "MANUAL" ? "Excluir pedido" : "Desvincular pedido"}
         details={[
           { label: "Licitação", value: normalizeText(deletePedidoTarget?.licitacao?.orgao) || "-" },
           { label: "Pedido", value: deletePedidoTarget?.pedido?.pedidoCrti ?? "-" },
