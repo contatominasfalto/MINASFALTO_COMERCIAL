@@ -2334,7 +2334,46 @@
 }
 
 .licitacao-adesoes-table {
-  min-width: 1380px;
+  min-width: 1180px;
+  table-layout: fixed;
+}
+
+.licitacao-adesoes-table > thead > tr > th:nth-child(1),
+.licitacao-adesoes-table > tbody > .licitacao-adesao-group-row > td:nth-child(1) { width: 4%; text-align: center; }
+
+.licitacao-adesoes-table > thead > tr > th:nth-child(2),
+.licitacao-adesoes-table > tbody > .licitacao-adesao-group-row > td:nth-child(2) { width: 30%; text-align: left; }
+
+.licitacao-adesoes-table > thead > tr > th:nth-child(3),
+.licitacao-adesoes-table > tbody > .licitacao-adesao-group-row > td:nth-child(3) { width: 10%; text-align: center; }
+
+.licitacao-adesoes-table > thead > tr > th:nth-child(4),
+.licitacao-adesoes-table > tbody > .licitacao-adesao-group-row > td:nth-child(4) { width: 11%; text-align: right; }
+
+.licitacao-adesoes-table > thead > tr > th:nth-child(5),
+.licitacao-adesoes-table > tbody > .licitacao-adesao-group-row > td:nth-child(5) { width: 10%; text-align: center; }
+
+.licitacao-adesoes-table > thead > tr > th:nth-child(6),
+.licitacao-adesoes-table > tbody > .licitacao-adesao-group-row > td:nth-child(6) { width: 11%; text-align: center; }
+
+.licitacao-adesoes-table > thead > tr > th:nth-child(7),
+.licitacao-adesoes-table > tbody > .licitacao-adesao-group-row > td:nth-child(7) { width: 9%; text-align: right; }
+
+.licitacao-adesoes-table > thead > tr > th:nth-child(8),
+.licitacao-adesoes-table > tbody > .licitacao-adesao-group-row > td:nth-child(8) { width: 9%; text-align: right; }
+
+.licitacao-adesoes-table > thead > tr > th:nth-child(9),
+.licitacao-adesoes-table > tbody > .licitacao-adesao-group-row > td:nth-child(9) { width: 6%; text-align: center; }
+
+.licitacao-adesoes-table > tbody > .licitacao-adesao-group-row > td:nth-child(2) {
+  height: auto;
+  min-height: 30px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  line-height: 15px;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
 }
 
 .licitacao-adesoes-table > tbody > .licitacao-adesao-group-row > td {
