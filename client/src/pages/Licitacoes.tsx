@@ -1186,8 +1186,8 @@ export default function Licitacoes() {
                       const isOpen = Boolean(openAdesaoGroups[item.id]);
                       return (
                         <Fragment key={item.id}>
-                          <tr>
-                            <td><button type="button" className="mini-icon-button" title="Vincular pedidos CRTI" onClick={() => { setSelectedAdesaoId(item.id); setAdesaoPedidoCrti(""); setOpenAdesaoGroups({ [item.id]: !isOpen }); }}>{isOpen ? "-" : "+"}</button></td>
+                          <tr className={`licitacao-adesao-group-row${isOpen ? " is-open" : ""}`}>
+                            <td><button type="button" className={`mini-icon-button licitacao-adesao-toggle${isOpen ? " is-open" : ""}`} aria-expanded={isOpen} title={isOpen ? "Recolher detalhes da adesão" : "Expandir detalhes da adesão"} onClick={() => { setSelectedAdesaoId(item.id); setAdesaoPedidoCrti(""); setOpenAdesaoGroups({ [item.id]: !isOpen }); }}>{isOpen ? "-" : "+"}</button></td>
                             <td>{normalizeText(item.orgaoAderente)}</td>
                             <td>{formatDateBR(item.dataAdesao)}</td>
                             <td className="num">{formatDecimal(item.quantidade)}</td>
@@ -1203,7 +1203,12 @@ export default function Licitacoes() {
                           {isOpen && selectedAdesaoId === item.id && (
                             <tr className="licitacao-adesao-pedidos-row">
                               <td colSpan={9}>
-                                <div className="licitacao-adesao-pedido-form">
+                                <section className="licitacao-adesao-expanded-panel">
+                                  <header className="licitacao-adesao-expanded-title">
+                                    <span>Detalhes da adesão</span>
+                                    <strong>{normalizeText(item.orgaoAderente)}</strong>
+                                  </header>
+                                  <div className="licitacao-adesao-pedido-form">
                                   <TextField label="Código Pedido CRTI" value={adesaoPedidoCrti} onChange={setAdesaoPedidoCrti} />
                                   <button type="button" className="desktop-action primary" disabled={createAdesaoPedido.isPending} onClick={() => {
                                     const codigo = adesaoPedidoCrti.trim();
@@ -1212,8 +1217,8 @@ export default function Licitacoes() {
                                   }}><Link2 size={14} /> Vincular Pedido</button>
                                   <span><small>Quantidade da adesão</small><strong>{formatDecimal(item.quantidade)}</strong></span>
                                   <span><small>Saldo atual</small><strong>{formatSaldoEntrega(adesaoPedidosCrti.data?.saldoEntrega ?? item.saldoEntrega)}</strong></span>
-                                </div>
-                                <div className="desktop-table-scroll licitacao-adesao-pedidos-list">
+                                  </div>
+                                  <div className="desktop-table-scroll licitacao-adesao-pedidos-list">
                                   <table className="desktop-table">
                                     <thead><tr><th>Pedido</th><th>Cliente</th><th>Data</th><th>Status</th><th>Quantidade</th><th>Valor</th><th>Ações</th></tr></thead>
                                     <tbody>
@@ -1226,7 +1231,8 @@ export default function Licitacoes() {
                                       {!adesaoPedidosCrti.isLoading && !(adesaoPedidosCrti.data?.items || []).length && <tr><td colSpan={7} className="desktop-empty">Nenhum pedido CRTI vinculado.</td></tr>}
                                     </tbody>
                                   </table>
-                                </div>
+                                  </div>
+                                </section>
                               </td>
                             </tr>
                           )}

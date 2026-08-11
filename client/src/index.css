@@ -2337,9 +2337,84 @@
   min-width: 1380px;
 }
 
+.licitacao-adesoes-table > tbody > .licitacao-adesao-group-row > td {
+  height: 30px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  border-top: 6px solid #f4f7fb;
+  border-bottom: 1px solid #8fa8bf;
+  background: linear-gradient(#f9fbfd, #e5edf5) !important;
+  font-weight: 700;
+}
+
+.licitacao-adesoes-table > tbody > .licitacao-adesao-group-row > td:first-child {
+  border-left: 2px solid #8fa8bf;
+}
+
+.licitacao-adesoes-table > tbody > .licitacao-adesao-group-row > td:last-child {
+  border-right: 2px solid #8fa8bf;
+}
+
+.licitacao-adesoes-table > tbody > .licitacao-adesao-group-row.is-open > td {
+  border-top-color: #f4f7fb;
+  border-bottom-color: #6f8da8;
+  background: linear-gradient(#fff9e8, #f3dfaa) !important;
+}
+
+.licitacao-adesao-toggle {
+  font-weight: 900;
+  border-color: #7893ad;
+  background: #fff;
+}
+
+.licitacao-adesao-toggle.is-open {
+  color: #001b34;
+  border-color: #b27b00;
+  background: #f7d779;
+}
+
 .licitacao-adesao-pedidos-row > td {
-  padding: 12px !important;
-  background: #edf3f9;
+  padding: 0 10px 12px !important;
+  border-right: 2px solid #8fa8bf !important;
+  border-bottom: 2px solid #8fa8bf !important;
+  border-left: 2px solid #8fa8bf !important;
+  background: #edf3f9 !important;
+}
+
+.licitacao-adesao-expanded-panel {
+  padding: 0 10px 10px;
+  border: 1px solid #aabccc;
+  border-top: 0;
+  border-left: 5px solid #d99a00;
+  background: #f8fafc;
+  box-shadow: 0 3px 7px rgba(0, 31, 58, 0.12);
+}
+
+.licitacao-adesao-expanded-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 30px;
+  margin: 0 -10px 10px;
+  padding: 0 12px;
+  border-bottom: 1px solid #aabccc;
+  background: linear-gradient(#eef4f9, #dae6f0);
+  color: #001b34;
+}
+
+.licitacao-adesao-expanded-title span {
+  padding-right: 12px;
+  border-right: 1px solid #9bafc1;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.licitacao-adesao-expanded-title strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .licitacao-adesao-pedido-form {
@@ -2373,6 +2448,8 @@
   overflow-x: auto;
   overflow-y: auto;
   scrollbar-gutter: stable;
+  border: 1px solid #9fb3c5;
+  background: #fff;
 }
 
 .licitacao-adesao-pedidos-list table {
