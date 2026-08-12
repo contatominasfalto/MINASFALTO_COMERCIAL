@@ -64,9 +64,9 @@ export default function SapDoubleConfirmDialog({
         </DialogHeader>
 
         {details.length > 0 && (
-          <section className="sap-confirm-body">
-            {details.map((detail) => (
-              <div className="sap-confirm-info" key={detail.label}>
+          <section className="sap-confirm-body" data-detail-count={details.length}>
+            {details.map((detail, index) => (
+              <div className="sap-confirm-info" data-detail-index={index} key={detail.label}>
                 <span>{detail.label}</span>
                 <strong>{detail.value}</strong>
               </div>

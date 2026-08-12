@@ -3561,12 +3561,18 @@
   scrollbar-gutter: stable;
 }
 
+.sap-confirm-body[data-detail-count="2"] {
+  grid-template-columns: 125px minmax(0, 1fr);
+}
+
 .sap-confirm-info {
   min-width: 0;
+  max-width: 100%;
   min-height: 58px;
   padding: 8px 10px;
   border: 1px solid #9eb2c8;
   background: linear-gradient(#ffffff, #e4edf5);
+  overflow: hidden;
 }
 
 .sap-confirm-info span,
@@ -3590,6 +3596,12 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
+  max-width: 100%;
+  max-height: min(280px, 38vh);
+  padding-right: 4px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .sap-confirm-actions {
