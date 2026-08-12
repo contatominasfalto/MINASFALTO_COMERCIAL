@@ -411,18 +411,20 @@
 .activities-window {
   width: min(880px, 92vw) !important;
   max-width: 880px !important;
-  height: min(610px, 86vh);
+  height: calc(100vh - 80px);
+  min-height: min(680px, calc(100vh - 80px));
+  max-height: calc(100vh - 80px) !important;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
 [data-slot="dialog-overlay"].sap-confirm-overlay-elevated {
-  z-index: 100 !important;
+  z-index: 200 !important;
 }
 
 [data-slot="dialog-content"].sap-confirm-dialog-elevated {
-  z-index: 101 !important;
+  z-index: 201 !important;
 }
 
 .activities-window [data-slot="dialog-title"] {
