@@ -15,6 +15,7 @@ import { ENV } from "./_core/env";
 import { sdk, LOCAL_LOGIN_OPEN_ID_PREFIX } from "./_core/sdk";
 
 const STATUS_SAIDA_OK = "SA\u00cdDA OK";
+const pedidoAtividadeDescricaoSchema = z.string().trim().min(1, "Informe a atividade.").max(2000, "A atividade deve ter no máximo 2.000 caracteres.");
 
 function normalizeStatus(value: unknown) {
   const text = String(value || "").toUpperCase();
@@ -465,6 +466,31 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         return csvImport.importarCSV(input.csv);
       }),
+
+    atividades: router({
+      list: protectedProcedure
+        .input(z.object({ pedidoId: z.number().int().positive() }))
+        .query(({ input }) => db.listPedidoAtividades(input.pedidoId)),
+
+      create: protectedProcedure
+        .input(z.object({ pedidoId: z.number().int().positive(), descricao: pedidoAtividadeDescricaoSchema }))
+        .mutation(({ input, ctx }) => db.createPedidoAtividade({
+          ...input,
+          criadoPor: ctx.user?.name || "Sistema",
+        })),
+
+      update: protectedProcedure
+        .input(z.object({
+          id: z.number().int().positive(),
+          pedidoId: z.number().int().positive(),
+          descricao: pedidoAtividadeDescricaoSchema,
+        }))
+        .mutation(({ input }) => db.updatePedidoAtividade(input)),
+
+      delete: protectedProcedure
+        .input(z.object({ id: z.number().int().positive(), pedidoId: z.number().int().positive() }))
+        .mutation(({ input }) => db.deletePedidoAtividade(input.id, input.pedidoId)),
+    }),
   }),
 
   // ─────────────────────────────────────────────

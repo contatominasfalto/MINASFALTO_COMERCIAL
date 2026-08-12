@@ -346,6 +346,42 @@
   font-weight: 800;
 }
 
+.desktop-titlebar-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.desktop-titlebar-actions .desktop-logout {
+  margin-left: 0;
+}
+
+.desktop-activities-button {
+  height: 27px;
+  padding: 0 10px;
+  border: 1px solid #8fa5ba;
+  background: linear-gradient(#ffffff, #dce6f0);
+  color: var(--sap-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.desktop-activities-button:hover {
+  border-color: #b98a1c;
+  background: linear-gradient(#fff9e9, #f0d98f);
+}
+
+.desktop-activities-button:disabled {
+  opacity: .55;
+  cursor: default;
+}
+
 .desktop-logout {
   margin-left: auto;
   height: 31px;
@@ -370,6 +406,159 @@
 .desktop-logout:disabled {
   opacity: .65;
   cursor: default;
+}
+
+.activities-window {
+  width: min(880px, 92vw) !important;
+  max-width: 880px !important;
+  height: min(610px, 86vh);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.activities-window [data-slot="dialog-title"] {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.activities-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: end;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--sap-line);
+  background: #edf3f9;
+}
+
+.activities-editor label,
+.activities-editor label span {
+  display: block;
+}
+
+.activities-editor label span {
+  margin-bottom: 4px;
+  color: var(--sap-text);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.activities-editor textarea {
+  width: 100%;
+  min-height: 72px;
+  max-height: 120px;
+  padding: 7px;
+  resize: vertical;
+  border: 1px solid #8fa5ba;
+  background: #fff;
+  color: var(--sap-text);
+  font: inherit;
+}
+
+.activities-editor textarea:focus {
+  outline: 2px solid #e0a000;
+  outline-offset: -2px;
+}
+
+.activities-editor-actions {
+  display: flex;
+  gap: 6px;
+  padding-bottom: 1px;
+}
+
+.mini-sap-button {
+  min-height: 29px;
+  padding: 0 10px;
+  border: 1px solid #839bb1;
+  background: linear-gradient(#fff, #dce6f0);
+  color: var(--sap-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mini-sap-button.primary {
+  border-color: #9f770f;
+  background: linear-gradient(#fff9dc, #eac34d);
+}
+
+.mini-sap-button:disabled {
+  opacity: .55;
+  cursor: default;
+}
+
+.activities-table-wrap {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+  border: 1px solid var(--sap-line);
+  background: #fff;
+}
+
+.activities-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 11px;
+}
+
+.activities-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 28px;
+  padding: 0 7px;
+  border-right: 1px solid #c9d4df;
+  border-bottom: 1px solid #8fa5ba;
+  background: linear-gradient(#f9fbfd, #d8e3ef);
+  color: var(--sap-text);
+  text-align: left;
+}
+
+.activities-table td {
+  min-height: 28px;
+  padding: 6px 7px;
+  border-right: 1px solid #d7e0ea;
+  border-bottom: 1px solid #d7e0ea;
+  background: #f7fafc;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.activities-table tr:nth-child(even) td {
+  background: #eaf1f7;
+}
+
+.activities-table tr.is-editing td {
+  background: #fff1bd;
+}
+
+.activities-table th:nth-child(1), .activities-table td:nth-child(1) { width: 105px; text-align: center; }
+.activities-table th:nth-child(2), .activities-table td:nth-child(2) { width: auto; }
+.activities-table th:nth-child(3), .activities-table td:nth-child(3) { width: 150px; }
+.activities-table th:nth-child(4), .activities-table td:nth-child(4) { width: 78px; text-align: center; }
+
+@media (max-width: 760px) {
+  .desktop-titlebar-actions {
+    gap: 4px;
+  }
+
+  .desktop-activities-button {
+    width: 34px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .activities-editor {
+    grid-template-columns: 1fr;
+  }
 }
 
 .desktop-toolbar {

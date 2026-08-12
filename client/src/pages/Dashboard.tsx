@@ -8,8 +8,8 @@ import CSVImportForm from "@/components/CSVImportForm";
 import HistoricoModal from "@/components/HistoricoModal";
 import PedidoForm from "@/components/PedidoForm";
 import SapDoubleConfirmDialog from "@/components/SapDoubleConfirmDialog";
-import { ArrowLeft, Edit2, FileText, Phone, RefreshCw, Search, Trash2, Warehouse, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowLeft, Edit2, FileText, ListTodo, Phone, Plus, RefreshCw, Save, Search, Trash2, Warehouse, X } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
@@ -54,6 +54,13 @@ const formatDateTime = (value: unknown) => {
     hour: "2-digit",
     minute: "2-digit",
   });
+};
+
+const formatActivityDate = (value: unknown) => {
+  if (!value) return "-";
+  const date = new Date(value as string | number | Date);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 };
 
 const formatPrioridade = (value: unknown) => value === "PRIORIDADE" ? "PRIORIDADE" : "NORMAL";
@@ -121,8 +128,12 @@ export default function Dashboard() {
   const [isHistoricoOpen, setIsHistoricoOpen] = useState(false);
   const [isCSVImportOpen, setIsCSVImportOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [isActivitiesOpen, setIsActivitiesOpen] = useState(false);
+  const [activityDraft, setActivityDraft] = useState({ id: null as number | null, descricao: "" });
+  const [deleteActivityTarget, setDeleteActivityTarget] = useState<any>(null);
   const [sortColumn, setSortColumn] = useState<SortColumn>("pedido");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const pedidosTableRef = useRef<HTMLDivElement | null>(null);
 
   const { data: pedidos = [], error: pedidosError, isLoading, refetch } = trpc.pedidos.list.useQuery({
     status: statusFilter,
@@ -178,6 +189,34 @@ export default function Dashboard() {
     });
   }, [pedidos, sortColumn, sortDirection]);
   const currentPedido = selectedPedido ?? visiblePedidos[0] ?? null;
+  const activities = trpc.pedidos.atividades.list.useQuery(
+    { pedidoId: Number(currentPedido?.id || 0) },
+    { enabled: isActivitiesOpen && Boolean(currentPedido?.id) },
+  );
+  const createActivity = trpc.pedidos.atividades.create.useMutation({
+    onSuccess: () => {
+      toast.success("Atividade registrada.");
+      setActivityDraft({ id: null, descricao: "" });
+      void activities.refetch();
+    },
+    onError: (error) => toast.error(`Erro ao salvar atividade: ${error.message}`),
+  });
+  const updateActivity = trpc.pedidos.atividades.update.useMutation({
+    onSuccess: () => {
+      toast.success("Atividade atualizada.");
+      setActivityDraft({ id: null, descricao: "" });
+      void activities.refetch();
+    },
+    onError: (error) => toast.error(`Erro ao atualizar atividade: ${error.message}`),
+  });
+  const deleteActivity = trpc.pedidos.atividades.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Atividade excluída.");
+      setDeleteActivityTarget(null);
+      void activities.refetch();
+    },
+    onError: (error) => toast.error(`Erro ao excluir atividade: ${error.message}`),
+  });
 
   const toggleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -233,6 +272,52 @@ export default function Dashboard() {
     setDeleteTarget(currentPedido);
   };
 
+  const openActivities = () => {
+    if (!currentPedido) return toast.error("Selecione um pedido.");
+    setActivityDraft({ id: null, descricao: "" });
+    setIsActivitiesOpen(true);
+  };
+
+  const saveActivity = () => {
+    const descricao = activityDraft.descricao.trim();
+    if (!currentPedido?.id) return toast.error("Selecione um pedido.");
+    if (!descricao) return toast.error("Informe a atividade.");
+    if (activityDraft.id) {
+      updateActivity.mutate({ id: activityDraft.id, pedidoId: currentPedido.id, descricao });
+      return;
+    }
+    createActivity.mutate({ pedidoId: currentPedido.id, descricao });
+  };
+
+  const scrollSelectedRowIntoView = () => {
+    window.requestAnimationFrame(() => {
+      const row = pedidosTableRef.current?.querySelector("tbody tr.selected") as HTMLElement | null;
+      row?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    });
+  };
+
+  const handlePedidosTableKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft", "Enter"].includes(event.key)) return;
+    event.preventDefault();
+    if (!visiblePedidos.length) return;
+
+    if (event.key === "Enter") {
+      if (currentPedido) {
+        setSelectedPedido(currentPedido);
+        setIsEditPedidoOpen(true);
+      }
+      return;
+    }
+
+    const currentIndex = visiblePedidos.findIndex((pedido) => pedido.id === currentPedido?.id);
+    const startIndex = currentIndex >= 0 ? currentIndex : 0;
+    const nextIndex = event.key === "ArrowDown" || event.key === "ArrowRight"
+      ? Math.min(startIndex + 1, visiblePedidos.length - 1)
+      : Math.max(startIndex - 1, 0);
+    setSelectedPedido(visiblePedidos[nextIndex]);
+    scrollSelectedRowIntoView();
+  };
+
   return (
     <div className="desktop-shell">
       <header className="desktop-titlebar">
@@ -244,16 +329,21 @@ export default function Dashboard() {
         <div className="desktop-heading">
           <h1>TAP FACIL 25 KG E A GRANEL</h1>
         </div>
-        <button
-          type="button"
-          className="desktop-logout"
-          onClick={() => navigate("/")}
-          title="Voltar"
-          aria-label="Voltar"
-        >
-          <ArrowLeft size={16} />
-          <span>Voltar</span>
-        </button>
+        <div className="desktop-titlebar-actions">
+          <button type="button" className="desktop-activities-button" onClick={openActivities} disabled={!currentPedido}>
+            <ListTodo size={14} /> Lista de Atividades
+          </button>
+          <button
+            type="button"
+            className="desktop-logout"
+            onClick={() => navigate("/")}
+            title="Voltar"
+            aria-label="Voltar"
+          >
+            <ArrowLeft size={16} />
+            <span>Voltar</span>
+          </button>
+        </div>
       </header>
 
       <nav className="desktop-toolbar">
@@ -318,7 +408,14 @@ export default function Dashboard() {
       </section>
 
       <main className="desktop-grid-frame">
-        <div className="desktop-table-scroll">
+        <div
+          className="desktop-table-scroll keyboard-table-scroll"
+          ref={pedidosTableRef}
+          tabIndex={0}
+          role="grid"
+          aria-label="Pedidos do painel comercial"
+          onKeyDown={handlePedidosTableKeyDown}
+        >
           <table className="desktop-table">
             <thead onClick={handleHeaderSort}>
               <tr>
@@ -473,6 +570,75 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={isActivitiesOpen}
+        onOpenChange={(open) => {
+          setIsActivitiesOpen(open);
+          if (!open) setActivityDraft({ id: null, descricao: "" });
+        }}
+      >
+        <DialogContent className="desktop-dialog activities-window">
+          <DialogHeader>
+            <DialogTitle><ListTodo size={18} /> Lista de Atividades</DialogTitle>
+            <DialogDescription>
+              Pedido {currentPedido?.pedido ?? "-"} — {currentPedido?.cliente ?? "-"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <section className="activities-editor">
+            <label>
+              <span>Atividade</span>
+              <textarea
+                value={activityDraft.descricao}
+                onChange={(event) => setActivityDraft((current) => ({ ...current, descricao: event.target.value }))}
+                maxLength={2000}
+                placeholder="Descreva a atividade do pedido"
+              />
+            </label>
+            <div className="activities-editor-actions">
+              <button type="button" className="mini-sap-button" onClick={() => setActivityDraft({ id: null, descricao: "" })}>
+                <Plus size={13} /> Inserir
+              </button>
+              <button
+                type="button"
+                className="mini-sap-button primary"
+                onClick={saveActivity}
+                disabled={createActivity.isPending || updateActivity.isPending}
+              >
+                <Save size={13} /> {activityDraft.id ? "Salvar edição" : "Salvar"}
+              </button>
+            </div>
+          </section>
+
+          <div className="activities-table-wrap">
+            <table className="activities-table">
+              <thead><tr><th>Data</th><th>Atividade</th><th>Registrado por</th><th>Ações</th></tr></thead>
+              <tbody>
+                {activities.isLoading ? (
+                  <tr><td colSpan={4} className="desktop-empty">Carregando atividades...</td></tr>
+                ) : (activities.data || []).length === 0 ? (
+                  <tr><td colSpan={4} className="desktop-empty">Nenhuma atividade registrada para este pedido.</td></tr>
+                ) : (activities.data || []).map((atividade: any) => (
+                  <tr key={atividade.id} className={activityDraft.id === atividade.id ? "is-editing" : ""}>
+                    <td>{formatActivityDate(atividade.criadoEm)}</td>
+                    <td>{atividade.descricao}</td>
+                    <td>{atividade.criadoPor || "Sistema"}</td>
+                    <td className="actions">
+                      <button type="button" className="mini-icon-button" title="Editar atividade" onClick={() => setActivityDraft({ id: atividade.id, descricao: atividade.descricao || "" })}>
+                        <Edit2 size={13} />
+                      </button>
+                      <button type="button" className="mini-icon-button danger" title="Excluir atividade" onClick={() => setDeleteActivityTarget(atividade)}>
+                        <Trash2 size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={false && Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent className="desktop-dialog confirm-window">
           <DialogHeader>
@@ -508,6 +674,27 @@ export default function Dashboard() {
         isPending={isDeletingPedido}
         onConfirm={() => {
           if (deleteTarget?.id) deletePedido(deleteTarget.id);
+        }}
+      />
+
+      <SapDoubleConfirmDialog
+        open={Boolean(deleteActivityTarget)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteActivityTarget(null);
+        }}
+        title="Confirmar exclusão de atividade"
+        description="Esta ação vai excluir a atividade selecionada do pedido."
+        finalDescription="Confirmação final: depois de continuar, a atividade será excluída."
+        details={[
+          { label: "Pedido", value: currentPedido?.pedido ?? "-" },
+          { label: "Data", value: formatActivityDate(deleteActivityTarget?.criadoEm) },
+          { label: "Atividade", value: deleteActivityTarget?.descricao ?? "-" },
+        ]}
+        isPending={deleteActivity.isPending}
+        onConfirm={() => {
+          if (deleteActivityTarget?.id && currentPedido?.id) {
+            deleteActivity.mutate({ id: deleteActivityTarget.id, pedidoId: currentPedido.id });
+          }
         }}
       />
     </div>

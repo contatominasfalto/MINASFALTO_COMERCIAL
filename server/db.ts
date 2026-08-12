@@ -6,6 +6,7 @@ import {
   InsertUser,
   users,
   pedidos,
+  pedidoAtividades,
   pedidosObras,
   historico,
   contatos,
@@ -21,6 +22,7 @@ let _db: any = null;
 let _dbUrl: string | null = null;
 let _pool: mysql.Pool | null = null;
 let _licitacaoAdesoesSchemaPromise: Promise<void> | null = null;
+let _pedidoAtividadesSchemaPromise: Promise<void> | null = null;
 
 function envFlag(name: string, defaultValue: boolean) {
   const value = process.env[name];
@@ -82,6 +84,7 @@ export async function getDb() {
     _pool = null;
     _db = null;
     _licitacaoAdesoesSchemaPromise = null;
+    _pedidoAtividadesSchemaPromise = null;
   }
 
   if (!_db) {
@@ -111,6 +114,30 @@ export async function getMysqlPool() {
   await getDb();
   if (!_pool) throw new Error("Banco de dados não configurado.");
   return _pool;
+}
+
+async function ensurePedidoAtividadesSchema() {
+  const pool = await getMysqlPool();
+  if (!_pedidoAtividadesSchemaPromise) {
+    _pedidoAtividadesSchemaPromise = pool.query(`
+      CREATE TABLE IF NOT EXISTS pedido_atividades (
+        id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
+        pedidoId int NOT NULL,
+        pedidoNum varchar(50) NOT NULL,
+        cliente varchar(255) NOT NULL,
+        descricao text NOT NULL,
+        criadoPor varchar(100) DEFAULT 'Sistema',
+        criadoEm timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        atualizadoEm timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX pedido_atividades_pedido_idx (pedidoId),
+        INDEX pedido_atividades_data_idx (criadoEm)
+      )
+    `).then(() => undefined).catch((error) => {
+      _pedidoAtividadesSchemaPromise = null;
+      throw error;
+    });
+  }
+  await _pedidoAtividadesSchemaPromise;
 }
 
 function shouldUseDemoData() {
@@ -159,6 +186,7 @@ let demoPedidos: any[] = [
   { id: 11, pedido: "5460", dataPedido: "23/03/2026", cliente: "LUIZ HENRIQUE ALVES GUIMARÃES", status: "SAÍDA OK", prioridade: "NORMAL", qtde: 1, qtdeTapFacil: 0, qtdeGranel: 0, totalPedido: 30, saldo: 0, dataEntrega: "23/03/2026", situacao: "Aprovado", valorUnit: 30, percentual: 100, observacoes: "" },
   { id: 12, pedido: "5461", dataPedido: "23/03/2026", cliente: "IVM PAVIMENTACAO E TRANSPORTE LTDA", status: "SAÍDA OK", prioridade: "NORMAL", qtde: 10, qtdeTapFacil: 0, qtdeGranel: 0, totalPedido: 250, saldo: 0, dataEntrega: "23/03/2026", situacao: "Aprovado", valorUnit: 25, percentual: 100, observacoes: "" },
 ];
+let demoPedidoAtividades: any[] = [];
 
 let demoHistorico = [
   { id: 1, pedidoId: 1, pedidoNum: "5143", campo: "Saldo (Atualização CRTI)", valorAnterior: "R$ 5.500,00", valorNovo: "R$ 1.100,00", usuario: "Sincronizador CRTI", dataHora: new Date("2026-05-20T14:38:51") },
@@ -493,6 +521,85 @@ export async function updatePedido(id: number, data: any, usuario: string = "Sis
   }).where(eq(pedidos.id, id));
 }
 
+export async function listPedidoAtividades(pedidoId: number) {
+  const db = await getDb();
+  if (!db) {
+    if (!shouldUseDemoData()) return [];
+    return demoPedidoAtividades
+      .filter((atividade) => atividade.pedidoId === pedidoId)
+      .sort((a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime());
+  }
+
+  await ensurePedidoAtividadesSchema();
+  return db.select().from(pedidoAtividades)
+    .where(eq(pedidoAtividades.pedidoId, pedidoId))
+    .orderBy(desc(pedidoAtividades.criadoEm), desc(pedidoAtividades.id));
+}
+
+export async function createPedidoAtividade(data: { pedidoId: number; descricao: string; criadoPor: string }) {
+  const pedido = await getPedidoById(data.pedidoId);
+  if (!pedido) throw new Error("Pedido não encontrado.");
+
+  const db = await getDb();
+  if (!db) {
+    if (!shouldUseDemoData()) throw new Error("Database not available");
+    const nextId = Math.max(0, ...demoPedidoAtividades.map((item) => item.id)) + 1;
+    const atividade = {
+      id: nextId,
+      pedidoId: data.pedidoId,
+      pedidoNum: pedido.pedido,
+      cliente: pedido.cliente,
+      descricao: data.descricao.trim(),
+      criadoPor: data.criadoPor,
+      criadoEm: new Date(),
+      atualizadoEm: new Date(),
+    };
+    demoPedidoAtividades.unshift(atividade);
+    return atividade;
+  }
+
+  await ensurePedidoAtividadesSchema();
+  const result = await db.insert(pedidoAtividades).values({
+    pedidoId: data.pedidoId,
+    pedidoNum: pedido.pedido,
+    cliente: pedido.cliente,
+    descricao: data.descricao.trim(),
+    criadoPor: data.criadoPor,
+  }) as any;
+  return { id: Number(result?.[0]?.insertId ?? result?.insertId ?? 0) };
+}
+
+export async function updatePedidoAtividade(data: { id: number; pedidoId: number; descricao: string }) {
+  const db = await getDb();
+  if (!db) {
+    if (!shouldUseDemoData()) throw new Error("Database not available");
+    demoPedidoAtividades = demoPedidoAtividades.map((atividade) =>
+      atividade.id === data.id && atividade.pedidoId === data.pedidoId
+        ? { ...atividade, descricao: data.descricao.trim(), atualizadoEm: new Date() }
+        : atividade
+    );
+    return { affectedRows: 1 };
+  }
+
+  await ensurePedidoAtividadesSchema();
+  return db.update(pedidoAtividades)
+    .set({ descricao: data.descricao.trim(), atualizadoEm: new Date() })
+    .where(and(eq(pedidoAtividades.id, data.id), eq(pedidoAtividades.pedidoId, data.pedidoId)));
+}
+
+export async function deletePedidoAtividade(id: number, pedidoId: number) {
+  const db = await getDb();
+  if (!db) {
+    if (!shouldUseDemoData()) throw new Error("Database not available");
+    demoPedidoAtividades = demoPedidoAtividades.filter((atividade) => !(atividade.id === id && atividade.pedidoId === pedidoId));
+    return { affectedRows: 1 };
+  }
+
+  await ensurePedidoAtividadesSchema();
+  return db.delete(pedidoAtividades)
+    .where(and(eq(pedidoAtividades.id, id), eq(pedidoAtividades.pedidoId, pedidoId)));
+}
+
 export async function deletePedido(id: number) {
   const db = await getDb();
   if (!db) {
@@ -502,6 +609,8 @@ export async function deletePedido(id: number) {
   }
 
   // Deletar histórico e contatos relacionados
+  await ensurePedidoAtividadesSchema();
+  await db.delete(pedidoAtividades).where(eq(pedidoAtividades.pedidoId, id));
   await db.delete(historico).where(eq(historico.pedidoId, id));
   await db.delete(contatos).where(eq(contatos.pedidoId, id));
   await db.delete(sincronizacaoCrti).where(eq(sincronizacaoCrti.pedidoId, id));

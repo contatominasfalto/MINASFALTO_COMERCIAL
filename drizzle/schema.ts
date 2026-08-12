@@ -65,6 +65,23 @@ export const pedidos = mysqlTable("pedidos", {
 export type Pedido = typeof pedidos.$inferSelect;
 export type InsertPedido = typeof pedidos.$inferInsert;
 
+export const pedidoAtividades = mysqlTable("pedido_atividades", {
+  id: int("id").autoincrement().primaryKey(),
+  pedidoId: int("pedidoId").notNull(),
+  pedidoNum: varchar("pedidoNum", { length: 50 }).notNull(),
+  cliente: varchar("cliente", { length: 255 }).notNull(),
+  descricao: text("descricao").notNull(),
+  criadoPor: varchar("criadoPor", { length: 100 }).default("Sistema"),
+  criadoEm: timestamp("criadoEm").defaultNow().notNull(),
+  atualizadoEm: timestamp("atualizadoEm").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  pedidoIdx: index("pedido_atividades_pedido_idx").on(table.pedidoId),
+  dataIdx: index("pedido_atividades_data_idx").on(table.criadoEm),
+}));
+
+export type PedidoAtividade = typeof pedidoAtividades.$inferSelect;
+export type InsertPedidoAtividade = typeof pedidoAtividades.$inferInsert;
+
 /**
  * Pedidos de material para obras proprias importados do CRTI.
  * Observacoes sao campos locais e nao devem ser sobrescritas pela sincronizacao.
