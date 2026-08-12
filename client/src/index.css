@@ -3492,12 +3492,14 @@
 [data-slot="dialog-content"].sap-confirm-dialog {
   width: min(520px, calc(100vw - 48px));
   max-width: none;
+  max-height: calc(100vh - 64px);
   padding: 16px;
   border: 1px solid #7f95ad;
   border-radius: 3px;
   background: var(--sap-panel);
   color: #001b34;
   box-shadow: 0 18px 48px rgba(20, 37, 56, .38);
+  overflow: hidden;
 }
 
 .sap-confirm-dialog [data-slot="dialog-header"] {
@@ -3549,12 +3551,18 @@
 
 .sap-confirm-body {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 8px;
   padding: 14px 0;
+  min-width: 0;
+  max-height: min(420px, 52vh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .sap-confirm-info {
+  min-width: 0;
   min-height: 58px;
   padding: 8px 10px;
   border: 1px solid #9eb2c8;
@@ -3578,9 +3586,14 @@
   color: #001b34;
   font-size: 14px;
   font-weight: 900;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .sap-confirm-actions {
+  flex: 0 0 auto;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
