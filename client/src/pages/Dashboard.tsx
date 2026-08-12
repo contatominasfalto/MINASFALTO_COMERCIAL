@@ -8,7 +8,7 @@ import CSVImportForm from "@/components/CSVImportForm";
 import HistoricoModal from "@/components/HistoricoModal";
 import PedidoForm from "@/components/PedidoForm";
 import SapDoubleConfirmDialog from "@/components/SapDoubleConfirmDialog";
-import { ArrowLeft, Edit2, FileText, ListTodo, Phone, Plus, RefreshCw, Save, Search, Trash2, Warehouse, X } from "lucide-react";
+import { ArrowLeft, Edit2, FileText, ListTodo, Phone, RefreshCw, Save, Search, Trash2, Warehouse, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -189,10 +189,7 @@ export default function Dashboard() {
     });
   }, [pedidos, sortColumn, sortDirection]);
   const currentPedido = selectedPedido ?? visiblePedidos[0] ?? null;
-  const activities = trpc.pedidos.atividades.list.useQuery(
-    { pedidoId: Number(currentPedido?.id || 0) },
-    { enabled: isActivitiesOpen && Boolean(currentPedido?.id) },
-  );
+  const activities = trpc.pedidos.atividades.list.useQuery(undefined, { enabled: isActivitiesOpen });
   const createActivity = trpc.pedidos.atividades.create.useMutation({
     onSuccess: () => {
       toast.success("Atividade registrada.");
@@ -273,20 +270,18 @@ export default function Dashboard() {
   };
 
   const openActivities = () => {
-    if (!currentPedido) return toast.error("Selecione um pedido.");
     setActivityDraft({ id: null, descricao: "" });
     setIsActivitiesOpen(true);
   };
 
   const saveActivity = () => {
     const descricao = activityDraft.descricao.trim();
-    if (!currentPedido?.id) return toast.error("Selecione um pedido.");
     if (!descricao) return toast.error("Informe a atividade.");
     if (activityDraft.id) {
-      updateActivity.mutate({ id: activityDraft.id, pedidoId: currentPedido.id, descricao });
+      updateActivity.mutate({ id: activityDraft.id, descricao });
       return;
     }
-    createActivity.mutate({ pedidoId: currentPedido.id, descricao });
+    createActivity.mutate({ descricao });
   };
 
   const scrollSelectedRowIntoView = () => {
@@ -330,7 +325,7 @@ export default function Dashboard() {
           <h1>TAP FACIL 25 KG E A GRANEL</h1>
         </div>
         <div className="desktop-titlebar-actions">
-          <button type="button" className="desktop-activities-button" onClick={openActivities} disabled={!currentPedido}>
+          <button type="button" className="desktop-activities-button" onClick={openActivities}>
             <ListTodo size={14} /> Lista de Atividades
           </button>
           <button
@@ -580,9 +575,7 @@ export default function Dashboard() {
         <DialogContent className="desktop-dialog activities-window">
           <DialogHeader>
             <DialogTitle><ListTodo size={18} /> Lista de Atividades</DialogTitle>
-            <DialogDescription>
-              Pedido {currentPedido?.pedido ?? "-"} — {currentPedido?.cliente ?? "-"}
-            </DialogDescription>
+            <DialogDescription>Controle geral das atividades do setor Comercial</DialogDescription>
           </DialogHeader>
 
           <section className="activities-editor">
@@ -596,9 +589,6 @@ export default function Dashboard() {
               />
             </label>
             <div className="activities-editor-actions">
-              <button type="button" className="mini-sap-button" onClick={() => setActivityDraft({ id: null, descricao: "" })}>
-                <Plus size={13} /> Inserir
-              </button>
               <button
                 type="button"
                 className="mini-sap-button primary"
@@ -617,7 +607,7 @@ export default function Dashboard() {
                 {activities.isLoading ? (
                   <tr><td colSpan={4} className="desktop-empty">Carregando atividades...</td></tr>
                 ) : (activities.data || []).length === 0 ? (
-                  <tr><td colSpan={4} className="desktop-empty">Nenhuma atividade registrada para este pedido.</td></tr>
+                  <tr><td colSpan={4} className="desktop-empty">Nenhuma atividade comercial registrada.</td></tr>
                 ) : (activities.data || []).map((atividade: any) => (
                   <tr key={atividade.id} className={activityDraft.id === atividade.id ? "is-editing" : ""}>
                     <td>{formatActivityDate(atividade.criadoEm)}</td>
@@ -683,17 +673,16 @@ export default function Dashboard() {
           if (!open) setDeleteActivityTarget(null);
         }}
         title="Confirmar exclusão de atividade"
-        description="Esta ação vai excluir a atividade selecionada do pedido."
+        description="Esta ação vai excluir a atividade selecionada da lista comercial."
         finalDescription="Confirmação final: depois de continuar, a atividade será excluída."
         details={[
-          { label: "Pedido", value: currentPedido?.pedido ?? "-" },
           { label: "Data", value: formatActivityDate(deleteActivityTarget?.criadoEm) },
           { label: "Atividade", value: deleteActivityTarget?.descricao ?? "-" },
         ]}
         isPending={deleteActivity.isPending}
         onConfirm={() => {
-          if (deleteActivityTarget?.id && currentPedido?.id) {
-            deleteActivity.mutate({ id: deleteActivityTarget.id, pedidoId: currentPedido.id });
+          if (deleteActivityTarget?.id) {
+            deleteActivity.mutate({ id: deleteActivityTarget.id });
           }
         }}
       />

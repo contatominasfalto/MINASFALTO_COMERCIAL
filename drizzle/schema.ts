@@ -67,9 +67,9 @@ export type InsertPedido = typeof pedidos.$inferInsert;
 
 export const pedidoAtividades = mysqlTable("pedido_atividades", {
   id: int("id").autoincrement().primaryKey(),
-  pedidoId: int("pedidoId").notNull(),
-  pedidoNum: varchar("pedidoNum", { length: 50 }).notNull(),
-  cliente: varchar("cliente", { length: 255 }).notNull(),
+  pedidoId: int("pedidoId"),
+  pedidoNum: varchar("pedidoNum", { length: 50 }),
+  cliente: varchar("cliente", { length: 255 }),
   descricao: text("descricao").notNull(),
   criadoPor: varchar("criadoPor", { length: 100 }).default("Sistema"),
   criadoEm: timestamp("criadoEm").defaultNow().notNull(),

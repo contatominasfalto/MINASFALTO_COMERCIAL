@@ -417,6 +417,14 @@
   gap: 10px;
 }
 
+[data-slot="dialog-overlay"].sap-confirm-overlay-elevated {
+  z-index: 100 !important;
+}
+
+[data-slot="dialog-content"].sap-confirm-dialog-elevated {
+  z-index: 101 !important;
+}
+
 .activities-window [data-slot="dialog-title"] {
   display: flex;
   align-items: center;

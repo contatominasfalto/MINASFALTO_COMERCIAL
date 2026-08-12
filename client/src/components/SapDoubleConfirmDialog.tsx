@@ -52,7 +52,7 @@ export default function SapDoubleConfirmDialog({
         onOpenChange(nextOpen);
       }}
     >
-      <DialogContent className="sap-confirm-dialog">
+      <DialogContent className="sap-confirm-dialog sap-confirm-dialog-elevated" overlayClassName="sap-confirm-overlay-elevated">
         <DialogHeader>
           <DialogTitle>
             <AlertTriangle size={22} />

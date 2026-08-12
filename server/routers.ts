@@ -469,11 +469,10 @@ export const appRouter = router({
 
     atividades: router({
       list: protectedProcedure
-        .input(z.object({ pedidoId: z.number().int().positive() }))
-        .query(({ input }) => db.listPedidoAtividades(input.pedidoId)),
+        .query(() => db.listPedidoAtividades()),
 
       create: protectedProcedure
-        .input(z.object({ pedidoId: z.number().int().positive(), descricao: pedidoAtividadeDescricaoSchema }))
+        .input(z.object({ descricao: pedidoAtividadeDescricaoSchema }))
         .mutation(({ input, ctx }) => db.createPedidoAtividade({
           ...input,
           criadoPor: ctx.user?.name || "Sistema",
@@ -482,14 +481,13 @@ export const appRouter = router({
       update: protectedProcedure
         .input(z.object({
           id: z.number().int().positive(),
-          pedidoId: z.number().int().positive(),
           descricao: pedidoAtividadeDescricaoSchema,
         }))
         .mutation(({ input }) => db.updatePedidoAtividade(input)),
 
       delete: protectedProcedure
-        .input(z.object({ id: z.number().int().positive(), pedidoId: z.number().int().positive() }))
-        .mutation(({ input }) => db.deletePedidoAtividade(input.id, input.pedidoId)),
+        .input(z.object({ id: z.number().int().positive() }))
+        .mutation(({ input }) => db.deletePedidoAtividade(input.id)),
     }),
   }),
 

@@ -122,9 +122,9 @@ async function ensurePedidoAtividadesSchema() {
     _pedidoAtividadesSchemaPromise = pool.query(`
       CREATE TABLE IF NOT EXISTS pedido_atividades (
         id int AUTO_INCREMENT NOT NULL PRIMARY KEY,
-        pedidoId int NOT NULL,
-        pedidoNum varchar(50) NOT NULL,
-        cliente varchar(255) NOT NULL,
+        pedidoId int NULL,
+        pedidoNum varchar(50) NULL,
+        cliente varchar(255) NULL,
         descricao text NOT NULL,
         criadoPor varchar(100) DEFAULT 'Sistema',
         criadoEm timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -132,7 +132,16 @@ async function ensurePedidoAtividadesSchema() {
         INDEX pedido_atividades_pedido_idx (pedidoId),
         INDEX pedido_atividades_data_idx (criadoEm)
       )
-    `).then(() => undefined).catch((error) => {
+    `).then(() => pool.query(`
+      ALTER TABLE pedido_atividades
+        MODIFY COLUMN pedidoId int NULL,
+        MODIFY COLUMN pedidoNum varchar(50) NULL,
+        MODIFY COLUMN cliente varchar(255) NULL
+    `)).then(() => pool.query(`
+      UPDATE pedido_atividades
+      SET pedidoId = NULL, pedidoNum = NULL, cliente = NULL
+      WHERE pedidoId IS NOT NULL OR pedidoNum IS NOT NULL OR cliente IS NOT NULL
+    `)).then(() => undefined).catch((error) => {
       _pedidoAtividadesSchemaPromise = null;
       throw error;
     });
@@ -521,34 +530,28 @@ export async function updatePedido(id: number, data: any, usuario: string = "Sis
   }).where(eq(pedidos.id, id));
 }
 
-export async function listPedidoAtividades(pedidoId: number) {
+export async function listPedidoAtividades() {
   const db = await getDb();
   if (!db) {
     if (!shouldUseDemoData()) return [];
-    return demoPedidoAtividades
-      .filter((atividade) => atividade.pedidoId === pedidoId)
-      .sort((a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime());
+    return demoPedidoAtividades.sort((a, b) => new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime());
   }
 
   await ensurePedidoAtividadesSchema();
   return db.select().from(pedidoAtividades)
-    .where(eq(pedidoAtividades.pedidoId, pedidoId))
     .orderBy(desc(pedidoAtividades.criadoEm), desc(pedidoAtividades.id));
 }
 
-export async function createPedidoAtividade(data: { pedidoId: number; descricao: string; criadoPor: string }) {
-  const pedido = await getPedidoById(data.pedidoId);
-  if (!pedido) throw new Error("Pedido não encontrado.");
-
+export async function createPedidoAtividade(data: { descricao: string; criadoPor: string }) {
   const db = await getDb();
   if (!db) {
     if (!shouldUseDemoData()) throw new Error("Database not available");
     const nextId = Math.max(0, ...demoPedidoAtividades.map((item) => item.id)) + 1;
     const atividade = {
       id: nextId,
-      pedidoId: data.pedidoId,
-      pedidoNum: pedido.pedido,
-      cliente: pedido.cliente,
+      pedidoId: null,
+      pedidoNum: null,
+      cliente: null,
       descricao: data.descricao.trim(),
       criadoPor: data.criadoPor,
       criadoEm: new Date(),
@@ -560,21 +563,21 @@ export async function createPedidoAtividade(data: { pedidoId: number; descricao:
 
   await ensurePedidoAtividadesSchema();
   const result = await db.insert(pedidoAtividades).values({
-    pedidoId: data.pedidoId,
-    pedidoNum: pedido.pedido,
-    cliente: pedido.cliente,
+    pedidoId: null,
+    pedidoNum: null,
+    cliente: null,
     descricao: data.descricao.trim(),
     criadoPor: data.criadoPor,
   }) as any;
   return { id: Number(result?.[0]?.insertId ?? result?.insertId ?? 0) };
 }
 
-export async function updatePedidoAtividade(data: { id: number; pedidoId: number; descricao: string }) {
+export async function updatePedidoAtividade(data: { id: number; descricao: string }) {
   const db = await getDb();
   if (!db) {
     if (!shouldUseDemoData()) throw new Error("Database not available");
     demoPedidoAtividades = demoPedidoAtividades.map((atividade) =>
-      atividade.id === data.id && atividade.pedidoId === data.pedidoId
+      atividade.id === data.id
         ? { ...atividade, descricao: data.descricao.trim(), atualizadoEm: new Date() }
         : atividade
     );
@@ -584,20 +587,20 @@ export async function updatePedidoAtividade(data: { id: number; pedidoId: number
   await ensurePedidoAtividadesSchema();
   return db.update(pedidoAtividades)
     .set({ descricao: data.descricao.trim(), atualizadoEm: new Date() })
-    .where(and(eq(pedidoAtividades.id, data.id), eq(pedidoAtividades.pedidoId, data.pedidoId)));
+    .where(eq(pedidoAtividades.id, data.id));
 }
 
-export async function deletePedidoAtividade(id: number, pedidoId: number) {
+export async function deletePedidoAtividade(id: number) {
   const db = await getDb();
   if (!db) {
     if (!shouldUseDemoData()) throw new Error("Database not available");
-    demoPedidoAtividades = demoPedidoAtividades.filter((atividade) => !(atividade.id === id && atividade.pedidoId === pedidoId));
+    demoPedidoAtividades = demoPedidoAtividades.filter((atividade) => atividade.id !== id);
     return { affectedRows: 1 };
   }
 
   await ensurePedidoAtividadesSchema();
   return db.delete(pedidoAtividades)
-    .where(and(eq(pedidoAtividades.id, id), eq(pedidoAtividades.pedidoId, pedidoId)));
+    .where(eq(pedidoAtividades.id, id));
 }
 
 export async function deletePedido(id: number) {
@@ -609,8 +612,6 @@ export async function deletePedido(id: number) {
   }
 
   // Deletar histórico e contatos relacionados
-  await ensurePedidoAtividadesSchema();
-  await db.delete(pedidoAtividades).where(eq(pedidoAtividades.pedidoId, id));
   await db.delete(historico).where(eq(historico.pedidoId, id));
   await db.delete(contatos).where(eq(contatos.pedidoId, id));
   await db.delete(sincronizacaoCrti).where(eq(sincronizacaoCrti.pedidoId, id));
