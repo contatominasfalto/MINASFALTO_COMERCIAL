@@ -17,6 +17,7 @@ import { appBasePath } from "@/lib/app-base";
 import { StockProvider } from "@/contexts/StockContext";
 import "./stock.css";
 import { useEffect, useRef } from "react";
+import LicitacaoPregaoAlert from "@/components/LicitacaoPregaoAlert";
 
 const SESSION_STORAGE_KEY = "minasfalto_active_session";
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
@@ -93,7 +94,9 @@ function Router() {
   const canAccessCosts = !HIDDEN_COST_PROFILES.has(userProfile || userName);
 
   return (
-    <Switch>
+    <>
+      {canAccessCosts && <LicitacaoPregaoAlert />}
+      <Switch>
       <Route path={"/"}>
         <Home />
       </Route>
@@ -115,7 +118,8 @@ function Router() {
       </Route>
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
-    </Switch>
+      </Switch>
+    </>
   );
 }
 

@@ -2386,6 +2386,73 @@
 .licitacao-alert-toggle input:checked + i b { left: 23px; }
 .licitacao-alert-toggle input:focus-visible + i { outline: 2px solid #145a96; outline-offset: 2px; }
 
+.licitacao-pregao-alert-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(5 18 31 / 58%);
+}
+
+.licitacao-pregao-alert {
+  width: min(650px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border: 2px solid #c62828;
+  border-top: 7px solid #d89000;
+  background: #f7fafc;
+  color: var(--sap-text);
+  box-shadow: 0 24px 75px rgb(0 0 0 / 52%);
+  animation: licitacao-pregao-pulse 1.15s ease-in-out infinite;
+}
+
+@keyframes licitacao-pregao-pulse {
+  0%, 100% { border-color: #9d1d1d; box-shadow: 0 24px 75px rgb(0 0 0 / 52%), 0 0 0 0 rgb(229 57 53 / 42%); }
+  50% { border-color: #ff3b30; box-shadow: 0 24px 75px rgb(0 0 0 / 52%), 0 0 0 12px rgb(229 57 53 / 8%); }
+}
+
+.licitacao-pregao-alert > header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--sap-line);
+  background: linear-gradient(#fff4d6, #f1d68e);
+  color: #7a170f;
+}
+
+.licitacao-pregao-alert > header > div { display: flex; flex-direction: column; gap: 2px; }
+.licitacao-pregao-alert > header span { font-size: 10px; font-weight: 900; text-transform: uppercase; }
+.licitacao-pregao-alert h2 { margin: 0; font-size: 18px; text-transform: uppercase; }
+.licitacao-pregao-alert > p { margin: 16px 18px 10px; font-size: 12px; font-weight: 700; }
+.licitacao-pregao-alert-list { margin: 0 18px; border: 1px solid var(--sap-line); background: #fff; }
+
+.licitacao-pregao-alert-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid #c6d3df;
+}
+
+.licitacao-pregao-alert-list article:last-child { border-bottom: 0; }
+.licitacao-pregao-alert-list article > div { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.licitacao-pregao-alert-list strong { font-size: 12px; text-transform: uppercase; }
+.licitacao-pregao-alert-list small { font-size: 10px; }
+.licitacao-pregao-alert-list time { display: flex; align-items: center; gap: 5px; color: #a61b12; font-size: 12px; font-weight: 900; white-space: nowrap; }
+.licitacao-pregao-alert footer { display: flex; justify-content: flex-end; padding: 14px 18px 16px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .licitacao-pregao-alert { animation: none; }
+}
+
+@media (max-width: 600px) {
+  .licitacao-pregao-alert-list article { grid-template-columns: 1fr; gap: 7px; }
+}
+
 .licitacao-expiry-alert-backdrop {
   position: fixed;
   inset: 0;

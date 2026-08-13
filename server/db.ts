@@ -22,6 +22,7 @@ let _db: any = null;
 let _dbUrl: string | null = null;
 let _pool: mysql.Pool | null = null;
 let _licitacaoAdesoesSchemaPromise: Promise<void> | null = null;
+let _licitacaoPregaoAlertSchemaPromise: Promise<void> | null = null;
 let _pedidoAtividadesSchemaPromise: Promise<void> | null = null;
 
 function envFlag(name: string, defaultValue: boolean) {
@@ -84,6 +85,7 @@ export async function getDb() {
     _pool = null;
     _db = null;
     _licitacaoAdesoesSchemaPromise = null;
+    _licitacaoPregaoAlertSchemaPromise = null;
     _pedidoAtividadesSchemaPromise = null;
   }
 
@@ -2553,6 +2555,25 @@ async function ensureMysqlPool() {
   return _pool;
 }
 
+export async function ensureLicitacaoPregaoAlertSchema(pool: mysql.Pool) {
+  if (!_licitacaoPregaoAlertSchemaPromise) {
+    _licitacaoPregaoAlertSchemaPromise = (async () => {
+      const [columns] = await pool.query<mysql.RowDataPacket[]>(
+        "SHOW COLUMNS FROM licitacoes LIKE 'alertaPregao'",
+      );
+      if (!Array.isArray(columns) || columns.length === 0) {
+        await pool.query(
+          "ALTER TABLE licitacoes ADD COLUMN alertaPregao boolean NOT NULL DEFAULT true AFTER horaInicioDisputa",
+        );
+      }
+    })().catch((error) => {
+      _licitacaoPregaoAlertSchemaPromise = null;
+      throw error;
+    });
+  }
+  await _licitacaoPregaoAlertSchemaPromise;
+}
+
 export async function ensureLicitacaoAdesoesSchema(pool: mysql.Pool) {
   if (!_licitacaoAdesoesSchemaPromise) {
     _licitacaoAdesoesSchemaPromise = (async () => {
@@ -2731,6 +2752,7 @@ export type LicitacaoInput = {
   status?: string;
   plataformaId?: number | null;
   horaInicioDisputa?: string;
+  alertaPregao?: boolean;
   item?: string;
   tipo?: string;
   qtdeSc?: number;
@@ -2748,6 +2770,7 @@ export type LicitacaoInput = {
 
 export async function listLicitacoes(filters?: { search?: string; adjudicadas?: boolean }) {
   const pool = await ensureMysqlPool();
+  await ensureLicitacaoPregaoAlertSchema(pool);
   const where: string[] = [];
   const params: unknown[] = [];
   const adjucadoCondition = "(LOWER(l.status) LIKE 'adjucado%' OR LOWER(l.status) LIKE 'adjudicado%')";
@@ -2779,16 +2802,31 @@ export async function listLicitacoes(filters?: { search?: string; adjudicadas?: 
   return rows;
 }
 
+export async function listLicitacaoAlertasPregao() {
+  const pool = await ensureMysqlPool();
+  await ensureLicitacaoPregaoAlertSchema(pool);
+  const [rows] = await pool.query<mysql.RowDataPacket[]>(`
+    SELECT id, data, horaInicioDisputa, orgao, cidade, item, plataformaId
+    FROM licitacoes
+    WHERE alertaPregao = true
+      AND COALESCE(data, '') <> ''
+      AND COALESCE(horaInicioDisputa, '') <> ''
+    ORDER BY data ASC, horaInicioDisputa ASC, id ASC
+  `);
+  return rows;
+}
+
 export async function createLicitacao(data: LicitacaoInput & { criadoPor?: string }) {
   const pool = await ensureMysqlPool();
+  await ensureLicitacaoPregaoAlertSchema(pool);
   const status = normalizeLicitacaoStatus(data.status);
   const potencial = getLicitacaoPotencial(data.kmDistancia);
   const [result] = await pool.query<mysql.ResultSetHeader>(
     `INSERT INTO licitacoes (
-      data, orgao, cidade, status, plataformaId, horaInicioDisputa, item, tipo, qtdeSc, valorUnit,
+      data, orgao, cidade, status, plataformaId, horaInicioDisputa, alertaPregao, item, tipo, qtdeSc, valorUnit,
       lanceLimite, valorAdjudicado, qtdeTn, valorInicialContrato, kmDistancia,
       potencialCliente, regiao, statusContrato, ataVendedorId, ataVendedorNome, criadoPor
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.data || "",
       data.orgao.trim(),
@@ -2796,6 +2834,7 @@ export async function createLicitacao(data: LicitacaoInput & { criadoPor?: strin
       status,
       data.plataformaId || null,
       data.horaInicioDisputa || "",
+      data.alertaPregao !== false,
       data.item || "",
       data.tipo || "",
       normalizeMoney(data.qtdeSc),
@@ -2818,10 +2857,11 @@ export async function createLicitacao(data: LicitacaoInput & { criadoPor?: strin
 
 export async function updateLicitacao(id: number, data: LicitacaoInput) {
   const pool = await ensureMysqlPool();
+  await ensureLicitacaoPregaoAlertSchema(pool);
   const status = normalizeLicitacaoStatus(data.status);
   await pool.query(
     `UPDATE licitacoes SET
-      data = ?, orgao = ?, cidade = ?, status = ?, plataformaId = ?, horaInicioDisputa = ?, item = ?, tipo = ?,
+      data = ?, orgao = ?, cidade = ?, status = ?, plataformaId = ?, horaInicioDisputa = ?, alertaPregao = ?, item = ?, tipo = ?,
       qtdeSc = ?, valorUnit = ?, lanceLimite = ?, valorAdjudicado = ?, qtdeTn = ?,
       valorInicialContrato = ?, kmDistancia = ?, potencialCliente = ?, regiao = ?,
       statusContrato = ?, ataVendedorId = ?, ataVendedorNome = ?
@@ -2833,6 +2873,7 @@ export async function updateLicitacao(id: number, data: LicitacaoInput) {
       status,
       data.plataformaId || null,
       data.horaInicioDisputa || "",
+      data.alertaPregao !== false,
       data.item || "",
       data.tipo || "",
       normalizeMoney(data.qtdeSc),

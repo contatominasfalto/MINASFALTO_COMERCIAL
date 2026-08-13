@@ -75,6 +75,7 @@ const emptyLicitacao = {
   cidade: "",
   status: "Pendente",
   horaInicioDisputa: "",
+  alertaPregao: true,
   item: "",
   tipo: "",
   qtdeSc: 0,
@@ -1086,6 +1087,21 @@ export default function Licitacoes() {
               <option value="">Selecione</option>
               {regioesMg.map((regiao) => <option key={regiao} value={regiao}>{normalizeText(regiao)}</option>)}
             </SelectField>
+            <label className="licitacao-alert-toggle">
+              <span className="licitacao-alert-toggle-text">
+                <BellRing size={16} />
+                <span>
+                  <strong>Alerta de pregão</strong>
+                  <small>{licitacaoForm.alertaPregao ? "Ativo - avisar 10 minutos antes" : "Desativado"}</small>
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                checked={Boolean(licitacaoForm.alertaPregao)}
+                onChange={(event) => setLicitacaoForm((current: any) => ({ ...current, alertaPregao: event.target.checked }))}
+              />
+              <i aria-hidden="true"><b /></i>
+            </label>
           </section>
           <footer className="licitacao-modal-actions">
             <button className="desktop-action" onClick={() => setModal(null)}><X size={14} /> Cancelar</button>

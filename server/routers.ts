@@ -289,6 +289,7 @@ const licitacaoSchema = z.object({
   status: z.string().max(120).optional(),
   plataformaId: z.number().int().positive().nullable().optional(),
   horaInicioDisputa: z.string().max(8).optional(),
+  alertaPregao: z.boolean().optional(),
   item: z.string().max(120).optional(),
   tipo: z.string().max(120).optional(),
   qtdeSc: z.coerce.number().nonnegative().optional(),
@@ -711,6 +712,7 @@ export const appRouter = router({
         adjudicadas: z.boolean().optional(),
       }).optional())
       .query(({ input }) => db.listLicitacoes(input)),
+    alertasPregao: costAccessProcedure.query(() => db.listLicitacaoAlertasPregao()),
     create: costAccessProcedure
       .input(licitacaoSchema)
       .mutation(({ input, ctx }) => db.createLicitacao({
