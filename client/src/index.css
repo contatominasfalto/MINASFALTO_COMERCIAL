@@ -2289,6 +2289,36 @@
   align-items: end;
 }
 
+.licitacao-report-panel {
+  padding: 16px;
+  border: 1px solid var(--sap-line);
+  background: linear-gradient(#f8fbfd, #edf3f8);
+}
+
+.licitacao-report-panel > p {
+  margin: 0 0 16px;
+  color: #435b70;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.licitacao-report-description {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 13px 15px;
+  border: 1px solid #a8bbcd;
+  border-left: 4px solid #d99b00;
+  background: #fff;
+  color: var(--sap-text);
+}
+
+.licitacao-report-description > svg { color: #b77c00; }
+.licitacao-report-description > div { display: flex; flex-direction: column; gap: 3px; }
+.licitacao-report-description strong { font-size: 12px; text-transform: uppercase; }
+.licitacao-report-description span { color: #50677c; font-size: 11px; }
+
 .licitacao-field {
   display: flex;
   flex-direction: column;

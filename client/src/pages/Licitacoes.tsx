@@ -10,6 +10,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   ExternalLink,
+  FileText,
   Link2,
   Pencil,
   Plus,
@@ -35,7 +36,7 @@ const cidadesMg = [
 ];
 
 type Licitacao = any;
-type ActiveModal = "menu" | "licitacao" | "status" | "plataforma" | "vendedor" | "entrega" | "ata" | null;
+type ActiveModal = "menu" | "licitacao" | "status" | "plataforma" | "vendedor" | "entrega" | "ata" | "relatorios" | null;
 type PanelTab = "geral" | "adjudicadas";
 type SortDirection = "asc" | "desc";
 
@@ -352,9 +353,11 @@ export default function Licitacoes() {
   const [deleteAdesaoTarget, setDeleteAdesaoTarget] = useState<{ adesao: any; licitacao: Licitacao } | null>(null);
   const [deleteAdesaoPedidoTarget, setDeleteAdesaoPedidoTarget] = useState<{ pedido: any; adesao: any } | null>(null);
   const [alertaVencimentoAberto, setAlertaVencimentoAberto] = useState(false);
+  const [relatorioForm, setRelatorioForm] = useState({ tipoRelatorio: "status", inicio: "", fim: "" });
   const alertaVencimentoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const opcoes = trpc.licitacoes.opcoes.useQuery();
+  const exportarRelatorioPdf = trpc.licitacoes.exportarPdf.useMutation();
   const alertasVencimento = trpc.licitacoes.ata.alertasVencimento.useQuery(undefined, {
     refetchOnWindowFocus: false,
   });
@@ -695,6 +698,41 @@ export default function Licitacoes() {
     };
     if (editingLicitacao) updateLicitacao.mutate({ id: editingLicitacao.id, data: payload });
     else createLicitacao.mutate(payload);
+  };
+
+  const gerarRelatorioPdf = () => {
+    if (relatorioForm.inicio && relatorioForm.fim && relatorioForm.inicio > relatorioForm.fim) {
+      toast.error("A data inicial não pode ser posterior à data final.");
+      return;
+    }
+    const preview = window.open("", "_blank");
+    exportarRelatorioPdf.mutate(
+      {
+        tipoRelatorio: relatorioForm.tipoRelatorio as "status" | "cidade" | "vendedor" | "adesoes_vendedor" | "entregas",
+        filtros: {
+          inicio: relatorioForm.inicio || undefined,
+          fim: relatorioForm.fim || undefined,
+        },
+      },
+      {
+        onSuccess: (result) => {
+          const bytes = Uint8Array.from(atob(result.base64), (character) => character.charCodeAt(0));
+          const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+          if (preview) preview.location.href = url;
+          else {
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = result.filename;
+            link.click();
+          }
+          window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        },
+        onError: (error) => {
+          preview?.close();
+          toast.error(`Erro ao gerar relatório: ${error.message}`);
+        },
+      },
+    );
   };
 
   const openAta = (licitacao: Licitacao) => {
@@ -1043,7 +1081,44 @@ export default function Licitacoes() {
             <button onClick={() => setModal(null)}><Search size={18} /> Acesso ao Painel Principal</button>
             <button onClick={() => setModal("vendedor")}><Plus size={18} /> Cadastro Vendedor</button>
             <button onClick={() => { setEntregaLicitacaoId(null); setSelectedLicitacao(null); setOpenEntregaGroups({}); setModal("entrega"); }}><Link2 size={18} /> Vincular Pedido CRTI Controle de Entrega</button>
+            <button onClick={() => setModal("relatorios")}><FileText size={18} /> Relatórios</button>
           </div>
+        </SimpleModal>
+      )}
+
+      {modal === "relatorios" && (
+        <SimpleModal title="Relatórios de Licitações" onClose={() => setModal("menu")} wide>
+          <section className="licitacao-report-panel">
+            <p>Selecione o relatório e, se desejar, limite os dados pelo período da licitação.</p>
+            <div className="licitacao-form-grid licitacao-form-grid-compact">
+              <SelectField
+                label="Tipo de relatório"
+                value={relatorioForm.tipoRelatorio}
+                onChange={(value) => setRelatorioForm((current) => ({ ...current, tipoRelatorio: value }))}
+              >
+                <option value="status">Licitações por status</option>
+                <option value="cidade">Licitações por cidade e órgão</option>
+                <option value="vendedor">Licitações por vendedor</option>
+                <option value="adesoes_vendedor">Quantitativo de adesões por vendedor</option>
+                <option value="entregas">Situação das entregas de adesões</option>
+              </SelectField>
+              <TextField label="Data inicial" type="date" value={relatorioForm.inicio} onChange={(value) => setRelatorioForm((current) => ({ ...current, inicio: value }))} />
+              <TextField label="Data final" type="date" value={relatorioForm.fim} onChange={(value) => setRelatorioForm((current) => ({ ...current, fim: value }))} />
+            </div>
+            <div className="licitacao-report-description">
+              <FileText size={26} />
+              <div>
+                <strong>Relatório PDF analítico</strong>
+                <span>Documento timbrado com indicadores, gráfico, tabela detalhada e período selecionado.</span>
+              </div>
+            </div>
+          </section>
+          <footer className="licitacao-modal-actions">
+            <button className="desktop-action" onClick={() => setModal("menu")}><X size={14} /> Voltar</button>
+            <button className="desktop-action primary" onClick={gerarRelatorioPdf} disabled={exportarRelatorioPdf.isPending}>
+              <FileText size={14} /> {exportarRelatorioPdf.isPending ? "Gerando..." : "Gerar PDF"}
+            </button>
+          </footer>
         </SimpleModal>
       )}
 

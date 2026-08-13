@@ -2816,6 +2816,77 @@ export async function listLicitacaoAlertasPregao() {
   return rows;
 }
 
+export type LicitacaoReportType = "status" | "cidade" | "vendedor" | "adesoes_vendedor" | "entregas";
+
+export async function listLicitacaoReport(
+  type: LicitacaoReportType,
+  filters: { inicio?: string; fim?: string } = {},
+) {
+  const pool = await ensureMysqlPool();
+  await ensureLicitacaoAdesoesSchema(pool);
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  const licitacaoDate = "STR_TO_DATE(l.data, IF(l.data LIKE '%/%', '%d/%m/%Y', '%Y-%m-%d'))";
+  if (filters.inicio) {
+    conditions.push(`${licitacaoDate} >= ?`);
+    params.push(filters.inicio);
+  }
+  if (filters.fim) {
+    conditions.push(`${licitacaoDate} <= ?`);
+    params.push(filters.fim);
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  const queries: Record<LicitacaoReportType, string> = {
+    status: `
+      SELECT COALESCE(NULLIF(TRIM(l.status), ''), 'NÃO INFORMADO') nome,
+        COUNT(*) quantidade, COALESCE(SUM(l.qtdeSc), 0) volume,
+        COALESCE(SUM(l.valorInicialContrato), 0) valor
+      FROM licitacoes l ${where}
+      GROUP BY nome ORDER BY quantidade DESC, nome ASC`,
+    cidade: `
+      SELECT CONCAT(COALESCE(NULLIF(TRIM(l.cidade), ''), 'NÃO INFORMADA'), ' - ', l.orgao) nome,
+        COUNT(*) quantidade, COALESCE(SUM(l.qtdeSc), 0) volume,
+        COALESCE(SUM(l.valorInicialContrato), 0) valor
+      FROM licitacoes l ${where}
+      GROUP BY nome ORDER BY quantidade DESC, nome ASC`,
+    vendedor: `
+      SELECT COALESCE(NULLIF(TRIM(a.vendedorNome), ''), NULLIF(TRIM(l.ataVendedorNome), ''), 'NÃO VINCULADO') nome,
+        COUNT(DISTINCT l.id) quantidade, COALESCE(SUM(l.qtdeSc), 0) volume,
+        COALESCE(SUM(l.valorInicialContrato), 0) valor
+      FROM licitacoes l LEFT JOIN licitacao_atas a ON a.licitacaoId = l.id ${where}
+      GROUP BY nome ORDER BY quantidade DESC, nome ASC`,
+    adesoes_vendedor: `
+      SELECT COALESCE(NULLIF(TRIM(a.vendedorNome), ''), NULLIF(TRIM(l.ataVendedorNome), ''), 'NÃO VINCULADO') nome,
+        COUNT(ad.id) quantidade, COALESCE(SUM(ad.quantidade), 0) volume,
+        COALESCE(SUM(CASE WHEN ad.entregue = true THEN ad.quantidade ELSE 0 END), 0) valor
+      FROM licitacoes l
+      LEFT JOIN licitacao_atas a ON a.licitacaoId = l.id
+      LEFT JOIN licitacao_adesoes ad ON ad.licitacaoId = l.id
+      ${where}
+      GROUP BY nome ORDER BY quantidade DESC, nome ASC`,
+    entregas: `
+      SELECT CASE WHEN ad.entregue = true THEN 'ENTREGUE' ELSE 'PENDENTE' END nome,
+        COUNT(ad.id) quantidade, COALESCE(SUM(ad.quantidade), 0) volume,
+        COALESCE(SUM(ap.quantidade), 0) valor
+      FROM licitacoes l
+      INNER JOIN licitacao_adesoes ad ON ad.licitacaoId = l.id
+      LEFT JOIN (
+        SELECT adesaoId, SUM(quantidade) quantidade
+        FROM licitacao_adesao_pedidos_crti GROUP BY adesaoId
+      ) ap ON ap.adesaoId = ad.id
+      ${where}
+      GROUP BY nome ORDER BY nome ASC`,
+  };
+  const [rows] = await pool.query<mysql.RowDataPacket[]>(queries[type], params);
+  return rows.map((row) => ({
+    nome: String(row.nome || "NÃO INFORMADO"),
+    quantidade: Number(row.quantidade || 0),
+    volume: Number(row.volume || 0),
+    valor: Number(row.valor || 0),
+  }));
+}
+
 export async function createLicitacao(data: LicitacaoInput & { criadoPor?: string }) {
   const pool = await ensureMysqlPool();
   await ensureLicitacaoPregaoAlertSchema(pool);

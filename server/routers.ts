@@ -9,6 +9,7 @@ import * as csvImport from "./csv-import";
 import * as alimentacao from "./alimentacao";
 import { TIPOS_REFEICAO } from "./alimentacao-rules";
 import { buildAlimentacaoPdf } from "./alimentacao-pdf";
+import { buildLicitacaoPdf } from "./licitacao-pdf";
 import { TRPCError } from "@trpc/server";
 import { ONE_YEAR_MS } from "@shared/const";
 import { ENV } from "./_core/env";
@@ -713,6 +714,15 @@ export const appRouter = router({
       }).optional())
       .query(({ input }) => db.listLicitacoes(input)),
     alertasPregao: costAccessProcedure.query(() => db.listLicitacaoAlertasPregao()),
+    exportarPdf: costAccessProcedure
+      .input(z.object({
+        tipoRelatorio: z.enum(["status", "cidade", "vendedor", "adesoes_vendedor", "entregas"]),
+        filtros: z.object({ inicio: z.string().max(10).optional(), fim: z.string().max(10).optional() }),
+      }))
+      .mutation(async ({ input }) => {
+        const pdf = await buildLicitacaoPdf(input.tipoRelatorio, input.filtros);
+        return { filename: pdf.filename, base64: pdf.buffer.toString("base64") };
+      }),
     create: costAccessProcedure
       .input(licitacaoSchema)
       .mutation(({ input, ctx }) => db.createLicitacao({
