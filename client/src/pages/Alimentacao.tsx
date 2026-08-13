@@ -413,7 +413,7 @@ function Lancamentos({ cad, concluir }: any) {
             ))}
           </select>
         </label>
-        <div className="form-grid">
+        <div className="form-grid food-date-type-grid">
           <label>
             Data
             <input
