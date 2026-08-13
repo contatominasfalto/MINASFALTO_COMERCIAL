@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { listLicitacaoReport } = vi.hoisted(() => ({
+const { listLicitacaoReport, listLicitacaoAdesaoReportDetails } = vi.hoisted(() => ({
   listLicitacaoReport: vi.fn(),
+  listLicitacaoAdesaoReportDetails: vi.fn(),
 }));
 
-vi.mock("./db", () => ({ listLicitacaoReport }));
+vi.mock("./db", () => ({ listLicitacaoReport, listLicitacaoAdesaoReportDetails }));
 
 import { buildLicitacaoPdf } from "./licitacao-pdf";
 import { PDF_PAGE_HEIGHT, PDF_PAGE_WIDTH } from "./medicao-pdf";
@@ -14,6 +15,20 @@ describe("PDF de relatórios de licitações", () => {
     listLicitacaoReport.mockResolvedValue([
       { nome: "VENDEDOR A", quantidade: 4, volume: 1200, valor: 700 },
       { nome: "VENDEDOR B", quantidade: 2, volume: 500, valor: 100 },
+    ]);
+    listLicitacaoAdesaoReportDetails.mockResolvedValue([
+      {
+        vendedor: "VENDEDOR A",
+        licitacao: "PREFEITURA - CIDADE",
+        orgaoAderente: "ÓRGÃO ADERENTE",
+        dataAdesao: "2026-08-13",
+        quantidade: 500,
+        entregue: "NÃO",
+        dataEntrega: "",
+        pedidos: 2,
+        quantidadeAtendida: 125,
+        saldo: 375,
+      },
     ]);
   });
 
@@ -25,6 +40,10 @@ describe("PDF de relatórios de licitações", () => {
     const pdf = result.buffer.toString("binary");
 
     expect(listLicitacaoReport).toHaveBeenCalledWith("adesoes_vendedor", {
+      inicio: "2026-01-01",
+      fim: "2026-12-31",
+    });
+    expect(listLicitacaoAdesaoReportDetails).toHaveBeenCalledWith({
       inicio: "2026-01-01",
       fim: "2026-12-31",
     });
