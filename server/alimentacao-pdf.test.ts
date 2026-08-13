@@ -47,8 +47,8 @@ describe("PDF do relatorio de alimentacao", () => {
 
   it("agrupa por mes", () => {
     expect(aggregateAlimentacaoPdfRows(rows, "mensal")).toEqual([
-      { nome: "2026-07", quantidade: 3, total: 60 },
       { nome: "2026-08", quantidade: 1, total: 25 },
+      { nome: "2026-07", quantidade: 3, total: 60 },
     ]);
   });
 

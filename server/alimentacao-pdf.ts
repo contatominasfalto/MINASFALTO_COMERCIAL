@@ -77,9 +77,10 @@ export function aggregateAlimentacaoPdfRows(
     current.total += Number(row.valorTotal || 0);
     groups.set(name, current);
   }
-  return Array.from(groups.values()).sort(
-    (a, b) => b[config.mode] - a[config.mode]
-  );
+  const grouped = Array.from(groups.values());
+  return type === "mensal"
+    ? grouped.sort((a, b) => b.nome.localeCompare(a.nome))
+    : grouped.sort((a, b) => b[config.mode] - a[config.mode]);
 }
 
 export async function buildAlimentacaoPdf(
@@ -91,6 +92,9 @@ export async function buildAlimentacaoPdf(
     alimentacao.cadastros(),
   ]);
   const data = aggregateAlimentacaoPdfRows(rows, type);
+  const chartData = type === "mensal"
+    ? [...data].sort((a, b) => a.nome.localeCompare(b.nome))
+    : data;
   const config = configs[type];
   const totalQuantity = data.reduce((sum, item) => sum + item.quantidade, 0);
   const totalValue = data.reduce((sum, item) => sum + item.total, 0);
@@ -135,7 +139,7 @@ export async function buildAlimentacaoPdf(
     content += "0.95 0.65 0.10 RG 50 740 m 545 740 l S\n";
     return content;
   };
-  const globalMax = Math.max(...data.map(item => Number(item[config.mode])), 1);
+  const globalMax = Math.max(...chartData.map(item => Number(item[config.mode])), 1);
   const landscapeWidth = PDF_PAGE_HEIGHT;
   const landscapeHeight = PDF_PAGE_WIDTH;
   let chartContent = drawPageBackground(
@@ -191,7 +195,7 @@ export async function buildAlimentacaoPdf(
     true,
     "0 0.10 0.20"
   );
-  if (!data.length) {
+  if (!chartData.length) {
     chartContent += drawCenteredText(
       "SEM DADOS PARA O PERÍODO SELECIONADO",
       250,
@@ -205,10 +209,10 @@ export async function buildAlimentacaoPdf(
     const plotY = 145;
     const plotWidth = 738;
     const plotHeight = 205;
-    const slot = plotWidth / data.length;
+    const slot = plotWidth / chartData.length;
     const gap = Math.min(5, slot * 0.22);
     const labelSize = Math.max(3.2, Math.min(5.5, slot / 3.8));
-    data.forEach((item, index) => {
+    chartData.forEach((item, index) => {
       const value = Number(item[config.mode]);
       const barHeight = Math.max(1, (value / globalMax) * plotHeight);
       const x = plotX + index * slot + gap / 2;

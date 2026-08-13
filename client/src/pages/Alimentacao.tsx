@@ -1124,10 +1124,17 @@ function Relatorios({ cad, rows, filtros, setFiltros }: any) {
       atual.total += Number(row.valorTotal || 0);
       grupos.set(nome, atual);
     });
-    return Array.from(grupos.values()).sort(
-      (a, b) => b[config.modo] - a[config.modo]
-    );
+    const agrupados = Array.from(grupos.values());
+    return tipoRelatorio === "mensal"
+      ? agrupados.sort((a, b) => b.nome.localeCompare(a.nome))
+      : agrupados.sort((a, b) => b[config.modo] - a[config.modo]);
   }, [rows, tipoRelatorio]);
+  const dadosGrafico = useMemo(
+    () => tipoRelatorio === "mensal"
+      ? [...dados].sort((a, b) => a.nome.localeCompare(b.nome))
+      : dados,
+    [dados, tipoRelatorio]
+  );
   const totalQuantidade = useMemo(
     () => dados.reduce((s, x) => s + x.quantidade, 0),
     [dados]
@@ -1346,7 +1353,7 @@ function Relatorios({ cad, rows, filtros, setFiltros }: any) {
       <section className="report-chart">
         <h2>{config.titulo}</h2>
         <p>{resumoFiltros}</p>
-        {dados.length > 20 && (
+        {dadosGrafico.length > 20 && (
           <small className="chart-hint">
             ↔ Use a barra do gráfico para visualizar os demais registros.
           </small>
@@ -1354,11 +1361,11 @@ function Relatorios({ cad, rows, filtros, setFiltros }: any) {
         <div className="chart-scroll">
           <div
             className="chart-canvas"
-            style={{ width: Math.max(760, dados.length * 52) }}
+            style={{ width: Math.max(760, dadosGrafico.length * 52) }}
           >
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={dados}
+                data={dadosGrafico}
                 margin={{ top: 12, right: 18, left: 12, bottom: 62 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
