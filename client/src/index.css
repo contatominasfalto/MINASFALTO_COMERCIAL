@@ -2127,6 +2127,67 @@
   min-width: 0;
 }
 
+/* A tabela de licitações precisa dimensionar as colunas pelo conteúdo e
+   aumentar a linha quando textos extensos exigirem mais de uma linha. */
+.licitacao-table,
+.licitacao-table-general,
+.licitacao-table-adjucados {
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
+}
+
+.licitacao-table th,
+.licitacao-table td {
+  box-sizing: border-box;
+  width: auto !important;
+  height: auto;
+  min-height: 26px;
+  padding: 4px 6px;
+  line-height: 1.25;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  text-overflow: clip;
+}
+
+.licitacao-table thead th {
+  min-height: 32px;
+  line-height: 1.15;
+}
+
+.licitacao-table .licitacao-col-data { min-width: 90px; max-width: 100px; white-space: nowrap; }
+.licitacao-table .licitacao-col-orgao { min-width: 190px; max-width: 300px; }
+.licitacao-table .licitacao-col-cidade { min-width: 125px; max-width: 210px; }
+.licitacao-table .licitacao-col-status { min-width: 140px; max-width: 220px; }
+.licitacao-table .licitacao-col-plataformaNome { min-width: 112px; max-width: 130px; }
+.licitacao-table .licitacao-col-item { min-width: 82px; max-width: 125px; }
+.licitacao-table .licitacao-col-tipo { min-width: 125px; max-width: 205px; }
+.licitacao-table .licitacao-col-potencialCliente { min-width: 175px; max-width: 250px; }
+.licitacao-table .licitacao-col-regiao { min-width: 90px; max-width: 125px; }
+.licitacao-table .licitacao-col-statusContrato { min-width: 125px; max-width: 145px; }
+.licitacao-table .licitacao-col-ataVendedorNome { min-width: 210px; max-width: 300px; }
+.licitacao-table .licitacao-col-ataControle { min-width: 54px; max-width: 62px; }
+.licitacao-table .licitacao-col-acoes { min-width: 108px; max-width: 120px; white-space: nowrap; }
+
+.licitacao-table .licitacao-col-qtdeSc,
+.licitacao-table .licitacao-col-valorUnit,
+.licitacao-table .licitacao-col-lanceLimite,
+.licitacao-table .licitacao-col-valorAdjudicado,
+.licitacao-table .licitacao-col-qtdeTn,
+.licitacao-table .licitacao-col-valorInicialContrato,
+.licitacao-table .licitacao-col-kmDistancia {
+  min-width: 105px;
+  max-width: 145px;
+  white-space: nowrap;
+}
+
+.licitacao-table .licitacao-col-kmDistancia { min-width: 60px; max-width: 72px; }
+.licitacao-table .licitacao-filter-row th { padding: 3px 4px; }
+.licitacao-table .licitacao-filter-row input { box-sizing: border-box; min-width: 100%; }
+.licitacao-table tbody tr { height: auto; }
+
 .licitacao-platform-cell {
   text-align: center;
 }

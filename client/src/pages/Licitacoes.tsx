@@ -920,7 +920,7 @@ export default function Licitacoes() {
                 {licitacaoTableColumns.map(([key, label]) => (
                   <th
                     key={key}
-                    className="licitacao-sortable-header"
+                    className={`licitacao-sortable-header licitacao-col-${key}`}
                     aria-sort={sortKey === key ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
                     onClick={() => sortBy(key)}
                   >
@@ -928,11 +928,11 @@ export default function Licitacoes() {
                     {sortKey === key && <b aria-hidden="true">{sortDirection === "asc" ? "▲" : "▼"}</b>}
                   </th>
                 ))}
-                <th>Ações</th>
+                <th className="licitacao-col-acoes">Ações</th>
               </tr>
               <tr className="licitacao-filter-row">
                 {licitacaoTableColumns.map(([key, label]) => (
-                  <th key={`${key}-filter`}>
+                  <th key={`${key}-filter`} className={`licitacao-col-${key}`}>
                     <input
                       aria-label={`Filtrar ${label}`}
                       value={columnFilters[key] || ""}
@@ -945,7 +945,7 @@ export default function Licitacoes() {
                     />
                   </th>
                 ))}
-                <th>
+                <th className="licitacao-col-acoes">
                   <button
                     type="button"
                     className="licitacao-clear-filters"
@@ -972,14 +972,14 @@ export default function Licitacoes() {
                   onClick={() => setSelectedTableLicitacaoId(licitacao.id)}
                   onDoubleClick={() => openLicitacaoForm(licitacao)}
                 >
-                  <td>{formatDateBR(licitacao.data)}</td>
-                  <td title={licitacao.orgao}>{normalizeText(licitacao.orgao)}</td>
-                  <td>{normalizeText(licitacao.cidade)}</td>
-                  <td className={isPendenteStatus(getLicitacaoStatusDisplay(licitacao)) ? "licitacao-status-pendente" : ""}>
+                  <td className="licitacao-col-data">{formatDateBR(licitacao.data)}</td>
+                  <td className="licitacao-col-orgao" title={licitacao.orgao}>{normalizeText(licitacao.orgao)}</td>
+                  <td className="licitacao-col-cidade">{normalizeText(licitacao.cidade)}</td>
+                  <td className={`licitacao-col-status${isPendenteStatus(getLicitacaoStatusDisplay(licitacao)) ? " licitacao-status-pendente" : ""}`}>
                     {getLicitacaoStatusDisplay(licitacao)}
                   </td>
                   {panelTab === "geral" && (
-                    <td className="licitacao-platform-cell">
+                    <td className="licitacao-platform-cell licitacao-col-plataformaNome">
                       {licitacao.plataformaLink ? (
                         <button
                           type="button"
@@ -999,26 +999,26 @@ export default function Licitacoes() {
                       )}
                     </td>
                   )}
-                  <td>{normalizeText(licitacao.item)}</td>
-                  <td>{normalizeText(licitacao.tipo)}</td>
-                  <td className="num">{formatDecimal(licitacao.qtdeSc)}</td>
-                  <td className="num">{formatCurrency(licitacao.valorUnit)}</td>
-                  <td className="num">{formatCurrency(licitacao.lanceLimite)}</td>
-                  <td className="num">{formatCurrency(licitacao.valorAdjudicado)}</td>
-                  <td className="num">{formatDecimal(licitacao.qtdeTn)}</td>
-                  <td className="num">{formatCurrency(licitacao.valorInicialContrato)}</td>
-                  <td className="num">{formatDecimal(licitacao.kmDistancia, 0)}</td>
-                  <td>{normalizeText(licitacao.potencialCliente || getPotencial(licitacao.kmDistancia))}</td>
-                  <td>{normalizeText(licitacao.regiao)}</td>
+                  <td className="licitacao-col-item">{normalizeText(licitacao.item)}</td>
+                  <td className="licitacao-col-tipo">{normalizeText(licitacao.tipo)}</td>
+                  <td className="num licitacao-col-qtdeSc">{formatDecimal(licitacao.qtdeSc)}</td>
+                  <td className="num licitacao-col-valorUnit">{formatCurrency(licitacao.valorUnit)}</td>
+                  <td className="num licitacao-col-lanceLimite">{formatCurrency(licitacao.lanceLimite)}</td>
+                  <td className="num licitacao-col-valorAdjudicado">{formatCurrency(licitacao.valorAdjudicado)}</td>
+                  <td className="num licitacao-col-qtdeTn">{formatDecimal(licitacao.qtdeTn)}</td>
+                  <td className="num licitacao-col-valorInicialContrato">{formatCurrency(licitacao.valorInicialContrato)}</td>
+                  <td className="num licitacao-col-kmDistancia">{formatDecimal(licitacao.kmDistancia, 0)}</td>
+                  <td className="licitacao-col-potencialCliente">{normalizeText(licitacao.potencialCliente || getPotencial(licitacao.kmDistancia))}</td>
+                  <td className="licitacao-col-regiao">{normalizeText(licitacao.regiao)}</td>
                   {panelTab === "adjudicadas" && (
                     <>
-                      <td>
+                      <td className="licitacao-col-statusContrato">
                         <select value={licitacao.statusContrato || "Pendente"} onChange={(event) => updateLicitacao.mutate({ id: licitacao.id, data: { ...(licitacao as any), statusContrato: event.target.value } })}>
                           <option value="Assinado">ASSINADO</option>
                           <option value="Pendente">PENDENTE</option>
                         </select>
                       </td>
-                      <td>
+                      <td className="licitacao-col-ataVendedorNome">
                         <select
                           value={licitacao.ataVendedorId || "NA"}
                           onChange={(event) => {
@@ -1033,14 +1033,14 @@ export default function Licitacoes() {
                           {vendedores.map((vendedor: any) => <option key={vendedor.id} value={vendedor.id}>{normalizeText(vendedor.nome)}</option>)}
                         </select>
                       </td>
-                      <td>
+                      <td className="licitacao-col-ataControle">
                         {licitacao.ataVendedorNome && licitacao.ataVendedorNome !== "NA" && (
                           <button className="mini-icon-button" onClick={() => openAta(licitacao)}><Link2 size={14} /></button>
                         )}
                       </td>
                     </>
                   )}
-                  <td>
+                  <td className="licitacao-col-acoes">
                     <button className="mini-icon-button" onClick={() => openLicitacaoForm(licitacao)}><Pencil size={14} /></button>
                     <button
                       className="mini-icon-button"
