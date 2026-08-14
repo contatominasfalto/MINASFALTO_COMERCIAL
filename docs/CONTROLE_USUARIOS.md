@@ -19,7 +19,7 @@ Usuários desativados ou arquivados têm a autenticação recusada. O `admfull` 
 
 1. Faça backup do banco MySQL de produção.
 2. Na raiz da aplicação, carregue a mesma `DATABASE_URL` usada pelo servidor.
-3. Execute `npx drizzle-kit migrate` (não edite migrações antigas).
+3. Execute `npm run usuarios:schema -- --apply`. O instalador é idempotente e valida todas as estruturas ao final.
 4. Confirme no banco:
 
 ```sql
