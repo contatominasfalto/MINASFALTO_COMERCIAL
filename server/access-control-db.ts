@@ -4,6 +4,7 @@ import { permissionAuditLog, profilePermissions, userPermissions, users, type Us
 import { getDb } from "./db";
 import { ACCESS_CATALOG, effectAllows, isMasterIdentity, legacyProfileEffect, resolvePermissionEffect, type PermissionEffect, type PermissionAction } from "../shared/access-control";
 import { hashPassword, verifyPassword } from "./password-security";
+import { ENV } from "./_core/env";
 
 type ManagedUserInput = {
   username: string;
@@ -19,6 +20,24 @@ function publicUser(user: User) {
   return safe;
 }
 
+function passwordState(user: User) {
+  const username = String(user.username || "").trim().toLowerCase();
+  const legacyPasswords: Record<string, string> = {
+    admfull: ENV.localLoginAdmfull,
+    comercial: ENV.localLoginComercial,
+    subcomercial: ENV.localLoginSubcomercial,
+    gerencia: ENV.localLoginGerencia,
+    diretoria: ENV.localLoginDiretoria,
+  };
+  const hasPassword = Boolean(user.passwordHash);
+  const hasLegacyPassword = Boolean(legacyPasswords[username]);
+  return {
+    hasPassword,
+    passwordConfigured: hasPassword || hasLegacyPassword,
+    passwordSource: hasPassword ? "database" as const : hasLegacyPassword ? "environment" as const : "none" as const,
+  };
+}
+
 async function database() {
   const connection = await getDb();
   if (!connection) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco de dados indisponível." });
@@ -30,7 +49,7 @@ export async function listManagedUsers() {
   const rows = await db.select().from(users).orderBy(asc(users.name), asc(users.username));
   return Promise.all(rows.map(async (user: User) => ({
     ...publicUser(user),
-    hasPassword: Boolean(user.passwordHash),
+    ...passwordState(user),
     permissionCount: Number((await db.select().from(userPermissions).where(eq(userPermissions.userId, user.id))).length),
     protected: isMasterIdentity(user),
   })));
@@ -40,7 +59,7 @@ export async function getManagedUser(id: number) {
   const db = await database();
   const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
   if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado." });
-  return { ...publicUser(user), hasPassword: Boolean(user.passwordHash), protected: isMasterIdentity(user) };
+  return { ...publicUser(user), ...passwordState(user), protected: isMasterIdentity(user) };
 }
 
 async function ensureUniqueIdentity(username: string, email: string | null | undefined, exceptId?: number) {
