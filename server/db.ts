@@ -285,7 +285,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     };
     const updateSet: Record<string, unknown> = {};
 
-    const textFields = ["name", "email", "loginMethod"] as const;
+    const textFields = ["name", "email", "loginMethod", "username"] as const;
     type TextField = (typeof textFields)[number];
 
     const assignNullable = (field: TextField) => {
@@ -313,6 +313,14 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     if (user.profile !== undefined) {
       values.profile = user.profile;
       updateSet.profile = user.profile;
+    }
+    if (user.status !== undefined) {
+      values.status = user.status;
+      updateSet.status = user.status;
+    }
+    if (user.isProtected !== undefined) {
+      values.isProtected = user.isProtected;
+      updateSet.isProtected = user.isProtected;
     }
 
     if (!values.lastSignedIn) {

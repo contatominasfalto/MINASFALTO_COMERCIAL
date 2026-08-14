@@ -11,11 +11,13 @@ import {
   UserCircle,
   Warehouse,
   Utensils,
+  UserCog,
 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
+import { usePermissions } from "@/_core/hooks/usePermissions";
 
 type HomeView = "welcome" | "costs";
 const HIDDEN_COST_PROFILES = new Set(["comercial", "subcomercial", "semicomercial"]);
@@ -37,6 +39,7 @@ function MinasfaltoLogo({ compact = false }: { compact?: boolean }) {
 export default function Home({ view = "welcome" }: { view?: HomeView }) {
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  const permissions = usePermissions();
   const utils = trpc.useUtils();
   const [collapsed, setCollapsed] = useState(false);
   const [commercialOpen, setCommercialOpen] = useState(false);
@@ -44,7 +47,7 @@ export default function Home({ view = "welcome" }: { view?: HomeView }) {
   const [userOpen, setUserOpen] = useState(false);
   const userProfile = normalizeUserKey((user as { profile?: unknown } | null)?.profile);
   const userName = normalizeUserKey(user?.name);
-  const canAccessCosts = !HIDDEN_COST_PROFILES.has(userProfile || userName);
+  const canAccessCosts = permissions.can("custo_obras", "access");
   const activeView = view === "costs" && canAccessCosts ? "costs" : "welcome";
 
   const logout = trpc.auth.logout.useMutation({
@@ -66,7 +69,7 @@ export default function Home({ view = "welcome" }: { view?: HomeView }) {
         <nav className="home-menu" aria-label="Menu principal">
           {!collapsed && <span className="home-menu-label">MENU</span>}
 
-          <button
+          {permissions.can("comercial", "access") && <button
             type="button"
             className="home-menu-trigger"
             onClick={() => setCommercialOpen((current) => !current)}
@@ -75,17 +78,17 @@ export default function Home({ view = "welcome" }: { view?: HomeView }) {
             <Briefcase size={22} />
             {!collapsed && <span>Comercial</span>}
             {!collapsed && <ChevronDown className={commercialOpen ? "home-chevron open" : "home-chevron"} size={18} />}
-          </button>
+          </button>}
 
-          {commercialOpen && !collapsed && (
+          {permissions.can("comercial", "access") && commercialOpen && !collapsed && (
             <div className="home-submenu">
               <button type="button" onClick={() => navigate("/comercial")}>
                 Painel Comercial
               </button>
-              <button type="button" onClick={() => navigate("/estoque")}>
+              {permissions.can("estoque", "access") && <button type="button" onClick={() => navigate("/estoque")}>
                 <Warehouse size={15} />
                 Estoque
-              </button>
+              </button>}
             </div>
           )}
 
@@ -110,24 +113,25 @@ export default function Home({ view = "welcome" }: { view?: HomeView }) {
                 </div>
               )}
 
-              {!collapsed && (
-                <button
-                  type="button"
-                  className="home-menu-trigger"
-                  onClick={() => navigate("/licitacoes")}
-                  title="Licitacoes"
-                >
-                  <FileText size={22} />
-                  <span>Licitacoes</span>
-                </button>
-              )}
-              {!collapsed && (
-                <button type="button" className="home-menu-trigger" onClick={() => navigate("/alimentacao")} title="Controle de Alimentação">
-                  <Utensils size={22} />
-                  <span>Alimentação</span>
-                </button>
-              )}
             </>
+          )}
+          {permissions.can("licitacoes", "access") && (
+            <button type="button" className="home-menu-trigger" onClick={() => navigate("/licitacoes")} title="Licitações">
+              <FileText size={22} />
+              {!collapsed && <span>Licitações</span>}
+            </button>
+          )}
+          {permissions.can("alimentacao", "access") && (
+            <button type="button" className="home-menu-trigger" onClick={() => navigate("/alimentacao")} title="Controle de Alimentação">
+              <Utensils size={22} />
+              {!collapsed && <span>Alimentação</span>}
+            </button>
+          )}
+          {permissions.master && (
+            <button type="button" className="home-menu-trigger" onClick={() => navigate("/controle-usuarios")} title="Controle de Usuários">
+              <UserCog size={22} />
+              {!collapsed && <span>Controle de Usuários</span>}
+            </button>
           )}
         </nav>
 

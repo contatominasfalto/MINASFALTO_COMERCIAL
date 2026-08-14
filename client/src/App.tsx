@@ -8,6 +8,7 @@ import Login from "@/pages/Login";
 import CustoObras from "@/pages/CustoObras";
 import Licitacoes from "@/pages/Licitacoes";
 import Alimentacao from "@/pages/Alimentacao";
+import ControleUsuarios from "@/pages/ControleUsuarios";
 import { Route, Router as WouterRouter, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -18,6 +19,7 @@ import { StockProvider } from "@/contexts/StockContext";
 import "./stock.css";
 import { useEffect, useRef } from "react";
 import LicitacaoPregaoAlert from "@/components/LicitacaoPregaoAlert";
+import { usePermissions } from "@/_core/hooks/usePermissions";
 
 const SESSION_STORAGE_KEY = "minasfalto_active_session";
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
@@ -69,10 +71,11 @@ function useSessionLifecycle(isAuthenticated: boolean, loading: boolean, logout:
 
 function Router() {
   const { user, isAuthenticated, loading, logout } = useAuth();
+  const permissions = usePermissions();
 
   useSessionLifecycle(isAuthenticated, loading, logout);
 
-  if (loading) {
+  if (loading || (isAuthenticated && permissions.isLoading)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Spinner />
@@ -89,30 +92,30 @@ function Router() {
     );
   }
 
-  const userProfile = normalizeUserKey((user as { profile?: unknown } | null)?.profile);
-  const userName = normalizeUserKey(user?.name);
-  const canAccessCosts = !HIDDEN_COST_PROFILES.has(userProfile || userName);
+  const canAccessCosts = permissions.can("custo_obras", "access");
+  const denied = <main className="users-denied"><h1>Acesso negado</h1><p>Você não possui permissão para acessar este módulo.</p></main>;
 
   return (
     <>
-      {canAccessCosts && <LicitacaoPregaoAlert />}
+      {permissions.can("licitacoes", "access") && <LicitacaoPregaoAlert />}
       <Switch>
       <Route path={"/"}>
-        <Home />
+        {permissions.can("inicio", "access") ? <Home /> : denied}
       </Route>
-      <Route path={"/comercial"} component={Dashboard} />
-      <Route path={"/custo-obras"} component={CustoObras} />
+      <Route path={"/comercial"}>{permissions.can("comercial", "access") ? <Dashboard /> : denied}</Route>
+      <Route path={"/custo-obras"}>{canAccessCosts ? <CustoObras /> : denied}</Route>
       <Route path={"/licitacoes"}>
-        {canAccessCosts ? <Licitacoes /> : <Home />}
+        {permissions.can("licitacoes", "access") ? <Licitacoes /> : denied}
       </Route>
       <Route path={"/alimentacao"}>
-        {canAccessCosts ? <Alimentacao /> : <Home />}
+        {permissions.can("alimentacao", "access") ? <Alimentacao /> : denied}
       </Route>
       <Route path={"/estoque"}>
-        <StockProvider>
+        {permissions.can("estoque", "access") ? <StockProvider>
           <StockPage />
-        </StockProvider>
+        </StockProvider> : denied}
       </Route>
+      <Route path={"/controle-usuarios"}>{permissions.master ? <ControleUsuarios /> : denied}</Route>
       <Route path={"/login"}>
         <Home />
       </Route>

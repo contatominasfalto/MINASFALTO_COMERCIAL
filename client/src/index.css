@@ -2188,6 +2188,51 @@
 .licitacao-table .licitacao-filter-row input { box-sizing: border-box; min-width: 100%; }
 .licitacao-table tbody tr { height: auto; }
 
+/* Controle de usuários */
+.users-page, .users-denied { min-height: 100vh; background: #f3f7fb; color: #071b32; padding: 16px; font-family: Arial, sans-serif; }
+.users-header { min-height: 70px; border: 1px solid #9bb4cc; background: #dce9f5; display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; }
+.users-header > div { display: flex; align-items: center; gap: 12px; }
+.users-header h1 { font-size: 20px; font-weight: 800; margin: 0; }
+.users-header span { font-size: 12px; }
+.users-header button, .users-toolbar button, .users-dialog button, .users-denied button { border: 1px solid #7896b3; background: #fff; min-height: 34px; padding: 7px 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700; }
+.users-toolbar { display: grid; grid-template-columns: minmax(260px, 1fr) 190px 160px auto; gap: 10px; padding: 14px 0; }
+.users-toolbar label { display: flex; align-items: center; border: 1px solid #9bb4cc; background: #fff; padding: 0 10px; }
+.users-toolbar input { border: 0; outline: 0; min-height: 36px; flex: 1; padding: 0 8px; }
+.users-toolbar select, .users-form input, .users-form select, .users-permission-module select { border: 1px solid #9bb4cc; background: #fff; min-height: 38px; padding: 5px 8px; }
+.users-primary { background: linear-gradient(#fff3bd, #edc247) !important; border-color: #b88900 !important; }
+.users-danger { background: #fde2e2 !important; color: #8e1515; border-color: #c85a5a !important; }
+.users-table-wrap { border: 1px solid #9bb4cc; background: #fff; overflow: auto; min-height: 420px; }
+.users-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.users-table th { background: linear-gradient(#edf5fb, #d7e5f1); text-align: left; padding: 10px; border: 1px solid #aec2d4; }
+.users-table td { padding: 9px 10px; border: 1px solid #c5d4e1; vertical-align: middle; }
+.users-table td:first-child span, .users-table td:first-child em { display: block; margin-top: 3px; font-size: 11px; color: #587086; }
+.users-table td:first-child em { color: #9a6700; display: flex; align-items: center; gap: 4px; font-style: normal; }
+.users-table td:last-child { white-space: nowrap; }
+.users-table td:last-child button { width: 30px; height: 28px; margin-right: 4px; border: 1px solid #8ba5be; background: #fff; }
+.users-table button:disabled { opacity: .35; cursor: not-allowed; }
+.users-protected-row { background: #fff8dc; }
+.users-status { display: inline-block; padding: 4px 9px; border: 1px solid; font-weight: 700; }
+.users-status-active { color: #146c2e; background: #e3f8e8; border-color: #72bb83; }
+.users-status-inactive { color: #9a3b00; background: #fff0db; border-color: #dd9a55; }
+.users-status-archived { color: #6b7280; background: #edf0f2; border-color: #aab1b8; }
+.users-state { padding: 35px !important; text-align: center; }.users-error { color: #a51616; }
+.users-dialog { width: min(760px, 94vw) !important; max-width: none !important; border-radius: 0 !important; border-color: #7896b3 !important; }
+.users-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.users-form label, .users-confirm-dialog label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 700; }
+.users-form p { grid-column: 1/-1; padding: 10px; background: #eef5fb; border: 1px solid #bfd0df; font-size: 12px; }
+.users-dialog-footer { border-top: 1px solid #bfd0df; padding-top: 12px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.users-dialog-footer > span { margin-right: auto; font-size: 12px; }
+.users-permissions-dialog { width: min(980px, 96vw) !important; height: min(86vh, 820px); display: flex !important; flex-direction: column; }
+.users-permissions-scroll { overflow-y: auto; flex: 1; border: 1px solid #bfd0df; padding: 10px; }
+.users-help { background: #eef5fb; padding: 9px; font-size: 12px; }
+.users-permission-module { border: 1px solid #aabfd2; margin-bottom: 10px; }
+.users-permission-module header { background: #dce9f5; padding: 8px; display: flex; justify-content: space-between; align-items: center; }
+.users-permission-module > div { display: grid; grid-template-columns: minmax(220px, 1fr) 245px; gap: 10px; align-items: center; padding: 7px 10px; border-top: 1px solid #d5e0e9; }
+.users-permission-module span small { display: block; color: #64788b; margin-top: 2px; }
+.users-confirm-dialog textarea { min-height: 90px; border: 1px solid #9bb4cc; padding: 8px; }
+.users-denied { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; }
+@media (max-width: 760px) { .users-toolbar { grid-template-columns: 1fr; }.users-form { grid-template-columns: 1fr; }.users-permission-module > div { grid-template-columns: 1fr; }.users-table { min-width: 900px; } }
+
 .licitacao-platform-cell {
   text-align: center;
 }

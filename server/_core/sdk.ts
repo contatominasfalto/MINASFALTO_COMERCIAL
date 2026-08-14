@@ -295,7 +295,26 @@ class SDKServer {
     }
 
     if (session.openId.startsWith(LOCAL_LOGIN_OPEN_ID_PREFIX)) {
-      return buildLocalLoginUser(session.openId, session.name);
+      const fallback = buildLocalLoginUser(session.openId, session.name);
+      let persisted = await db.getUserByOpenId(session.openId);
+      if (!persisted) {
+        await db.upsertUser({
+          openId: fallback.openId,
+          username: fallback.name || "comercial",
+          name: fallback.name,
+          loginMethod: "local",
+          role: fallback.role,
+          profile: fallback.profile,
+          status: "active",
+          isProtected: fallback.profile === "admfull",
+          lastSignedIn: new Date(),
+        });
+        persisted = await db.getUserByOpenId(session.openId);
+      }
+      if (persisted && persisted.status !== "active") {
+        throw ForbiddenError("User is inactive");
+      }
+      return (persisted || fallback) as AuthenticatedUser;
     }
 
     const sessionUserId = session.openId;
@@ -318,6 +337,10 @@ class SDKServer {
         console.error("[Auth] Failed to sync user from OAuth:", error);
         throw ForbiddenError("Failed to sync user info");
       }
+    }
+
+    if (user.status !== "active") {
+      throw ForbiddenError("User is inactive");
     }
 
     if (!user) {
@@ -376,6 +399,11 @@ function buildLocalLoginUser(openId: string, name: string): AuthenticatedUser {
     loginMethod: "local",
     role: profile === "admfull" ? "admin" : "user",
     profile,
+    username,
+    status: "active",
+    isProtected: profile === "admfull",
+    updatedByUserId: null,
+    archivedAt: null,
     createdAt: now,
     updatedAt: now,
     lastSignedIn: now,

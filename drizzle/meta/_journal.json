@@ -120,6 +120,13 @@
       "when": 1786032000000,
       "tag": "0016_controle_alimentacao",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1786680000000,
+      "tag": "0022_controle_usuarios_permissoes",
+      "breakpoints": true
     }
   ]
 }

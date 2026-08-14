@@ -2,6 +2,8 @@ import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from "@shared/const";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
+import { assertPermission } from "../access-control-db";
+import { isMasterIdentity, permissionTargetForProcedure } from "../../shared/access-control";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -25,13 +27,30 @@ const requireUser = t.middleware(async opts => {
   });
 });
 
-export const protectedProcedure = t.procedure.use(requireUser);
+const requireEffectivePermission = t.middleware(async (opts) => {
+  const { ctx, next } = opts;
+  if (!ctx.user) throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+  const target = permissionTargetForProcedure(opts.path, opts.type);
+  await assertPermission(ctx.user, target.resource, target.action);
+  return next({ ctx: { ...ctx, user: ctx.user } });
+});
+
+export const protectedProcedure = t.procedure.use(requireUser).use(requireEffectivePermission);
+
+export const masterProcedure = t.procedure.use(requireUser).use(
+  t.middleware(async ({ ctx, next }) => {
+    if (!isMasterIdentity(ctx.user)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Acesso exclusivo do usuário master admfull." });
+    }
+    return next({ ctx: { ...ctx, user: ctx.user } });
+  }),
+);
 
 export const adminProcedure = t.procedure.use(
   t.middleware(async opts => {
     const { ctx, next } = opts;
 
-    if (!ctx.user || ctx.user.role !== 'admin') {
+    if (!ctx.user || !isMasterIdentity(ctx.user)) {
       throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
     }
 

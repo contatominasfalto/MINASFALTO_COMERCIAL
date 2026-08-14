@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
+import { publicProcedure, router, protectedProcedure, masterProcedure } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
 import * as crtiSync from "./crti-sync";
@@ -14,6 +14,8 @@ import { TRPCError } from "@trpc/server";
 import { ONE_YEAR_MS } from "@shared/const";
 import { ENV } from "./_core/env";
 import { sdk, LOCAL_LOGIN_OPEN_ID_PREFIX } from "./_core/sdk";
+import * as accessDb from "./access-control-db";
+import { ACCESS_CATALOG, ACCESS_EFFECTS, USER_STATUSES } from "../shared/access-control";
 
 const STATUS_SAIDA_OK = "SA\u00cdDA OK";
 const pedidoAtividadeDescricaoSchema = z.string().trim().min(1, "Informe a atividade.").max(2000, "A atividade deve ter no máximo 2.000 caracteres.");
@@ -63,14 +65,7 @@ function canAccessCostPanel(value: unknown) {
   return Boolean(key) && !HIDDEN_COST_PROFILES.has(key);
 }
 
-const costAccessProcedure = protectedProcedure.use(async ({ ctx, next }) => {
-  const profile = normalizeUserKey((ctx.user as { profile?: unknown }).profile);
-  const name = normalizeUserKey(ctx.user.name);
-  if (!canAccessCostPanel(profile || name)) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Usuario sem permissao para acessar este painel." });
-  }
-  return next({ ctx });
-});
+const costAccessProcedure = protectedProcedure;
 
 const alimentacaoAccessProcedure = costAccessProcedure;
 const dataIsoSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida");
@@ -348,6 +343,21 @@ const licitacaoPedidoManualSchema = z.object({
   observacoes: z.string().max(5000).optional(),
 });
 
+const managedProfileSchema = z.enum(["comercial", "subcomercial", "gerencia", "diretoria"]);
+const managedUserSchema = z.object({
+  username: z.string().trim().min(3, "Informe um login com ao menos 3 caracteres.").max(64).regex(/^[a-zA-Z0-9._-]+$/, "Use apenas letras, números, ponto, hífen ou sublinhado."),
+  name: z.string().trim().min(2, "Informe o nome do usuário.").max(180),
+  email: z.string().trim().email("E-mail inválido.").max(320).nullable().optional().or(z.literal("")),
+  profile: managedProfileSchema,
+  status: z.enum(USER_STATUSES),
+});
+
+const permissionEntrySchema = z.object({
+  resourceKey: z.string().trim().min(1).max(80),
+  actionKey: z.string().trim().min(1).max(40),
+  effect: z.enum(ACCESS_EFFECTS).nullable(),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -377,6 +387,11 @@ export const appRouter = router({
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Usuário ou senha inválidos" });
         }
 
+        const persistedUser = await db.getUserByOpenId(`${LOCAL_LOGIN_OPEN_ID_PREFIX}${username}`);
+        if (persistedUser && persistedUser.status !== "active") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Usuário desativado. Procure o administrador do sistema." });
+        }
+
         const sessionToken = await sdk.createSessionToken(
           `${LOCAL_LOGIN_OPEN_ID_PREFIX}${username}`,
           {
@@ -397,6 +412,26 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+    permissions: protectedProcedure.query(async ({ ctx }) => {
+      const rows = await Promise.all(ACCESS_CATALOG.flatMap((resource) => resource.actions.map(async (action) => ({
+        resourceKey: resource.key,
+        actionKey: action.key,
+        effect: await accessDb.getEffectivePermission(ctx.user, resource.key, action.key),
+      }))));
+      return { catalog: ACCESS_CATALOG, permissions: rows };
+    }),
+  }),
+
+  userManagement: router({
+    list: masterProcedure.query(() => accessDb.listManagedUsers()),
+    getById: masterProcedure.input(z.number().int().positive()).query(({ input }) => accessDb.getManagedUser(input)),
+    create: masterProcedure.input(managedUserSchema).mutation(({ input, ctx }) => accessDb.createManagedUser({ ...input, email: input.email || null }, ctx.user!.id)),
+    update: masterProcedure.input(z.object({ id: z.number().int().positive(), data: managedUserSchema })).mutation(({ input, ctx }) => accessDb.updateManagedUser(input.id, { ...input.data, email: input.data.email || null }, ctx.user!.id)),
+    setStatusOrDeactivate: masterProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(USER_STATUSES), reason: z.string().trim().min(3).max(500) })).mutation(({ input, ctx }) => accessDb.setManagedUserStatus(input.id, input.status, ctx.user!.id, input.reason)),
+    deleteOrArchive: masterProcedure.input(z.object({ id: z.number().int().positive(), reason: z.string().trim().min(3).max(500) })).mutation(({ input, ctx }) => accessDb.setManagedUserStatus(input.id, "archived", ctx.user!.id, input.reason)),
+    getPermissionCatalog: masterProcedure.query(() => ACCESS_CATALOG),
+    getUserPermissions: masterProcedure.input(z.number().int().positive()).query(({ input }) => accessDb.getUserPermissionRows(input)),
+    replaceUserPermissions: masterProcedure.input(z.object({ userId: z.number().int().positive(), permissions: z.array(permissionEntrySchema).max(500) })).mutation(({ input, ctx }) => accessDb.replaceUserPermissionRows(input.userId, input.permissions, ctx.user!.id)),
   }),
 
   // ─────────────────────────────────────────────

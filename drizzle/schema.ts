@@ -25,6 +25,11 @@ export const users = mysqlTable("users", {
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   // Perfil específico do Minasfalto
   profile: mysqlEnum("profile", ["admfull", "comercial", "subcomercial", "gerencia", "diretoria"]).default("comercial"),
+  username: varchar("username", { length: 64 }).unique(),
+  status: mysqlEnum("status", ["active", "inactive", "archived"]).default("active").notNull(),
+  isProtected: boolean("isProtected").default(false).notNull(),
+  updatedByUserId: int("updatedByUserId"),
+  archivedAt: timestamp("archivedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -32,6 +37,48 @@ export const users = mysqlTable("users", {
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+
+export const userPermissions = mysqlTable("user_permissions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  resourceKey: varchar("resourceKey", { length: 80 }).notNull(),
+  actionKey: varchar("actionKey", { length: 40 }).notNull(),
+  effect: mysqlEnum("effect", ["allow", "deny", "view"]).notNull(),
+  updatedByUserId: int("updatedByUserId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  userPermissionUnique: uniqueIndex("user_permission_unique").on(table.userId, table.resourceKey, table.actionKey),
+  userPermissionUserIndex: index("user_permission_user_idx").on(table.userId),
+}));
+
+export const profilePermissions = mysqlTable("profile_permissions", {
+  id: int("id").autoincrement().primaryKey(),
+  profileKey: varchar("profileKey", { length: 40 }).notNull(),
+  resourceKey: varchar("resourceKey", { length: 80 }).notNull(),
+  actionKey: varchar("actionKey", { length: 40 }).notNull(),
+  effect: mysqlEnum("effect", ["allow", "deny", "view"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({
+  profilePermissionUnique: uniqueIndex("profile_permission_unique").on(table.profileKey, table.resourceKey, table.actionKey),
+}));
+
+export const permissionAuditLog = mysqlTable("permission_audit_log", {
+  id: int("id").autoincrement().primaryKey(),
+  actorUserId: int("actorUserId"),
+  targetUserId: int("targetUserId"),
+  action: varchar("action", { length: 80 }).notNull(),
+  previousValue: text("previousValue"),
+  newValue: text("newValue"),
+  reason: varchar("reason", { length: 500 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => ({
+  permissionAuditTargetIndex: index("permission_audit_target_idx").on(table.targetUserId),
+}));
+
+export type UserPermission = typeof userPermissions.$inferSelect;
+export type ProfilePermission = typeof profilePermissions.$inferSelect;
 
 /**
  * Tabela de pedidos de vendas
