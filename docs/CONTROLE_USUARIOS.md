@@ -20,6 +20,8 @@ Usuários desativados ou arquivados têm a autenticação recusada. O `admfull` 
 1. Faça backup do banco MySQL de produção.
 2. Na raiz da aplicação, carregue a mesma `DATABASE_URL` usada pelo servidor.
 3. Execute `npm run usuarios:schema -- --apply`. O instalador é idempotente e valida todas as estruturas ao final.
+
+As senhas dos usuários não master são definidas e redefinidas no modal de usuário. O banco recebe somente um hash `scrypt` com salt individual. Enquanto um usuário legado ainda não possuir hash, seu login continua aceitando a credencial antiga configurada no ambiente; depois da primeira redefinição pela interface, passa a valer exclusivamente o hash do banco. A senha do `admfull` permanece protegida e fora da interface.
 4. Confirme no banco:
 
 ```sql

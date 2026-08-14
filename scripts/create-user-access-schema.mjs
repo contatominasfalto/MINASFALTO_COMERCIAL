@@ -23,6 +23,7 @@ async function exists(kind, name, table = "users") {
 
 const columns = [
   ["username", "varchar(64) NULL"],
+  ["passwordHash", "varchar(255) NULL"],
   ["status", "enum('active','inactive','archived') NOT NULL DEFAULT 'active'"],
   ["isProtected", "boolean NOT NULL DEFAULT false"],
   ["updatedByUserId", "int NULL"],
@@ -106,13 +107,13 @@ try {
     CROSS JOIN (SELECT 'access' actionKey UNION ALL SELECT 'read' UNION ALL SELECT 'create' UNION ALL SELECT 'update' UNION ALL SELECT 'delete' UNION ALL SELECT 'export' UNION ALL SELECT 'import' UNION ALL SELECT 'sync' UNION ALL SELECT 'manage') a
     ON DUPLICATE KEY UPDATE effect=VALUES(effect)`);
 
-  if (!(await exists("trigger", "protect_admfull_update"))) {
-    await connection.query(`CREATE TRIGGER protect_admfull_update BEFORE UPDATE ON users FOR EACH ROW BEGIN
+  if (await exists("trigger", "protect_admfull_update")) await connection.query("DROP TRIGGER protect_admfull_update");
+  await connection.query(`CREATE TRIGGER protect_admfull_update BEFORE UPDATE ON users FOR EACH ROW BEGIN
       IF OLD.isProtected=true AND (NOT (NEW.openId <=> OLD.openId) OR NEW.username<>'admfull' OR
         NOT (NEW.name <=> OLD.name) OR NOT (NEW.email <=> OLD.email) OR NOT (NEW.loginMethod <=> OLD.loginMethod) OR
-        NEW.role<>'admin' OR NEW.profile<>'admfull' OR NEW.status<>'active' OR NEW.isProtected<>true)
+        NOT (NEW.passwordHash <=> OLD.passwordHash) OR NEW.role<>'admin' OR NEW.profile<>'admfull' OR
+        NEW.status<>'active' OR NEW.isProtected<>true)
       THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='O usuario master admfull e protegido'; END IF; END`);
-  }
   if (!(await exists("trigger", "protect_admfull_delete"))) {
     await connection.query(`CREATE TRIGGER protect_admfull_delete BEFORE DELETE ON users FOR EACH ROW BEGIN
       IF OLD.isProtected=true THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='O usuario master admfull nao pode ser excluido'; END IF; END`);

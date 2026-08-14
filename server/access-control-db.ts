@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { permissionAuditLog, profilePermissions, userPermissions, users, type User } from "../drizzle/schema";
 import { getDb } from "./db";
 import { ACCESS_CATALOG, effectAllows, isMasterIdentity, legacyProfileEffect, resolvePermissionEffect, type PermissionEffect, type PermissionAction } from "../shared/access-control";
+import { hashPassword } from "./password-security";
 
 type ManagedUserInput = {
   username: string;
@@ -10,7 +11,13 @@ type ManagedUserInput = {
   email?: string | null;
   profile: "admfull" | "comercial" | "subcomercial" | "gerencia" | "diretoria";
   status: "active" | "inactive" | "archived";
+  password?: string;
 };
+
+function publicUser(user: User) {
+  const { passwordHash: _passwordHash, ...safe } = user;
+  return safe;
+}
 
 async function database() {
   const connection = await getDb();
@@ -22,7 +29,7 @@ export async function listManagedUsers() {
   const db = await database();
   const rows = await db.select().from(users).orderBy(asc(users.name), asc(users.username));
   return Promise.all(rows.map(async (user: User) => ({
-    ...user,
+    ...publicUser(user),
     permissionCount: Number((await db.select().from(userPermissions).where(eq(userPermissions.userId, user.id))).length),
     protected: isMasterIdentity(user),
   })));
@@ -32,7 +39,7 @@ export async function getManagedUser(id: number) {
   const db = await database();
   const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
   if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado." });
-  return { ...user, protected: isMasterIdentity(user) };
+  return { ...publicUser(user), protected: isMasterIdentity(user) };
 }
 
 async function ensureUniqueIdentity(username: string, email: string | null | undefined, exceptId?: number) {
@@ -62,14 +69,17 @@ export async function createManagedUser(input: ManagedUserInput, actorUserId: nu
     throw new TRPCError({ code: "FORBIDDEN", message: "Não é permitido criar outro usuário master." });
   }
   const db = await database();
+  if (!input.password) throw new TRPCError({ code: "BAD_REQUEST", message: "Informe a senha inicial do usuário." });
+  const passwordHash = await hashPassword(input.password);
   const result = await db.insert(users).values({
     openId: `managed:${input.username.toLowerCase()}`,
     username: input.username.toLowerCase(), name: input.name, email: input.email || null,
     loginMethod: "managed", role: "user", profile: input.profile, status: input.status,
-    isProtected: false, updatedByUserId: actorUserId,
+    isProtected: false, updatedByUserId: actorUserId, passwordHash,
   });
   const id = Number(result[0]?.insertId);
-  await audit(actorUserId, id, "user.create", null, input);
+  const { password: _password, ...auditableInput } = input;
+  await audit(actorUserId, id, "user.create", null, { ...auditableInput, passwordDefined: true });
   return getManagedUser(id);
 }
 
@@ -81,12 +91,15 @@ export async function updateManagedUser(id: number, input: ManagedUserInput, act
   }
   await ensureUniqueIdentity(input.username, input.email, id);
   const db = await database();
+  const passwordUpdate = input.password ? { passwordHash: await hashPassword(input.password) } : {};
   await db.update(users).set({
     username: input.username.toLowerCase(), name: input.name, email: input.email || null,
     profile: input.profile, status: input.status, role: "user", updatedByUserId: actorUserId,
     archivedAt: input.status === "archived" ? new Date() : null,
+    ...passwordUpdate,
   }).where(eq(users.id, id));
-  await audit(actorUserId, id, "user.update", current, input);
+  const { password: _password, ...auditableInput } = input;
+  await audit(actorUserId, id, "user.update", current, { ...auditableInput, passwordChanged: Boolean(input.password) });
   return getManagedUser(id);
 }
 

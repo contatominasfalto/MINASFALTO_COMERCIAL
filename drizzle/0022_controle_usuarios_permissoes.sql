@@ -1,5 +1,6 @@
 ALTER TABLE `users`
   ADD COLUMN `username` varchar(64) NULL,
+  ADD COLUMN `passwordHash` varchar(255) NULL,
   ADD COLUMN `status` enum('active','inactive','archived') NOT NULL DEFAULT 'active',
   ADD COLUMN `isProtected` boolean NOT NULL DEFAULT false,
   ADD COLUMN `updatedByUserId` int NULL,
@@ -87,6 +88,7 @@ BEGIN
     NOT (NEW.`openId` <=> OLD.`openId`) OR NEW.`username` <> 'admfull' OR
     NOT (NEW.`name` <=> OLD.`name`) OR NOT (NEW.`email` <=> OLD.`email`) OR
     NOT (NEW.`loginMethod` <=> OLD.`loginMethod`) OR
+    NOT (NEW.`passwordHash` <=> OLD.`passwordHash`) OR
     NEW.`role` <> 'admin' OR NEW.`profile` <> 'admfull' OR
     NEW.`status` <> 'active' OR NEW.`isProtected` <> true
   ) THEN

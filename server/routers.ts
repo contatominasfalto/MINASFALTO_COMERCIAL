@@ -16,6 +16,7 @@ import { ENV } from "./_core/env";
 import { sdk, LOCAL_LOGIN_OPEN_ID_PREFIX } from "./_core/sdk";
 import * as accessDb from "./access-control-db";
 import { ACCESS_CATALOG, ACCESS_EFFECTS, USER_STATUSES } from "../shared/access-control";
+import { verifyPassword } from "./password-security";
 
 const STATUS_SAIDA_OK = "SA\u00cdDA OK";
 const pedidoAtividadeDescricaoSchema = z.string().trim().min(1, "Informe a atividade.").max(2000, "A atividade deve ter no máximo 2.000 caracteres.");
@@ -351,6 +352,9 @@ const managedUserSchema = z.object({
   profile: managedProfileSchema,
   status: z.enum(USER_STATUSES),
 });
+const managedPasswordSchema = z.string().min(8, "A senha deve ter pelo menos 8 caracteres.").max(128, "A senha deve ter no máximo 128 caracteres.");
+const createManagedUserSchema = managedUserSchema.extend({ password: managedPasswordSchema });
+const updateManagedUserSchema = managedUserSchema.extend({ password: managedPasswordSchema.optional() });
 
 const permissionEntrySchema = z.object({
   resourceKey: z.string().trim().min(1).max(80),
@@ -361,7 +365,11 @@ const permissionEntrySchema = z.object({
 export const appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query(opts => {
+      if (!opts.ctx.user) return null;
+      const { passwordHash: _passwordHash, ...safeUser } = opts.ctx.user;
+      return safeUser;
+    }),
     config: publicProcedure.query(() => ({
       mode: ENV.authMode,
       localLoginEnabled: isLocalLoginEnabled(),
@@ -381,19 +389,24 @@ export const appRouter = router({
         const username = input.username.trim().toLowerCase();
         const credentials = getLocalLoginCredentials();
         const expectedPassword = credentials[username as keyof typeof credentials];
-        const validCredentials = Boolean(expectedPassword) && input.password === expectedPassword;
+        const persistedUser = await db.getUserByUsername(username)
+          ?? await db.getUserByOpenId(`${LOCAL_LOGIN_OPEN_ID_PREFIX}${username}`);
+        const validCredentials = username === "admfull"
+          ? Boolean(expectedPassword) && input.password === expectedPassword
+          : persistedUser?.passwordHash
+            ? await verifyPassword(input.password, persistedUser.passwordHash)
+            : Boolean(expectedPassword) && input.password === expectedPassword;
 
         if (!validCredentials) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Usuário ou senha inválidos" });
         }
 
-        const persistedUser = await db.getUserByOpenId(`${LOCAL_LOGIN_OPEN_ID_PREFIX}${username}`);
         if (persistedUser && persistedUser.status !== "active") {
           throw new TRPCError({ code: "FORBIDDEN", message: "Usuário desativado. Procure o administrador do sistema." });
         }
 
         const sessionToken = await sdk.createSessionToken(
-          `${LOCAL_LOGIN_OPEN_ID_PREFIX}${username}`,
+          persistedUser?.openId || `${LOCAL_LOGIN_OPEN_ID_PREFIX}${username}`,
           {
             name: username,
             expiresInMs: ONE_YEAR_MS,
@@ -425,8 +438,8 @@ export const appRouter = router({
   userManagement: router({
     list: masterProcedure.query(() => accessDb.listManagedUsers()),
     getById: masterProcedure.input(z.number().int().positive()).query(({ input }) => accessDb.getManagedUser(input)),
-    create: masterProcedure.input(managedUserSchema).mutation(({ input, ctx }) => accessDb.createManagedUser({ ...input, email: input.email || null }, ctx.user!.id)),
-    update: masterProcedure.input(z.object({ id: z.number().int().positive(), data: managedUserSchema })).mutation(({ input, ctx }) => accessDb.updateManagedUser(input.id, { ...input.data, email: input.data.email || null }, ctx.user!.id)),
+    create: masterProcedure.input(createManagedUserSchema).mutation(({ input, ctx }) => accessDb.createManagedUser({ ...input, email: input.email || null }, ctx.user!.id)),
+    update: masterProcedure.input(z.object({ id: z.number().int().positive(), data: updateManagedUserSchema })).mutation(({ input, ctx }) => accessDb.updateManagedUser(input.id, { ...input.data, email: input.data.email || null }, ctx.user!.id)),
     setStatusOrDeactivate: masterProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(USER_STATUSES), reason: z.string().trim().min(3).max(500) })).mutation(({ input, ctx }) => accessDb.setManagedUserStatus(input.id, input.status, ctx.user!.id, input.reason)),
     deleteOrArchive: masterProcedure.input(z.object({ id: z.number().int().positive(), reason: z.string().trim().min(3).max(500) })).mutation(({ input, ctx }) => accessDb.setManagedUserStatus(input.id, "archived", ctx.user!.id, input.reason)),
     getPermissionCatalog: masterProcedure.query(() => ACCESS_CATALOG),

@@ -26,6 +26,7 @@ export const users = mysqlTable("users", {
   // Perfil específico do Minasfalto
   profile: mysqlEnum("profile", ["admfull", "comercial", "subcomercial", "gerencia", "diretoria"]).default("comercial"),
   username: varchar("username", { length: 64 }).unique(),
+  passwordHash: varchar("passwordHash", { length: 255 }),
   status: mysqlEnum("status", ["active", "inactive", "archived"]).default("active").notNull(),
   isProtected: boolean("isProtected").default(false).notNull(),
   updatedByUserId: int("updatedByUserId"),

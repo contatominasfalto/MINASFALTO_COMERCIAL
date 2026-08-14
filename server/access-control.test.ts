@@ -3,7 +3,7 @@ import { appRouter } from "./routers";
 import { effectAllows, isMasterIdentity, legacyProfileEffect, permissionTargetForProcedure, resolvePermissionEffect } from "../shared/access-control";
 
 const now = new Date();
-const commonUser = { id: 20, openId: "local_login:comercial", username: "comercial", name: "comercial", email: null, loginMethod: "local", role: "user" as const, profile: "comercial" as const, status: "active" as const, isProtected: false, updatedByUserId: null, archivedAt: null, createdAt: now, updatedAt: now, lastSignedIn: now };
+const commonUser = { id: 20, openId: "local_login:comercial", username: "comercial", passwordHash: null, name: "comercial", email: null, loginMethod: "local", role: "user" as const, profile: "comercial" as const, status: "active" as const, isProtected: false, updatedByUserId: null, archivedAt: null, createdAt: now, updatedAt: now, lastSignedIn: now };
 
 describe("controle de acesso", () => {
   it("admfull sempre recebe acesso total", () => {
@@ -52,6 +52,6 @@ describe("controle de acesso", () => {
   it("payload administrativo inválido é rejeitado por Zod", async () => {
     const master = { ...commonUser, id: 1, openId: "local_login:admfull", username: "admfull", name: "admfull", role: "admin" as const, profile: "admfull" as const, isProtected: true };
     const caller = appRouter.createCaller({ req: {} as any, res: {} as any, user: master });
-    await expect(caller.userManagement.create({ username: "x", name: "", email: "inválido", profile: "comercial", status: "active" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(caller.userManagement.create({ username: "x", name: "", email: "inválido", profile: "comercial", status: "active", password: "12345678" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 });

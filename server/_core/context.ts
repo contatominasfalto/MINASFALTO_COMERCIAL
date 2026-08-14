@@ -20,6 +20,7 @@ function getLocalUser(): User {
     role: "admin",
     profile: "admfull",
     username: "admfull",
+    passwordHash: null,
     status: "active",
     isProtected: true,
     updatedByUserId: null,

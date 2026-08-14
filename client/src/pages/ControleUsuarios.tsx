@@ -11,8 +11,9 @@ type UserForm = {
   username: string; name: string; email: string;
   profile: "comercial" | "subcomercial" | "gerencia" | "diretoria";
   status: "active" | "inactive" | "archived";
+  password: string; passwordConfirmation: string;
 };
-const emptyForm: UserForm = { username: "", name: "", email: "", profile: "comercial", status: "active" };
+const emptyForm: UserForm = { username: "", name: "", email: "", profile: "comercial", status: "active", password: "", passwordConfirmation: "" };
 const EFFECT_LABELS: Record<PermissionEffect, string> = { allow: "Acesso Permitido", deny: "Acesso Negado", view: "Somente visualização" };
 const PROFILE_LABELS: Record<string, string> = { admfull: "Master", comercial: "Comercial", subcomercial: "Subcomercial", gerencia: "Gerência", diretoria: "Diretoria" };
 const STATUS_LABELS: Record<string, string> = { active: "Ativo", inactive: "Inativo", archived: "Arquivado" };
@@ -46,12 +47,15 @@ export default function ControleUsuarios() {
 
   const openEdit = (item?: any) => {
     setEditing(item || { id: null });
-    setForm(item ? { username: item.username || "", name: item.name || "", email: item.email || "", profile: item.profile === "admfull" ? "diretoria" : item.profile, status: item.status } : emptyForm);
+    setForm(item ? { username: item.username || "", name: item.name || "", email: item.email || "", profile: item.profile === "admfull" ? "diretoria" : item.profile, status: item.status, password: "", passwordConfirmation: "" } : emptyForm);
   };
   const submit = () => {
     if (form.username.trim().length < 3 || form.name.trim().length < 2) return toast.error("Preencha login e nome corretamente.");
-    const data = { ...form, username: form.username.trim().toLowerCase(), name: form.name.trim(), email: form.email.trim() || null };
-    if (editing?.id) updateUser.mutate({ id: editing.id, data }); else createUser.mutate(data);
+    if (!editing?.id && form.password.length < 8) return toast.error("Informe uma senha inicial com pelo menos 8 caracteres.");
+    if (form.password && form.password.length < 8) return toast.error("A senha deve ter pelo menos 8 caracteres.");
+    if (form.password !== form.passwordConfirmation) return toast.error("A confirmação da senha não confere.");
+    const data = { username: form.username.trim().toLowerCase(), name: form.name.trim(), email: form.email.trim() || null, profile: form.profile, status: form.status, ...(form.password ? { password: form.password } : {}) };
+    if (editing?.id) updateUser.mutate({ id: editing.id, data }); else createUser.mutate({ ...data, password: form.password });
   };
   const openPermissions = async (item: any) => {
     setPermissionsUser(item);
@@ -98,7 +102,7 @@ export default function ControleUsuarios() {
       </section>
 
       <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}><DialogContent className="users-dialog"><DialogHeader><DialogTitle>{editing?.id ? "Editar usuário" : "Novo usuário"}</DialogTitle></DialogHeader>
-        <div className="users-form"><label>Login<input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} maxLength={64} /></label><label>Nome completo<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={180} /></label><label>E-mail<input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label><label>Perfil<select value={form.profile} onChange={(e) => setForm({ ...form, profile: e.target.value as UserForm["profile"] })}>{Object.entries(PROFILE_LABELS).filter(([key]) => key !== "admfull").map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><label>Status<select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as UserForm["status"] })}>{Object.entries(STATUS_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><p>O cadastro define identidade, perfil e permissões. Credenciais locais continuam sendo provisionadas com segurança pelas variáveis de ambiente existentes.</p></div>
+        <div className="users-form"><label>Login<input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} maxLength={64} /></label><label>Nome completo<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={180} /></label><label>E-mail<input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label><label>Perfil<select value={form.profile} onChange={(e) => setForm({ ...form, profile: e.target.value as UserForm["profile"] })}>{Object.entries(PROFILE_LABELS).filter(([key]) => key !== "admfull").map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><label>Status<select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as UserForm["status"] })}>{Object.entries(STATUS_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><span className="users-form-spacer" /><label>{editing?.id ? "Nova senha (opcional)" : "Senha inicial"}<input type="password" autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} maxLength={128} placeholder={editing?.id ? "Deixe em branco para manter" : "Mínimo de 8 caracteres"} /></label><label>Confirmar senha<input type="password" autoComplete="new-password" value={form.passwordConfirmation} onChange={(e) => setForm({ ...form, passwordConfirmation: e.target.value })} maxLength={128} placeholder="Repita a senha" /></label><p>{editing?.id ? "Preencha a nova senha somente quando desejar alterá-la. A senha atual não é exibida por segurança." : "Defina a senha inicial de acesso. Ela será armazenada somente como hash seguro e não poderá ser consultada depois."}</p></div>
         <footer className="users-dialog-footer"><button onClick={() => setEditing(null)}>Cancelar</button><button className="users-primary" onClick={submit} disabled={createUser.isPending || updateUser.isPending}>Salvar</button></footer>
       </DialogContent></Dialog>
 

@@ -540,6 +540,13 @@ export async function updatePedido(id: number, data: any, usuario: string = "Sis
   }).where(eq(pedidos.id, id));
 }
 
+export async function getUserByUsername(username: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.username, username.trim().toLowerCase())).limit(1);
+  return result[0];
+}
+
 export async function listPedidoAtividades() {
   const db = await getDb();
   if (!db) {

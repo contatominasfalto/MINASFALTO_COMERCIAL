@@ -2270,6 +2270,7 @@
 .users-dialog > label { margin-left: 18px; margin-right: 18px; }
 .users-dialog > .users-form { margin-top: 16px; margin-bottom: 16px; }
 .users-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.users-form-spacer { display: block; }
 .users-form label, .users-confirm-dialog label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 700; }
 .users-form p { grid-column: 1/-1; padding: 10px; background: #eef5fb; border: 1px solid #bfd0df; font-size: 12px; }
 .users-dialog-footer { min-height: 58px; border-top: 1px solid #bfd0df; background: #e6eef6; padding: 11px 18px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
