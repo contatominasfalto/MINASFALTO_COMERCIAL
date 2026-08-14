@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { permissionAuditLog, profilePermissions, userPermissions, users, type User } from "../drizzle/schema";
 import { getDb } from "./db";
 import { ACCESS_CATALOG, effectAllows, isMasterIdentity, legacyProfileEffect, resolvePermissionEffect, type PermissionEffect, type PermissionAction } from "../shared/access-control";
-import { hashPassword } from "./password-security";
+import { hashPassword, verifyPassword } from "./password-security";
 
 type ManagedUserInput = {
   username: string;
@@ -30,6 +30,7 @@ export async function listManagedUsers() {
   const rows = await db.select().from(users).orderBy(asc(users.name), asc(users.username));
   return Promise.all(rows.map(async (user: User) => ({
     ...publicUser(user),
+    hasPassword: Boolean(user.passwordHash),
     permissionCount: Number((await db.select().from(userPermissions).where(eq(userPermissions.userId, user.id))).length),
     protected: isMasterIdentity(user),
   })));
@@ -39,7 +40,7 @@ export async function getManagedUser(id: number) {
   const db = await database();
   const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
   if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado." });
-  return { ...publicUser(user), protected: isMasterIdentity(user) };
+  return { ...publicUser(user), hasPassword: Boolean(user.passwordHash), protected: isMasterIdentity(user) };
 }
 
 async function ensureUniqueIdentity(username: string, email: string | null | undefined, exceptId?: number) {
@@ -78,6 +79,10 @@ export async function createManagedUser(input: ManagedUserInput, actorUserId: nu
     isProtected: false, updatedByUserId: actorUserId, passwordHash,
   });
   const id = Number(result[0]?.insertId);
+  const [created] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  if (!created || !(await verifyPassword(input.password, created.passwordHash))) {
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A senha não foi confirmada no banco de dados." });
+  }
   const { password: _password, ...auditableInput } = input;
   await audit(actorUserId, id, "user.create", null, { ...auditableInput, passwordDefined: true });
   return getManagedUser(id);
@@ -98,6 +103,12 @@ export async function updateManagedUser(id: number, input: ManagedUserInput, act
     archivedAt: input.status === "archived" ? new Date() : null,
     ...passwordUpdate,
   }).where(eq(users.id, id));
+  if (input.password) {
+    const [updated] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    if (!updated || !(await verifyPassword(input.password, updated.passwordHash))) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A nova senha não foi confirmada no banco de dados." });
+    }
+  }
   const { password: _password, ...auditableInput } = input;
   await audit(actorUserId, id, "user.update", current, { ...auditableInput, passwordChanged: Boolean(input.password) });
   return getManagedUser(id);

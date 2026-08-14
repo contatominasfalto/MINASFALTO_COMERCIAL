@@ -2273,6 +2273,7 @@
 .users-form-spacer { display: block; }
 .users-form label, .users-confirm-dialog label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 700; }
 .users-form p { grid-column: 1/-1; padding: 10px; background: #eef5fb; border: 1px solid #bfd0df; font-size: 12px; }
+.users-form .users-form-error { background: #fde8e8; border-color: #c85a5a; color: #8e1515; font-weight: 700; }
 .users-dialog-footer { min-height: 58px; border-top: 1px solid #bfd0df; background: #e6eef6; padding: 11px 18px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .users-dialog-footer > span { margin-right: auto; font-size: 12px; }
 .users-permissions-dialog { width: min(980px, 96vw) !important; height: min(86vh, 820px); display: flex !important; flex-direction: column; }
