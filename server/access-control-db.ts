@@ -65,16 +65,49 @@ async function audit(actorUserId: number, targetUserId: number, action: string, 
 }
 
 export async function createManagedUser(input: ManagedUserInput, actorUserId: number) {
-  await ensureUniqueIdentity(input.username, input.email);
   if (input.profile === "admfull" || input.username.toLowerCase() === "admfull") {
     throw new TRPCError({ code: "FORBIDDEN", message: "Não é permitido criar outro usuário master." });
   }
   const db = await database();
   if (!input.password) throw new TRPCError({ code: "BAD_REQUEST", message: "Informe a senha inicial do usuário." });
   const passwordHash = await hashPassword(input.password);
+  const normalizedUsername = input.username.trim().toLowerCase();
+  const [existing] = await db.select().from(users).where(eq(users.username, normalizedUsername)).limit(1);
+
+  // Excluir um usuário significa arquivá-lo para preservar o histórico. Se o
+  // mesmo login for cadastrado novamente, restaura a identidade arquivada com
+  // a senha nova e sem permissões personalizadas pertencentes ao acesso antigo.
+  if (existing?.status === "archived" && !isMasterIdentity(existing)) {
+    await ensureUniqueIdentity(normalizedUsername, input.email, existing.id);
+    await db.transaction(async (tx: any) => {
+      await tx.delete(userPermissions).where(eq(userPermissions.userId, existing.id));
+      await tx.update(users).set({
+        username: normalizedUsername,
+        name: input.name,
+        email: input.email || null,
+        loginMethod: "managed",
+        role: "user",
+        profile: input.profile,
+        status: input.status,
+        isProtected: false,
+        archivedAt: input.status === "archived" ? new Date() : null,
+        updatedByUserId: actorUserId,
+        passwordHash,
+      }).where(eq(users.id, existing.id));
+    });
+    const [restored] = await db.select().from(users).where(eq(users.id, existing.id)).limit(1);
+    if (!restored || !(await verifyPassword(input.password, restored.passwordHash))) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A senha não foi confirmada no banco de dados." });
+    }
+    const { password: _password, ...auditableInput } = input;
+    await audit(actorUserId, existing.id, "user.restore", publicUser(existing), { ...auditableInput, passwordDefined: true, customPermissionsCleared: true });
+    return getManagedUser(existing.id);
+  }
+
+  await ensureUniqueIdentity(normalizedUsername, input.email);
   const result = await db.insert(users).values({
-    openId: `managed:${input.username.toLowerCase()}`,
-    username: input.username.toLowerCase(), name: input.name, email: input.email || null,
+    openId: `managed:${normalizedUsername}`,
+    username: normalizedUsername, name: input.name, email: input.email || null,
     loginMethod: "managed", role: "user", profile: input.profile, status: input.status,
     isProtected: false, updatedByUserId: actorUserId, passwordHash,
   });
