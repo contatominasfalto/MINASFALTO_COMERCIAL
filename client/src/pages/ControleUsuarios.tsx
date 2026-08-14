@@ -36,7 +36,19 @@ export default function ControleUsuarios() {
   const users = trpc.userManagement.list.useQuery(undefined, { enabled: master, retry: false });
   const permissions = trpc.userManagement.getUserPermissions.useQuery(permissionsUser?.id || 1, { enabled: Boolean(permissionsUser) });
   const createUser = trpc.userManagement.create.useMutation({ onSuccess: async () => { toast.success("Usuário criado com sucesso."); setEditing(null); setForm(emptyForm); await users.refetch(); }, onError: (error) => toast.error(`Não foi possível criar o usuário: ${error.message}`) });
-  const updateUser = trpc.userManagement.update.useMutation({ onSuccess: async () => { toast.success("Usuário e senha atualizados com sucesso."); setEditing(null); await users.refetch(); }, onError: (error) => toast.error(`Não foi possível atualizar o usuário: ${error.message}`) });
+  const updateUser = trpc.userManagement.update.useMutation({
+    onSuccess: async (updated, variables) => {
+      await users.refetch();
+      if (variables.data.password && updated.hasPassword !== true) {
+        toast.error("A alteração cadastral foi recebida, mas o banco não confirmou a senha. Tente novamente após reiniciar o servidor.");
+        setEditing(updated);
+        return;
+      }
+      toast.success(variables.data.password ? `Senha do login @${updated.username} cadastrada e confirmada no banco.` : "Usuário atualizado com sucesso.");
+      setEditing(null);
+    },
+    onError: (error) => toast.error(`Não foi possível atualizar o usuário: ${error.message}`),
+  });
   const archive = trpc.userManagement.deleteOrArchive.useMutation({ onSuccess: async () => { toast.success("Usuário arquivado com segurança."); setArchiveUser(null); setArchiveReason(""); await users.refetch(); } });
   const replacePermissions = trpc.userManagement.replaceUserPermissions.useMutation({ onSuccess: async () => { toast.success("Permissões salvas com sucesso."); setPermissionsUser(null); await utils.auth.permissions.invalidate(); } });
 
@@ -91,19 +103,19 @@ export default function ControleUsuarios() {
       </section>
       <section className="users-table-wrap">
         {users.isLoading ? <p className="users-state">Carregando usuários...</p> : users.error ? <p className="users-state users-error">{users.error.message}</p> : (
-          <table className="users-table"><thead><tr><th>Nome / login</th><th>E-mail</th><th>Perfil</th><th>Status</th><th>Último acesso</th><th>Permissões</th><th>Ações</th></tr></thead><tbody>
+          <table className="users-table"><thead><tr><th>Nome / login</th><th>E-mail</th><th>Perfil</th><th>Status</th><th>Senha</th><th>Último acesso</th><th>Permissões</th><th>Ações</th></tr></thead><tbody>
             {filtered.map((item: any) => <tr key={item.id} className={item.protected ? "users-protected-row" : ""}>
               <td><b>{item.name || item.username}</b><span>@{item.username || "não definido"}</span>{item.protected && <em><LockKeyhole size={12} /> Usuário master protegido</em>}</td>
-              <td>{item.email || "—"}</td><td>{PROFILE_LABELS[item.profile] || item.profile}</td><td><span className={`users-status users-status-${item.status}`}>{STATUS_LABELS[item.status] || item.status}</span></td>
+              <td>{item.email || "—"}</td><td>{PROFILE_LABELS[item.profile] || item.profile}</td><td><span className={`users-status users-status-${item.status}`}>{STATUS_LABELS[item.status] || item.status}</span></td><td><span className={`users-status users-status-${item.hasPassword ? "active" : "inactive"}`}>{item.hasPassword ? "Configurada" : "Não configurada"}</span></td>
               <td>{item.lastSignedIn ? new Date(item.lastSignedIn).toLocaleString("pt-BR") : "Nunca"}</td><td>{item.protected ? "Acesso total" : `${item.permissionCount} personalizada(s)`}</td>
               <td><button title="Editar usuário" disabled={item.protected} onClick={() => openEdit(item)}><Edit3 size={15} /></button><button title="Editar permissões" disabled={item.protected} onClick={() => openPermissions(item)}><KeyRound size={15} /></button><button title="Arquivar usuário" disabled={item.protected || item.status === "archived"} onClick={() => setArchiveUser(item)}><Trash2 size={15} /></button></td>
             </tr>)}
-            {!filtered.length && <tr><td colSpan={7} className="users-state">Nenhum usuário encontrado.</td></tr>}
+            {!filtered.length && <tr><td colSpan={8} className="users-state">Nenhum usuário encontrado.</td></tr>}
           </tbody></table>
         )}
       </section>
 
-      <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}><DialogContent className="users-dialog"><DialogHeader><DialogTitle>{editing?.id ? "Editar usuário" : "Novo usuário"}</DialogTitle></DialogHeader>
+      <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}><DialogContent className="users-dialog"><DialogHeader><DialogTitle>{editing?.id ? `Editar usuário — @${editing.username}` : "Novo usuário"}</DialogTitle></DialogHeader>
         <div className="users-form"><label>Login<input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} maxLength={64} /></label><label>Nome completo<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={180} /></label><label>E-mail<input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label><label>Perfil<select value={form.profile} onChange={(e) => setForm({ ...form, profile: e.target.value as UserForm["profile"] })}>{Object.entries(PROFILE_LABELS).filter(([key]) => key !== "admfull").map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><label>Status<select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as UserForm["status"] })}>{Object.entries(STATUS_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><span className="users-form-spacer" /><label>{editing?.id ? "Nova senha (opcional)" : "Senha inicial"}<input type="password" autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} maxLength={128} placeholder={editing?.id ? "Deixe em branco para manter" : "Mínimo de 8 caracteres"} /></label><label>Confirmar senha<input type="password" autoComplete="new-password" value={form.passwordConfirmation} onChange={(e) => setForm({ ...form, passwordConfirmation: e.target.value })} maxLength={128} placeholder="Repita a senha" /></label><p>{editing?.id ? `Senha no banco: ${editing.hasPassword ? "CONFIGURADA" : "NÃO CONFIGURADA"}. Preencha os dois campos somente quando desejar definir ou alterar a senha.` : "Defina a senha inicial de acesso. Ela será armazenada somente como hash seguro e não poderá ser consultada depois."}</p>{(createUser.error || updateUser.error) && <p className="users-form-error">Falha ao salvar: {(createUser.error || updateUser.error)?.message}</p>}</div>
         <footer className="users-dialog-footer"><button onClick={() => setEditing(null)}>Cancelar</button><button className="users-primary" onClick={submit} disabled={createUser.isPending || updateUser.isPending}>Salvar</button></footer>
       </DialogContent></Dialog>
