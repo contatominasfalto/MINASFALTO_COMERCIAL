@@ -75,9 +75,9 @@ export async function createManagedUser(input: ManagedUserInput, actorUserId: nu
   const [existing] = await db.select().from(users).where(eq(users.username, normalizedUsername)).limit(1);
 
   // Excluir um usuário significa arquivá-lo para preservar o histórico. Se o
-  // mesmo login for cadastrado novamente, restaura a identidade arquivada com
-  // a senha nova e sem permissões personalizadas pertencentes ao acesso antigo.
-  if (existing?.status === "archived" && !isMasterIdentity(existing)) {
+  // mesmo login inativo ou arquivado for cadastrado novamente, restaura essa
+  // identidade com senha nova e sem as permissões personalizadas anteriores.
+  if (existing && existing.status !== "active" && !isMasterIdentity(existing)) {
     await ensureUniqueIdentity(normalizedUsername, input.email, existing.id);
     await db.transaction(async (tx: any) => {
       await tx.delete(userPermissions).where(eq(userPermissions.userId, existing.id));

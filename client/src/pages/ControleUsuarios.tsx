@@ -25,7 +25,7 @@ export default function ControleUsuarios() {
   const master = isMasterIdentity(currentUser as any);
   const [search, setSearch] = useState("");
   const [profileFilter, setProfileFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("active");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState<UserForm>(emptyForm);
   const [permissionsUser, setPermissionsUser] = useState<any | null>(null);
