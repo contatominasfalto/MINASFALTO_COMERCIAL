@@ -393,9 +393,9 @@ export const appRouter = router({
           ?? await db.getUserByOpenId(`${LOCAL_LOGIN_OPEN_ID_PREFIX}${username}`);
         const validCredentials = username === "admfull"
           ? Boolean(expectedPassword) && input.password === expectedPassword
-          : persistedUser?.passwordHash
+          : Boolean(persistedUser) && (persistedUser?.passwordHash
             ? await verifyPassword(input.password, persistedUser.passwordHash)
-            : Boolean(expectedPassword) && input.password === expectedPassword;
+            : Boolean(expectedPassword) && input.password === expectedPassword);
 
         if (!validCredentials) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Usuário ou senha inválidos" });
@@ -441,7 +441,7 @@ export const appRouter = router({
     create: masterProcedure.input(createManagedUserSchema).mutation(({ input, ctx }) => accessDb.createManagedUser({ ...input, email: input.email || null }, ctx.user!.id)),
     update: masterProcedure.input(z.object({ id: z.number().int().positive(), data: updateManagedUserSchema })).mutation(({ input, ctx }) => accessDb.updateManagedUser(input.id, { ...input.data, email: input.data.email || null }, ctx.user!.id)),
     setStatusOrDeactivate: masterProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(USER_STATUSES), reason: z.string().trim().min(3).max(500) })).mutation(({ input, ctx }) => accessDb.setManagedUserStatus(input.id, input.status, ctx.user!.id, input.reason)),
-    deleteOrArchive: masterProcedure.input(z.object({ id: z.number().int().positive(), reason: z.string().trim().min(3).max(500) })).mutation(({ input, ctx }) => accessDb.setManagedUserStatus(input.id, "archived", ctx.user!.id, input.reason)),
+    deleteOrArchive: masterProcedure.input(z.object({ id: z.number().int().positive(), reason: z.string().trim().min(3).max(500) })).mutation(({ input }) => accessDb.deleteManagedUser(input.id)),
     getPermissionCatalog: masterProcedure.query(() => ACCESS_CATALOG),
     getUserPermissions: masterProcedure.input(z.number().int().positive()).query(({ input }) => accessDb.getUserPermissionRows(input)),
     replaceUserPermissions: masterProcedure.input(z.object({ userId: z.number().int().positive(), permissions: z.array(permissionEntrySchema).max(500) })).mutation(({ input, ctx }) => accessDb.replaceUserPermissionRows(input.userId, input.permissions, ctx.user!.id)),

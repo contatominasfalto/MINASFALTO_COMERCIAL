@@ -49,7 +49,7 @@ export default function ControleUsuarios() {
     },
     onError: (error) => toast.error(`Não foi possível atualizar o usuário: ${error.message}`),
   });
-  const archive = trpc.userManagement.deleteOrArchive.useMutation({ onSuccess: async () => { toast.success("Usuário arquivado com segurança."); setArchiveUser(null); setArchiveReason(""); await users.refetch(); } });
+  const archive = trpc.userManagement.deleteOrArchive.useMutation({ onSuccess: async () => { toast.success("Usuário excluído definitivamente do banco de dados."); setArchiveUser(null); setArchiveReason(""); await users.refetch(); }, onError: (error) => toast.error(`Não foi possível excluir o usuário: ${error.message}`) });
   const replacePermissions = trpc.userManagement.replaceUserPermissions.useMutation({ onSuccess: async () => { toast.success("Permissões salvas com sucesso."); setPermissionsUser(null); await utils.auth.permissions.invalidate(); } });
 
   const filtered = useMemo(() => (users.data || []).filter((item: any) => {
@@ -108,7 +108,7 @@ export default function ControleUsuarios() {
               <td><b>{item.name || item.username}</b><span>@{item.username || "não definido"}</span>{item.protected && <em><LockKeyhole size={12} /> Usuário master protegido</em>}</td>
               <td>{item.email || "—"}</td><td>{PROFILE_LABELS[item.profile] || item.profile}</td><td><span className={`users-status users-status-${item.status}`}>{STATUS_LABELS[item.status] || item.status}</span></td><td><span className={`users-status users-status-${item.passwordConfigured ? "active" : "inactive"}`}>{item.passwordSource === "database" ? "Banco" : item.passwordSource === "environment" ? "Legada" : "Não configurada"}</span></td>
               <td>{item.lastSignedIn ? new Date(item.lastSignedIn).toLocaleString("pt-BR") : "Nunca"}</td><td>{item.protected ? "Acesso total" : `${item.permissionCount} personalizada(s)`}</td>
-              <td><button title="Editar usuário" disabled={item.protected} onClick={() => openEdit(item)}><Edit3 size={15} /></button><button title="Editar permissões" disabled={item.protected} onClick={() => openPermissions(item)}><KeyRound size={15} /></button><button title="Arquivar usuário" disabled={item.protected || item.status === "archived"} onClick={() => setArchiveUser(item)}><Trash2 size={15} /></button></td>
+              <td><button title="Editar usuário" disabled={item.protected} onClick={() => openEdit(item)}><Edit3 size={15} /></button><button title="Editar permissões" disabled={item.protected} onClick={() => openPermissions(item)}><KeyRound size={15} /></button><button title="Excluir usuário definitivamente" disabled={item.protected} onClick={() => setArchiveUser(item)}><Trash2 size={15} /></button></td>
             </tr>)}
             {!filtered.length && <tr><td colSpan={8} className="users-state">Nenhum usuário encontrado.</td></tr>}
           </tbody></table>
@@ -126,7 +126,7 @@ export default function ControleUsuarios() {
         </div><footer className="users-dialog-footer"><span>{Object.keys(permissionDraft).length} alteração(ões) pendente(s)</span><button onClick={() => setPermissionsUser(null)}>Cancelar</button><button className="users-primary" onClick={savePermissions} disabled={replacePermissions.isPending}>Salvar permissões</button></footer>
       </DialogContent></Dialog>
 
-      <Dialog open={Boolean(archiveUser)} onOpenChange={(open) => !open && setArchiveUser(null)}><DialogContent className="users-dialog users-confirm-dialog"><DialogHeader><DialogTitle>Confirmar arquivamento</DialogTitle></DialogHeader><p>O usuário <b>{archiveUser?.name}</b> perderá o acesso, mas seus vínculos históricos serão preservados.</p><label>Motivo<textarea value={archiveReason} onChange={(e) => setArchiveReason(e.target.value)} maxLength={500} /></label><footer className="users-dialog-footer"><button onClick={() => setArchiveUser(null)}>Cancelar</button><button className="users-danger" disabled={archiveReason.trim().length < 3 || archive.isPending} onClick={() => archive.mutate({ id: archiveUser.id, reason: archiveReason })}>Confirmar arquivamento</button></footer></DialogContent></Dialog>
+      <Dialog open={Boolean(archiveUser)} onOpenChange={(open) => !open && setArchiveUser(null)}><DialogContent className="users-dialog users-confirm-dialog"><DialogHeader><DialogTitle>Confirmar exclusão definitiva</DialogTitle></DialogHeader><p>O usuário <b>{archiveUser?.name}</b> (@{archiveUser?.username}) e suas permissões serão removidos definitivamente do banco de dados. Esta ação não pode ser desfeita.</p><label>Digite um motivo para confirmar<textarea value={archiveReason} onChange={(e) => setArchiveReason(e.target.value)} maxLength={500} /></label><footer className="users-dialog-footer"><button onClick={() => setArchiveUser(null)}>Cancelar</button><button className="users-danger" disabled={archiveReason.trim().length < 3 || archive.isPending} onClick={() => archive.mutate({ id: archiveUser.id, reason: archiveReason })}>Excluir definitivamente</button></footer></DialogContent></Dialog>
     </main>
   );
 }

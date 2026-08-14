@@ -295,26 +295,14 @@ class SDKServer {
     }
 
     if (session.openId.startsWith(LOCAL_LOGIN_OPEN_ID_PREFIX)) {
-      const fallback = buildLocalLoginUser(session.openId, session.name);
-      let persisted = await db.getUserByOpenId(session.openId);
+      const persisted = await db.getUserByOpenId(session.openId);
       if (!persisted) {
-        await db.upsertUser({
-          openId: fallback.openId,
-          username: fallback.name || "comercial",
-          name: fallback.name,
-          loginMethod: "local",
-          role: fallback.role,
-          profile: fallback.profile,
-          status: "active",
-          isProtected: fallback.profile === "admfull",
-          lastSignedIn: new Date(),
-        });
-        persisted = await db.getUserByOpenId(session.openId);
+        throw ForbiddenError("User no longer exists");
       }
-      if (persisted && persisted.status !== "active") {
+      if (persisted.status !== "active") {
         throw ForbiddenError("User is inactive");
       }
-      return (persisted || fallback) as AuthenticatedUser;
+      return persisted as AuthenticatedUser;
     }
 
     const sessionUserId = session.openId;
@@ -381,32 +369,6 @@ function buildCronUser(
     lastSignedIn: now,
     taskUid: userInfo.taskUid ?? undefined,
     isCron: true,
-  } as AuthenticatedUser;
-}
-
-function buildLocalLoginUser(openId: string, name: string): AuthenticatedUser {
-  const now = new Date();
-  const username = openId.replace(LOCAL_LOGIN_OPEN_ID_PREFIX, "") || name || "comercial";
-  const profile = ["admfull", "comercial", "subcomercial", "gerencia", "diretoria"].includes(username)
-    ? username
-    : "comercial";
-
-  return {
-    id: 0,
-    openId,
-    name: username,
-    email: null,
-    loginMethod: "local",
-    role: profile === "admfull" ? "admin" : "user",
-    profile,
-    username,
-    status: "active",
-    isProtected: profile === "admfull",
-    updatedByUserId: null,
-    archivedAt: null,
-    createdAt: now,
-    updatedAt: now,
-    lastSignedIn: now,
   } as AuthenticatedUser;
 }
 

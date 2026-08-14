@@ -86,15 +86,9 @@ try {
 
   await connection.query(`INSERT INTO users (openId,username,name,email,loginMethod,role,profile,status,isProtected)
     VALUES
-      ('local_login:admfull','admfull','admfull',NULL,'local','admin','admfull','active',true),
-      ('local_login:comercial','comercial','comercial',NULL,'local','user','comercial','active',false),
-      ('local_login:subcomercial','subcomercial','subcomercial',NULL,'local','user','subcomercial','active',false),
-      ('local_login:gerencia','gerencia','gerencia',NULL,'local','user','gerencia','active',false),
-      ('local_login:diretoria','diretoria','diretoria',NULL,'local','user','diretoria','active',false)
+      ('local_login:admfull','admfull','admfull',NULL,'local','admin','admfull','active',true)
     ON DUPLICATE KEY UPDATE username=VALUES(username), name=COALESCE(users.name,VALUES(name)), profile=VALUES(profile),
-      role=IF(VALUES(username)='admfull','admin',users.role),
-      status=IF(VALUES(username)='admfull','active',users.status),
-      isProtected=IF(VALUES(username)='admfull',true,users.isProtected)`);
+      role='admin', status='active', isProtected=true`);
 
   await connection.query(`INSERT INTO profile_permissions (profileKey,resourceKey,actionKey,effect)
     SELECT p.profileKey,r.resourceKey,a.actionKey,

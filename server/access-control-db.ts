@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { permissionAuditLog, profilePermissions, userPermissions, users, type User } from "../drizzle/schema";
 import { getDb } from "./db";
@@ -172,6 +172,23 @@ export async function setManagedUserStatus(id: number, status: "active" | "inact
   const db = await database();
   await db.update(users).set({ status, archivedAt: status === "archived" ? new Date() : null, updatedByUserId: actorUserId }).where(eq(users.id, id));
   await audit(actorUserId, id, `user.${status}`, { status: current.status }, { status }, reason);
+  return { success: true } as const;
+}
+
+export async function deleteManagedUser(id: number) {
+  const current = await getManagedUser(id);
+  if (current.protected) throw new TRPCError({ code: "FORBIDDEN", message: "O usuário master não pode ser excluído." });
+  const db = await database();
+  await db.transaction(async (tx: any) => {
+    await tx.update(users).set({ updatedByUserId: null }).where(eq(users.updatedByUserId, id));
+    await tx.update(userPermissions).set({ updatedByUserId: null }).where(eq(userPermissions.updatedByUserId, id));
+    await tx.delete(permissionAuditLog).where(or(
+      eq(permissionAuditLog.actorUserId, id),
+      eq(permissionAuditLog.targetUserId, id),
+    ));
+    await tx.delete(userPermissions).where(eq(userPermissions.userId, id));
+    await tx.delete(users).where(eq(users.id, id));
+  });
   return { success: true } as const;
 }
 
