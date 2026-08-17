@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { appRouter } from "./routers";
+import { appRouter, licitacaoSchema } from "./routers";
 import { effectAllows, isMasterIdentity, legacyProfileEffect, permissionTargetForProcedure, resolvePermissionEffect } from "../shared/access-control";
 
 const now = new Date();
 const commonUser = { id: 20, openId: "local_login:comercial", username: "comercial", passwordHash: null, name: "comercial", email: null, loginMethod: "local", role: "user" as const, profile: "comercial" as const, status: "active" as const, isProtected: false, updatedByUserId: null, archivedAt: null, createdAt: now, updatedAt: now, lastSignedIn: now };
 
 describe("controle de acesso", () => {
+  it("normaliza o flag legado do alerta de pregão sem perder booleanos", () => {
+    const base = { orgao: "PREFEITURA" };
+    expect(licitacaoSchema.parse({ ...base, alertaPregao: 1 }).alertaPregao).toBe(true);
+    expect(licitacaoSchema.parse({ ...base, alertaPregao: 0 }).alertaPregao).toBe(false);
+    expect(licitacaoSchema.parse({ ...base, alertaPregao: true }).alertaPregao).toBe(true);
+    expect(licitacaoSchema.safeParse({ ...base, alertaPregao: 2 }).success).toBe(false);
+  });
   it("admfull sempre recebe acesso total", () => {
     expect(isMasterIdentity({ username: "admfull" })).toBe(true);
     expect(resolvePermissionEffect({ master: true, active: false, explicit: "deny", profile: "deny" })).toBe("allow");

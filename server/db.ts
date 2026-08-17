@@ -2814,7 +2814,10 @@ export async function listLicitacoes(filters?: { search?: string; adjudicadas?: 
     ORDER BY l.data DESC, l.id DESC
   `;
   const [rows] = await pool.query<mysql.RowDataPacket[]>(sql, params);
-  return rows;
+  return rows.map((row): mysql.RowDataPacket => ({
+    ...row,
+    alertaPregao: Boolean(row.alertaPregao),
+  }) as mysql.RowDataPacket);
 }
 
 export async function listLicitacaoAlertasPregao() {

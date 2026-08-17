@@ -280,14 +280,20 @@ const licitacaoVendedorSchema = z.object({
   nome: z.string().min(1).max(180),
 });
 
-const licitacaoSchema = z.object({
+const licitacaoBooleanSchema = z.preprocess((value) => {
+  if (value === 1 || value === "1" || value === "true") return true;
+  if (value === 0 || value === "0" || value === "false") return false;
+  return value;
+}, z.boolean());
+
+export const licitacaoSchema = z.object({
   data: z.string().max(10).optional(),
   orgao: z.string().min(1).max(255),
   cidade: z.string().max(120).optional(),
   status: z.string().max(120).optional(),
   plataformaId: z.number().int().positive().nullable().optional(),
   horaInicioDisputa: z.string().max(8).optional(),
-  alertaPregao: z.boolean().optional(),
+  alertaPregao: licitacaoBooleanSchema.optional(),
   item: z.string().max(120).optional(),
   tipo: z.string().max(120).optional(),
   qtdeSc: z.coerce.number().nonnegative().optional(),

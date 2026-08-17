@@ -680,7 +680,12 @@ export default function Licitacoes() {
 
   const openLicitacaoForm = (licitacao?: Licitacao) => {
     setEditingLicitacao(licitacao || null);
-    setLicitacaoForm(licitacao ? { ...emptyLicitacao, ...licitacao, status: normalizeLicitacaoStatusLabel(licitacao.status) } : emptyLicitacao);
+    setLicitacaoForm(licitacao ? {
+      ...emptyLicitacao,
+      ...licitacao,
+      alertaPregao: licitacao.alertaPregao !== false && licitacao.alertaPregao !== 0,
+      status: normalizeLicitacaoStatusLabel(licitacao.status),
+    } : emptyLicitacao);
     setCidadeMode(licitacao?.cidade && !cidadesMg.includes(licitacao.cidade) ? "outra" : "lista");
     setModal("licitacao");
   };
@@ -692,6 +697,7 @@ export default function Licitacoes() {
       cidade: normalizeText(licitacaoForm.cidade),
       status: normalizeLicitacaoStatusLabel(licitacaoForm.status),
       plataformaId: licitacaoForm.plataformaId ? Number(licitacaoForm.plataformaId) : null,
+      alertaPregao: licitacaoForm.alertaPregao !== false && licitacaoForm.alertaPregao !== 0,
       item: normalizeText(licitacaoForm.item),
       tipo: normalizeText(licitacaoForm.tipo),
       regiao: normalizeText(licitacaoForm.regiao),
