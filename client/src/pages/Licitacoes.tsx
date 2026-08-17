@@ -445,7 +445,15 @@ export default function Licitacoes() {
     onError: (error) => toast.error(`Erro ao cadastrar licitação: ${error.message}`),
   });
   const updateLicitacao = trpc.licitacoes.update.useMutation({
-    onSuccess: () => {
+    onSuccess: (result, variables) => {
+      const observacoesEnviadas = String(variables.data.observacoesGerais || "");
+      const observacoesConfirmadas = typeof result?.observacoesGerais === "string"
+        ? result.observacoesGerais
+        : null;
+      if (observacoesConfirmadas === null || observacoesConfirmadas !== observacoesEnviadas) {
+        toast.error("O servidor não confirmou a gravação das observações. Reinicie completamente o backend e tente novamente.");
+        return;
+      }
       toast.success("Licitação atualizada.");
       setModal(null);
       setEditingLicitacao(null);
