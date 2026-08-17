@@ -127,7 +127,7 @@ export default function Home({ view = "welcome" }: { view?: HomeView }) {
               {!collapsed && <span>Alimentação</span>}
             </button>
           )}
-          {permissions.master && (
+          {permissions.can("usuarios", "access") && (
             <button type="button" className="home-menu-trigger" onClick={() => navigate("/controle-usuarios")} title="Controle de Usuários">
               <UserCog size={22} />
               {!collapsed && <span>Controle de Usuários</span>}

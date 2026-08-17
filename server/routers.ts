@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router, protectedProcedure, masterProcedure } from "./_core/trpc";
+import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
 import * as crtiSync from "./crti-sync";
@@ -435,15 +435,15 @@ export const appRouter = router({
   }),
 
   userManagement: router({
-    list: masterProcedure.query(() => accessDb.listManagedUsers()),
-    getById: masterProcedure.input(z.number().int().positive()).query(({ input }) => accessDb.getManagedUser(input)),
-    create: masterProcedure.input(createManagedUserSchema).mutation(({ input, ctx }) => accessDb.createManagedUser({ ...input, email: input.email || null }, ctx.user!.id)),
-    update: masterProcedure.input(z.object({ id: z.number().int().positive(), data: updateManagedUserSchema })).mutation(({ input, ctx }) => accessDb.updateManagedUser(input.id, { ...input.data, email: input.data.email || null }, ctx.user!.id)),
-    setStatusOrDeactivate: masterProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(USER_STATUSES), reason: z.string().trim().min(3).max(500) })).mutation(({ input, ctx }) => accessDb.setManagedUserStatus(input.id, input.status, ctx.user!.id, input.reason)),
-    deleteOrArchive: masterProcedure.input(z.object({ id: z.number().int().positive(), reason: z.string().trim().min(3).max(500) })).mutation(({ input }) => accessDb.deleteManagedUser(input.id)),
-    getPermissionCatalog: masterProcedure.query(() => ACCESS_CATALOG),
-    getUserPermissions: masterProcedure.input(z.number().int().positive()).query(({ input }) => accessDb.getUserPermissionRows(input)),
-    replaceUserPermissions: masterProcedure.input(z.object({ userId: z.number().int().positive(), permissions: z.array(permissionEntrySchema).max(500) })).mutation(({ input, ctx }) => accessDb.replaceUserPermissionRows(input.userId, input.permissions, ctx.user!.id)),
+    list: protectedProcedure.query(() => accessDb.listManagedUsers()),
+    getById: protectedProcedure.input(z.number().int().positive()).query(({ input }) => accessDb.getManagedUser(input)),
+    create: protectedProcedure.input(createManagedUserSchema).mutation(({ input, ctx }) => accessDb.createManagedUser({ ...input, email: input.email || null }, ctx.user!.id)),
+    update: protectedProcedure.input(z.object({ id: z.number().int().positive(), data: updateManagedUserSchema })).mutation(({ input, ctx }) => accessDb.updateManagedUser(input.id, { ...input.data, email: input.data.email || null }, ctx.user!.id)),
+    setStatusOrDeactivate: protectedProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(USER_STATUSES), reason: z.string().trim().min(3).max(500) })).mutation(({ input, ctx }) => accessDb.setManagedUserStatus(input.id, input.status, ctx.user!.id, input.reason)),
+    deleteOrArchive: protectedProcedure.input(z.object({ id: z.number().int().positive(), reason: z.string().trim().min(3).max(500) })).mutation(({ input }) => accessDb.deleteManagedUser(input.id)),
+    getPermissionCatalog: protectedProcedure.query(() => ACCESS_CATALOG),
+    getUserPermissions: protectedProcedure.input(z.number().int().positive()).query(({ input }) => accessDb.getUserPermissionRows(input)),
+    replaceUserPermissions: protectedProcedure.input(z.object({ userId: z.number().int().positive(), permissions: z.array(permissionEntrySchema).max(500) })).mutation(({ input, ctx }) => accessDb.replaceUserPermissionRows(input.userId, input.permissions, ctx.user!.id)),
   }),
 
   // ─────────────────────────────────────────────

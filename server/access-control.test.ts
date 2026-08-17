@@ -44,9 +44,12 @@ describe("controle de acesso", () => {
     expect(permissionTargetForProcedure("crti.sincronizacaoCustosObras", "mutation")).toEqual({ resource: "custo_obras", action: "sync" });
   });
 
-  it("usuário comum não acessa o router administrativo", async () => {
-    const caller = appRouter.createCaller({ req: {} as any, res: {} as any, user: commonUser });
-    await expect(caller.userManagement.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  it("mapeia o controle de usuários para a matriz granular", () => {
+    expect(permissionTargetForProcedure("userManagement.list", "query")).toEqual({ resource: "usuarios", action: "read" });
+    expect(permissionTargetForProcedure("userManagement.create", "mutation")).toEqual({ resource: "usuarios", action: "create" });
+    expect(permissionTargetForProcedure("userManagement.update", "mutation")).toEqual({ resource: "usuarios", action: "update" });
+    expect(permissionTargetForProcedure("userManagement.deleteOrArchive", "mutation")).toEqual({ resource: "usuarios", action: "delete" });
+    expect(permissionTargetForProcedure("userManagement.replaceUserPermissions", "mutation")).toEqual({ resource: "usuarios", action: "manage" });
   });
 
   it("payload administrativo inválido é rejeitado por Zod", async () => {

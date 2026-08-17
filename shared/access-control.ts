@@ -84,7 +84,7 @@ export function permissionTargetForProcedure(path: string, type: "query" | "muta
   const leaf = path.split(".").at(-1)?.toLowerCase() ?? "";
   const action: PermissionAction = leaf.includes("delete") || leaf.includes("excluir") ? "delete"
     : leaf.includes("create") || leaf.includes("criar") || leaf.includes("salvar") ? "create"
-    : leaf.includes("update") || leaf.includes("atualizar") || leaf.includes("save") || leaf.includes("vincular") || leaf.includes("clear") || leaf.includes("reset") ? "update"
+    : leaf.includes("update") || leaf.includes("atualizar") || leaf.includes("status") || leaf.includes("save") || leaf.includes("vincular") || leaf.includes("clear") || leaf.includes("reset") ? "update"
     : leaf.includes("export") ? "export"
     : leaf.includes("import") ? "import"
     : leaf.includes("sincron") ? "sync"

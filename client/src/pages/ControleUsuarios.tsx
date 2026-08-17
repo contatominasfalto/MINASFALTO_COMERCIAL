@@ -4,8 +4,8 @@ import { ArrowLeft, Edit3, KeyRound, LockKeyhole, Plus, Search, ShieldCheck, Tra
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { isMasterIdentity, type PermissionEffect } from "@shared/access-control";
-import { useAuth } from "@/_core/hooks/useAuth";
+import { type PermissionEffect } from "@shared/access-control";
+import { usePermissions } from "@/_core/hooks/usePermissions";
 
 type UserForm = {
   username: string; name: string; email: string;
@@ -20,9 +20,8 @@ const STATUS_LABELS: Record<string, string> = { active: "Ativo", inactive: "Inat
 
 export default function ControleUsuarios() {
   const [, navigate] = useLocation();
-  const { user: currentUser } = useAuth();
+  const access = usePermissions();
   const utils = trpc.useUtils();
-  const master = isMasterIdentity(currentUser as any);
   const [search, setSearch] = useState("");
   const [profileFilter, setProfileFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -35,8 +34,8 @@ export default function ControleUsuarios() {
   const passwordInputRef = useRef<HTMLInputElement | null>(null);
   const passwordConfirmationInputRef = useRef<HTMLInputElement | null>(null);
 
-  const users = trpc.userManagement.list.useQuery(undefined, { enabled: master, retry: false });
-  const permissions = trpc.userManagement.getUserPermissions.useQuery(permissionsUser?.id || 1, { enabled: Boolean(permissionsUser) });
+  const users = trpc.userManagement.list.useQuery(undefined, { enabled: access.can("usuarios", "read"), retry: false });
+  const permissions = trpc.userManagement.getUserPermissions.useQuery(permissionsUser?.id || 1, { enabled: Boolean(permissionsUser) && access.can("usuarios", "read") });
   const createUser = trpc.userManagement.create.useMutation({ onSuccess: async () => { toast.success("Usuário criado com sucesso."); setEditing(null); setForm(emptyForm); await users.refetch(); }, onError: (error) => toast.error(`Não foi possível criar o usuário: ${error.message}`) });
   const updateUser = trpc.userManagement.update.useMutation({
     onSuccess: async (updated, variables) => {
@@ -96,7 +95,7 @@ export default function ControleUsuarios() {
     replacePermissions.mutate({ userId: permissionsUser.id, permissions: entries });
   };
 
-  if (!master) return <main className="users-denied"><ShieldCheck size={44} /><h1>Acesso negado</h1><p>Esta área é exclusiva do usuário master admfull.</p><button onClick={() => navigate("/")}>Voltar ao início</button></main>;
+  if (!access.can("usuarios", "access")) return <main className="users-denied"><ShieldCheck size={44} /><h1>Acesso negado</h1><p>Você não possui permissão para acessar este módulo.</p><button onClick={() => navigate("/")}>Voltar ao início</button></main>;
 
   return (
     <main className="users-page">
@@ -105,7 +104,7 @@ export default function ControleUsuarios() {
         <label><Search size={16} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome, login ou e-mail" /></label>
         <select value={profileFilter} onChange={(e) => setProfileFilter(e.target.value)}><option value="all">Todos os perfis</option>{Object.entries(PROFILE_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}><option value="all">Todos os status</option>{Object.entries(STATUS_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
-        <button className="users-primary" onClick={() => openEdit()}><Plus size={16} /> Novo usuário</button>
+        {access.can("usuarios", "create") && <button className="users-primary" onClick={() => openEdit()}><Plus size={16} /> Novo usuário</button>}
       </section>
       <section className="users-table-wrap">
         {users.isLoading ? <p className="users-state">Carregando usuários...</p> : users.error ? <p className="users-state users-error">{users.error.message}</p> : (
@@ -114,7 +113,7 @@ export default function ControleUsuarios() {
               <td><b>{item.name || item.username}</b><span>@{item.username || "não definido"}</span>{item.protected && <em><LockKeyhole size={12} /> Usuário master protegido</em>}</td>
               <td>{item.email || "—"}</td><td>{PROFILE_LABELS[item.profile] || item.profile}</td><td><span className={`users-status users-status-${item.status}`}>{STATUS_LABELS[item.status] || item.status}</span></td><td><span className={`users-status users-status-${item.passwordConfigured ? "active" : "inactive"}`}>{item.passwordSource === "database" ? "Banco" : item.passwordSource === "environment" ? "Legada" : "Não configurada"}</span></td>
               <td>{item.lastSignedIn ? new Date(item.lastSignedIn).toLocaleString("pt-BR") : "Nunca"}</td><td>{item.protected ? "Acesso total" : `${item.permissionCount} personalizada(s)`}</td>
-              <td><button title="Editar usuário" disabled={item.protected} onClick={() => openEdit(item)}><Edit3 size={15} /></button><button title="Editar permissões" disabled={item.protected} onClick={() => openPermissions(item)}><KeyRound size={15} /></button><button title="Excluir usuário definitivamente" disabled={item.protected} onClick={() => setArchiveUser(item)}><Trash2 size={15} /></button></td>
+              <td>{access.can("usuarios", "update") && <button title="Editar usuário" disabled={item.protected} onClick={() => openEdit(item)}><Edit3 size={15} /></button>}{access.can("usuarios", "manage") && <button title="Editar permissões" disabled={item.protected} onClick={() => openPermissions(item)}><KeyRound size={15} /></button>}{access.can("usuarios", "delete") && <button title="Excluir usuário definitivamente" disabled={item.protected} onClick={() => setArchiveUser(item)}><Trash2 size={15} /></button>}</td>
             </tr>)}
             {!filtered.length && <tr><td colSpan={8} className="users-state">Nenhum usuário encontrado.</td></tr>}
           </tbody></table>

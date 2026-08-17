@@ -115,7 +115,7 @@ function Router() {
           <StockPage />
         </StockProvider> : denied}
       </Route>
-      <Route path={"/controle-usuarios"}>{permissions.master ? <ControleUsuarios /> : denied}</Route>
+      <Route path={"/controle-usuarios"}>{permissions.can("usuarios", "access") ? <ControleUsuarios /> : denied}</Route>
       <Route path={"/login"}>
         <Home />
       </Route>
