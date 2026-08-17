@@ -113,28 +113,31 @@ export async function createManagedUser(input: ManagedUserInput, actorUserId: nu
         updatedByUserId: actorUserId,
         passwordHash,
       }).where(eq(users.id, existing.id));
+      const [restored] = await tx.select().from(users).where(eq(users.id, existing.id)).limit(1);
+      if (!restored || !(await verifyPassword(input.password!, restored.passwordHash))) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A senha não foi confirmada no banco de dados." });
+      }
     });
-    const [restored] = await db.select().from(users).where(eq(users.id, existing.id)).limit(1);
-    if (!restored || !(await verifyPassword(input.password, restored.passwordHash))) {
-      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A senha não foi confirmada no banco de dados." });
-    }
     const { password: _password, ...auditableInput } = input;
     await audit(actorUserId, existing.id, "user.restore", publicUser(existing), { ...auditableInput, passwordDefined: true, customPermissionsCleared: true });
     return getManagedUser(existing.id);
   }
 
   await ensureUniqueIdentity(normalizedUsername, input.email);
-  const result = await db.insert(users).values({
-    openId: `managed:${normalizedUsername}`,
-    username: normalizedUsername, name: input.name, email: input.email || null,
-    loginMethod: "managed", role: "user", profile: input.profile, status: input.status,
-    isProtected: false, updatedByUserId: actorUserId, passwordHash,
+  const id = await db.transaction(async (tx: any) => {
+    const result = await tx.insert(users).values({
+      openId: `managed:${normalizedUsername}`,
+      username: normalizedUsername, name: input.name, email: input.email || null,
+      loginMethod: "managed", role: "user", profile: input.profile, status: input.status,
+      isProtected: false, updatedByUserId: actorUserId, passwordHash,
+    });
+    const insertedId = Number(result[0]?.insertId);
+    const [created] = await tx.select().from(users).where(eq(users.id, insertedId)).limit(1);
+    if (!created || !(await verifyPassword(input.password!, created.passwordHash))) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A senha não foi confirmada no banco de dados." });
+    }
+    return insertedId;
   });
-  const id = Number(result[0]?.insertId);
-  const [created] = await db.select().from(users).where(eq(users.id, id)).limit(1);
-  if (!created || !(await verifyPassword(input.password, created.passwordHash))) {
-    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A senha não foi confirmada no banco de dados." });
-  }
   const { password: _password, ...auditableInput } = input;
   await audit(actorUserId, id, "user.create", null, { ...auditableInput, passwordDefined: true });
   return getManagedUser(id);
@@ -149,18 +152,20 @@ export async function updateManagedUser(id: number, input: ManagedUserInput, act
   await ensureUniqueIdentity(input.username, input.email, id);
   const db = await database();
   const passwordUpdate = input.password ? { passwordHash: await hashPassword(input.password) } : {};
-  await db.update(users).set({
-    username: input.username.toLowerCase(), name: input.name, email: input.email || null,
-    profile: input.profile, status: input.status, role: "user", updatedByUserId: actorUserId,
-    archivedAt: input.status === "archived" ? new Date() : null,
-    ...passwordUpdate,
-  }).where(eq(users.id, id));
-  if (input.password) {
-    const [updated] = await db.select().from(users).where(eq(users.id, id)).limit(1);
-    if (!updated || !(await verifyPassword(input.password, updated.passwordHash))) {
-      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A nova senha não foi confirmada no banco de dados." });
+  await db.transaction(async (tx: any) => {
+    await tx.update(users).set({
+      username: input.username.toLowerCase(), name: input.name, email: input.email || null,
+      profile: input.profile, status: input.status, role: "user", updatedByUserId: actorUserId,
+      archivedAt: input.status === "archived" ? new Date() : null,
+      ...passwordUpdate,
+    }).where(eq(users.id, id));
+    if (input.password) {
+      const [updated] = await tx.select().from(users).where(eq(users.id, id)).limit(1);
+      if (!updated || !(await verifyPassword(input.password, updated.passwordHash))) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "A nova senha não foi confirmada no banco de dados." });
+      }
     }
-  }
+  });
   const { password: _password, ...auditableInput } = input;
   await audit(actorUserId, id, "user.update", current, { ...auditableInput, passwordChanged: Boolean(input.password) });
   return getManagedUser(id);

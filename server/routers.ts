@@ -47,7 +47,7 @@ function getLocalLoginCredentials() {
 }
 
 function isLocalLoginEnabled() {
-  return Object.values(getLocalLoginCredentials()).some(Boolean);
+  return Boolean(ENV.databaseUrl) || Object.values(getLocalLoginCredentials()).some(Boolean);
 }
 
 function isOAuthEnabled() {
