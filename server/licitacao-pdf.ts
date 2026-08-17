@@ -1,4 +1,4 @@
-import { listLicitacaoAdesaoReportDetails, listLicitacaoReport, type LicitacaoReportType } from "./db";
+import { listLicitacaoAdesaoReportDetails, listLicitacaoReport, listLicitacaoReportDetails, type LicitacaoReportType } from "./db";
 import {
   createPdf,
   dateBR,
@@ -31,9 +31,10 @@ export async function buildLicitacaoPdf(
   type: LicitacaoReportType,
   filters: { inicio?: string; fim?: string },
 ) {
-  const [rows, adhesionDetails] = await Promise.all([
+  const [rows, adhesionDetails, licitacaoDetails] = await Promise.all([
     listLicitacaoReport(type, filters),
-    type === "adesoes_vendedor" ? listLicitacaoAdesaoReportDetails(filters) : Promise.resolve([]),
+    type === "adesoes_vendedor" || type === "entregas" ? listLicitacaoAdesaoReportDetails(filters) : Promise.resolve([]),
+    type === "status" || type === "cidade" || type === "vendedor" ? listLicitacaoReportDetails(filters) : Promise.resolve([]),
   ]);
   const config = REPORTS[type];
   const timbrado = await loadJpeg("client/src/assets/papel-timbrado-minasfalto.jpeg");
@@ -80,7 +81,7 @@ export async function buildLicitacaoPdf(
   }
   pages.push({ content: chart, width: landscapeWidth, height: landscapeHeight });
 
-  if (type === "adesoes_vendedor") {
+  if (type === "adesoes_vendedor" || type === "entregas") {
     const detailChunks = adhesionDetails.length
       ? Array.from({ length: Math.ceil(adhesionDetails.length / 19) }, (_, index) => adhesionDetails.slice(index * 19, index * 19 + 19))
       : [[]];
@@ -88,7 +89,7 @@ export async function buildLicitacaoPdf(
       let content = drawPageBackground(timbrado, landscapeWidth, landscapeHeight);
       content += "q 60 0 0 60 40 510 cm /LOGO Do Q\n";
       content += drawCenteredText("RELATÓRIO DE LICITAÇÕES", 550, 15, true, "0 0.10 0.20", landscapeWidth / 2);
-      content += drawCenteredText("DETALHAMENTO DAS ADESÕES POR VENDEDOR", 530, 9, true, "0.20 0.28 0.36", landscapeWidth / 2);
+      content += drawCenteredText(type === "adesoes_vendedor" ? "DETALHAMENTO DAS ADESÕES POR VENDEDOR" : "DETALHAMENTO DA SITUAÇÃO DAS ENTREGAS", 530, 9, true, "0.20 0.28 0.36", landscapeWidth / 2);
       content += drawCenteredText(`PERÍODO ${period}`, 515, 7, false, "0.20 0.28 0.36", landscapeWidth / 2);
       content += "0.95 0.65 0.10 RG 40 500 m 802 500 l S\n";
       content += drawRect(40, 464, 762, 24, "0.86 0.90 0.94");
@@ -114,6 +115,44 @@ export async function buildLicitacaoPdf(
         content += drawText(decimal(detail.quantidadeAtendida), 615, y + 7, 5.2);
         content += drawText(decimal(detail.saldo), 722, y + 7, 5.2, true);
         y -= 20;
+      });
+      content += drawText(`PÁGINA DE DETALHES ${pageIndex + 1} DE ${detailChunks.length}`, 640, 54, 6, true, "0.38 0.45 0.54");
+      pages.push({ content, width: landscapeWidth, height: landscapeHeight });
+    });
+  }
+
+  if (type === "status" || type === "cidade" || type === "vendedor") {
+    const detailChunks = licitacaoDetails.length
+      ? Array.from({ length: Math.ceil(licitacaoDetails.length / 17) }, (_, index) => licitacaoDetails.slice(index * 17, index * 17 + 17))
+      : [[]];
+    detailChunks.forEach((chunk, pageIndex) => {
+      let content = drawPageBackground(timbrado, landscapeWidth, landscapeHeight);
+      content += "q 60 0 0 60 40 510 cm /LOGO Do Q\n";
+      content += drawCenteredText("RELATÓRIO DE LICITAÇÕES", 550, 15, true, "0 0.10 0.20", landscapeWidth / 2);
+      content += drawCenteredText(`DETALHAMENTO - ${config.title}`, 530, 9, true, "0.20 0.28 0.36", landscapeWidth / 2);
+      content += drawCenteredText(`PERÍODO ${period}`, 515, 7, false, "0.20 0.28 0.36", landscapeWidth / 2);
+      content += "0.95 0.65 0.10 RG 40 500 m 802 500 l S\n";
+      content += drawRect(40, 464, 762, 24, "0.86 0.90 0.94");
+      content += drawText("DATA/HORA", 44, 473, 5.5, true, "0 0.10 0.20");
+      content += drawText("ÓRGÃO / CIDADE", 102, 473, 5.5, true, "0 0.10 0.20");
+      content += drawText("STATUS", 253, 473, 5.5, true, "0 0.10 0.20");
+      content += drawText("VENDEDOR", 344, 473, 5.5, true, "0 0.10 0.20");
+      content += drawText("ITEM / TIPO", 460, 473, 5.5, true, "0 0.10 0.20");
+      content += drawText("QTD.", 591, 473, 5.5, true, "0 0.10 0.20");
+      content += drawText("VALOR INICIAL", 649, 473, 5.5, true, "0 0.10 0.20");
+      content += drawText("ADESÕES", 744, 473, 5.5, true, "0 0.10 0.20");
+      let y = 442;
+      chunk.forEach((detail, index) => {
+        content += drawRect(40, y, 762, 22, index % 2 ? "0.97 0.98 0.99" : "1 1 1", "0.86 0.90 0.94");
+        content += drawText(`${dateBR(detail.data) || "-"} ${detail.horaInicioDisputa || ""}`.trim(), 44, y + 8, 5.1);
+        content += drawText(`${detail.orgao}${detail.cidade ? ` - ${detail.cidade}` : ""}`.slice(0, 38), 102, y + 8, 5.1);
+        content += drawText(detail.status.slice(0, 22), 253, y + 8, 5.1);
+        content += drawText(detail.vendedor.slice(0, 28), 344, y + 8, 5.1);
+        content += drawText(`${detail.item} / ${detail.tipo}`.slice(0, 31), 460, y + 8, 5.1);
+        content += drawText(decimal(detail.qtdeSc), 591, y + 8, 5.1);
+        content += drawText(money(detail.valorInicialContrato), 649, y + 8, 5.1);
+        content += drawText(`${detail.totalAdesoes} / ${decimal(detail.quantidadeAderida)}`, 744, y + 8, 5.1);
+        y -= 22;
       });
       content += drawText(`PÁGINA DE DETALHES ${pageIndex + 1} DE ${detailChunks.length}`, 640, 54, 6, true, "0.38 0.45 0.54");
       pages.push({ content, width: landscapeWidth, height: landscapeHeight });

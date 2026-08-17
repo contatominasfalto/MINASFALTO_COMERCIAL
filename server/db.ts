@@ -2963,6 +2963,41 @@ export async function listLicitacaoAdesaoReportDetails(filters: { inicio?: strin
   }));
 }
 
+export async function listLicitacaoReportDetails(filters: { inicio?: string; fim?: string } = {}) {
+  const pool = await ensureMysqlPool();
+  await ensureLicitacaoAdesoesSchema(pool);
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  const licitacaoDate = "STR_TO_DATE(l.data, IF(l.data LIKE '%/%', '%d/%m/%Y', '%Y-%m-%d'))";
+  if (filters.inicio) { conditions.push(`${licitacaoDate} >= ?`); params.push(filters.inicio); }
+  if (filters.fim) { conditions.push(`${licitacaoDate} <= ?`); params.push(filters.fim); }
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const [rows] = await pool.query<mysql.RowDataPacket[]>(`
+    SELECT l.id, l.data, l.orgao, l.cidade, l.status, l.horaInicioDisputa,
+      l.item, l.tipo, l.qtdeSc, l.valorInicialContrato,
+      COALESCE(NULLIF(TRIM(a.vendedorNome), ''), NULLIF(TRIM(l.ataVendedorNome), ''), 'NÃO VINCULADO') vendedor,
+      COALESCE(ad.totalAdesoes, 0) totalAdesoes,
+      COALESCE(ad.quantidadeAderida, 0) quantidadeAderida
+    FROM licitacoes l
+    LEFT JOIN licitacao_atas a ON a.licitacaoId = l.id
+    LEFT JOIN (
+      SELECT licitacaoId, COUNT(*) totalAdesoes, SUM(quantidade) quantidadeAderida
+      FROM licitacao_adesoes GROUP BY licitacaoId
+    ) ad ON ad.licitacaoId = l.id
+    ${where}
+    ORDER BY ${licitacaoDate} DESC, l.id DESC
+  `, params);
+  return rows.map((row) => ({
+    id: Number(row.id), data: String(row.data || ""), orgao: String(row.orgao || ""),
+    cidade: String(row.cidade || ""), status: String(row.status || ""),
+    horaInicioDisputa: String(row.horaInicioDisputa || ""), item: String(row.item || ""),
+    tipo: String(row.tipo || ""), qtdeSc: Number(row.qtdeSc || 0),
+    valorInicialContrato: Number(row.valorInicialContrato || 0),
+    vendedor: String(row.vendedor || "NÃO VINCULADO"), totalAdesoes: Number(row.totalAdesoes || 0),
+    quantidadeAderida: Number(row.quantidadeAderida || 0),
+  }));
+}
+
 export async function createLicitacao(data: LicitacaoInput & { criadoPor?: string }) {
   const pool = await ensureMysqlPool();
   await ensureLicitacaoPregaoAlertSchema(pool);
