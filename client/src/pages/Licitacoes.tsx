@@ -683,7 +683,10 @@ export default function Licitacoes() {
     let registroCompleto = licitacao || null;
     if (licitacao?.id) {
       try {
-        registroCompleto = await utils.licitacoes.get.fetch(licitacao.id);
+        const registrosAtualizados = await utils.licitacoes.list.fetch({
+          adjudicadas: panelTab === "adjudicadas",
+        });
+        registroCompleto = registrosAtualizados.find((item: Licitacao) => item.id === licitacao.id) || licitacao;
       } catch (error) {
         toast.error(`Erro ao carregar os dados da licitação: ${error instanceof Error ? error.message : "falha desconhecida"}`);
         return;
