@@ -5,6 +5,7 @@ import { getDb } from "./db";
 import { ACCESS_CATALOG, effectAllows, isMasterIdentity, legacyProfileEffect, resolvePermissionEffect, type PermissionEffect, type PermissionAction } from "../shared/access-control";
 import { hashPassword, verifyPassword } from "./password-security";
 import { ENV } from "./_core/env";
+import { isLegacyEnvironmentUser } from "./local-login-users";
 
 type ManagedUserInput = {
   username: string;
@@ -30,11 +31,11 @@ function passwordState(user: User) {
     diretoria: ENV.localLoginDiretoria,
   };
   const hasPassword = Boolean(user.passwordHash);
-  const hasLegacyPassword = Boolean(legacyPasswords[username]);
+  const hasLegacyPassword = isLegacyEnvironmentUser(user) && Boolean(legacyPasswords[username]);
   return {
     hasPassword,
-    passwordConfigured: hasPassword || hasLegacyPassword,
-    passwordSource: hasPassword ? "database" as const : hasLegacyPassword ? "environment" as const : "none" as const,
+    passwordConfigured: isLegacyEnvironmentUser(user) ? hasLegacyPassword : hasPassword,
+    passwordSource: isLegacyEnvironmentUser(user) ? (hasLegacyPassword ? "environment" as const : "none" as const) : (hasPassword ? "database" as const : "none" as const),
   };
 }
 
@@ -148,6 +149,12 @@ export async function updateManagedUser(id: number, input: ManagedUserInput, act
   if (current.protected) throw new TRPCError({ code: "FORBIDDEN", message: "O usuário master é protegido e não pode ser alterado." });
   if (input.profile === "admfull" || input.username.toLowerCase() === "admfull") {
     throw new TRPCError({ code: "FORBIDDEN", message: "O perfil master não pode ser atribuído." });
+  }
+  if (isLegacyEnvironmentUser(current) && input.username.toLowerCase() !== String(current.username || "").toLowerCase()) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "O login de um usuário legado é vinculado ao .env e não pode ser alterado." });
+  }
+  if (isLegacyEnvironmentUser(current) && input.password) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "A senha deste usuário legado é administrada exclusivamente pelo .env do servidor." });
   }
   await ensureUniqueIdentity(input.username, input.email, id);
   const db = await database();

@@ -17,6 +17,7 @@ import { sdk, LOCAL_LOGIN_OPEN_ID_PREFIX } from "./_core/sdk";
 import * as accessDb from "./access-control-db";
 import { ACCESS_CATALOG, ACCESS_EFFECTS, USER_STATUSES } from "../shared/access-control";
 import { verifyPassword } from "./password-security";
+import { isLegacyEnvironmentUser } from "./local-login-users";
 
 const STATUS_SAIDA_OK = "SA\u00cdDA OK";
 const pedidoAtividadeDescricaoSchema = z.string().trim().min(1, "Informe a atividade.").max(2000, "A atividade deve ter no máximo 2.000 caracteres.");
@@ -391,11 +392,9 @@ export const appRouter = router({
         const expectedPassword = credentials[username as keyof typeof credentials];
         const persistedUser = await db.getUserByUsername(username)
           ?? await db.getUserByOpenId(`${LOCAL_LOGIN_OPEN_ID_PREFIX}${username}`);
-        const validCredentials = username === "admfull"
+        const validCredentials = Boolean(persistedUser) && (isLegacyEnvironmentUser(persistedUser)
           ? Boolean(expectedPassword) && input.password === expectedPassword
-          : Boolean(persistedUser) && (persistedUser?.passwordHash
-            ? await verifyPassword(input.password, persistedUser.passwordHash)
-            : Boolean(expectedPassword) && input.password === expectedPassword);
+          : Boolean(persistedUser.passwordHash) && await verifyPassword(input.password, persistedUser.passwordHash));
 
         if (!validCredentials) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: "Usuário ou senha inválidos" });
