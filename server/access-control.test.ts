@@ -13,6 +13,11 @@ describe("controle de acesso", () => {
     expect(licitacaoSchema.parse({ ...base, alertaPregao: true }).alertaPregao).toBe(true);
     expect(licitacaoSchema.safeParse({ ...base, alertaPregao: 2 }).success).toBe(false);
   });
+  it("aceita observações gerais da licitação e limita conteúdo excessivo", () => {
+    const base = { orgao: "PREFEITURA" };
+    expect(licitacaoSchema.parse({ ...base, observacoesGerais: "Informação importante" }).observacoesGerais).toBe("Informação importante");
+    expect(licitacaoSchema.safeParse({ ...base, observacoesGerais: "x".repeat(10001) }).success).toBe(false);
+  });
   it("admfull sempre recebe acesso total", () => {
     expect(isMasterIdentity({ username: "admfull" })).toBe(true);
     expect(resolvePermissionEffect({ master: true, active: false, explicit: "deny", profile: "deny" })).toBe("allow");

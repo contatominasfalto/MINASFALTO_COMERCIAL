@@ -2080,15 +2080,16 @@
 .licitacao-table-general th:nth-child(5), .licitacao-table-general td:nth-child(5) { width: 130px; text-align: center; }
 .licitacao-table-general th:nth-child(6), .licitacao-table-general td:nth-child(6) { width: 120px; text-align: center; }
 .licitacao-table-general th:nth-child(7), .licitacao-table-general td:nth-child(7) { width: 120px; text-align: center; }
-.licitacao-table-general th:nth-child(8), .licitacao-table-general td:nth-child(8) { width: 110px; text-align: right; }
+.licitacao-table-general th:nth-child(8), .licitacao-table-general td:nth-child(8) { width: 130px; text-align: center; }
 .licitacao-table-general th:nth-child(9), .licitacao-table-general td:nth-child(9),
 .licitacao-table-general th:nth-child(10), .licitacao-table-general td:nth-child(10),
 .licitacao-table-general th:nth-child(11), .licitacao-table-general td:nth-child(11),
-.licitacao-table-general th:nth-child(13), .licitacao-table-general td:nth-child(13) { width: 145px; text-align: right; }
-.licitacao-table-general th:nth-child(12), .licitacao-table-general td:nth-child(12) { width: 110px; text-align: right; }
-.licitacao-table-general th:nth-child(14), .licitacao-table-general td:nth-child(14) { width: 90px; text-align: right; }
-.licitacao-table-general th:nth-child(15), .licitacao-table-general td:nth-child(15) { width: 190px; text-align: center; }
-.licitacao-table-general th:nth-child(16), .licitacao-table-general td:nth-child(16) { width: 150px; text-align: center; }
+.licitacao-table-general th:nth-child(12), .licitacao-table-general td:nth-child(12),
+.licitacao-table-general th:nth-child(14), .licitacao-table-general td:nth-child(14) { width: 145px; text-align: right; }
+.licitacao-table-general th:nth-child(13), .licitacao-table-general td:nth-child(13) { width: 110px; text-align: right; }
+.licitacao-table-general th:nth-child(15), .licitacao-table-general td:nth-child(15) { width: 90px; text-align: right; }
+.licitacao-table-general th:nth-child(16), .licitacao-table-general td:nth-child(16) { width: 190px; text-align: center; }
+.licitacao-table-general th:nth-child(17), .licitacao-table-general td:nth-child(17) { width: 150px; text-align: center; }
 
 .licitacao-table-adjucados {
   min-width: 2850px;
@@ -2161,6 +2162,7 @@
 .licitacao-table .licitacao-col-orgao { min-width: 190px; max-width: 300px; }
 .licitacao-table .licitacao-col-cidade { min-width: 125px; max-width: 210px; }
 .licitacao-table .licitacao-col-status { min-width: 140px; max-width: 220px; }
+.licitacao-table .licitacao-col-horaInicioDisputa { min-width: 115px; max-width: 135px; text-align: center; white-space: nowrap; }
 .licitacao-table .licitacao-col-plataformaNome { min-width: 112px; max-width: 130px; }
 .licitacao-table .licitacao-col-item { min-width: 82px; max-width: 125px; }
 .licitacao-table .licitacao-col-tipo { min-width: 125px; max-width: 205px; }
@@ -2449,6 +2451,22 @@
 .licitacao-form-grid-compact {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: end;
+}
+
+.licitacao-observacoes-field {
+  grid-column: 1 / -1;
+}
+
+.licitacao-observacoes-field textarea {
+  width: 100%;
+  min-height: 82px;
+  resize: vertical;
+  border: 1px solid var(--sap-line);
+  background: #fff;
+  padding: 8px;
+  color: var(--sap-text);
+  font: inherit;
+  box-sizing: border-box;
 }
 
 .licitacao-report-panel {

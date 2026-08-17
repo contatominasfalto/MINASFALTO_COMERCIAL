@@ -2581,6 +2581,14 @@ export async function ensureLicitacaoPregaoAlertSchema(pool: mysql.Pool) {
           "ALTER TABLE licitacoes ADD COLUMN alertaPregao boolean NOT NULL DEFAULT true AFTER horaInicioDisputa",
         );
       }
+      const [observacoesColumns] = await pool.query<mysql.RowDataPacket[]>(
+        "SHOW COLUMNS FROM licitacoes LIKE 'observacoesGerais'",
+      );
+      if (!Array.isArray(observacoesColumns) || observacoesColumns.length === 0) {
+        await pool.query(
+          "ALTER TABLE licitacoes ADD COLUMN observacoesGerais text NULL AFTER alertaPregao",
+        );
+      }
     })().catch((error) => {
       _licitacaoPregaoAlertSchemaPromise = null;
       throw error;
@@ -2768,6 +2776,7 @@ export type LicitacaoInput = {
   plataformaId?: number | null;
   horaInicioDisputa?: string;
   alertaPregao?: boolean;
+  observacoesGerais?: string;
   item?: string;
   tipo?: string;
   qtdeSc?: number;
@@ -2961,10 +2970,10 @@ export async function createLicitacao(data: LicitacaoInput & { criadoPor?: strin
   const potencial = getLicitacaoPotencial(data.kmDistancia);
   const [result] = await pool.query<mysql.ResultSetHeader>(
     `INSERT INTO licitacoes (
-      data, orgao, cidade, status, plataformaId, horaInicioDisputa, alertaPregao, item, tipo, qtdeSc, valorUnit,
+      data, orgao, cidade, status, plataformaId, horaInicioDisputa, alertaPregao, observacoesGerais, item, tipo, qtdeSc, valorUnit,
       lanceLimite, valorAdjudicado, qtdeTn, valorInicialContrato, kmDistancia,
       potencialCliente, regiao, statusContrato, ataVendedorId, ataVendedorNome, criadoPor
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.data || "",
       data.orgao.trim(),
@@ -2973,6 +2982,7 @@ export async function createLicitacao(data: LicitacaoInput & { criadoPor?: strin
       data.plataformaId || null,
       data.horaInicioDisputa || "",
       data.alertaPregao !== false,
+      data.observacoesGerais || "",
       data.item || "",
       data.tipo || "",
       normalizeMoney(data.qtdeSc),
@@ -2999,7 +3009,7 @@ export async function updateLicitacao(id: number, data: LicitacaoInput) {
   const status = normalizeLicitacaoStatus(data.status);
   await pool.query(
     `UPDATE licitacoes SET
-      data = ?, orgao = ?, cidade = ?, status = ?, plataformaId = ?, horaInicioDisputa = ?, alertaPregao = ?, item = ?, tipo = ?,
+      data = ?, orgao = ?, cidade = ?, status = ?, plataformaId = ?, horaInicioDisputa = ?, alertaPregao = ?, observacoesGerais = ?, item = ?, tipo = ?,
       qtdeSc = ?, valorUnit = ?, lanceLimite = ?, valorAdjudicado = ?, qtdeTn = ?,
       valorInicialContrato = ?, kmDistancia = ?, potencialCliente = ?, regiao = ?,
       statusContrato = ?, ataVendedorId = ?, ataVendedorNome = ?
@@ -3012,6 +3022,7 @@ export async function updateLicitacao(id: number, data: LicitacaoInput) {
       data.plataformaId || null,
       data.horaInicioDisputa || "",
       data.alertaPregao !== false,
+      data.observacoesGerais || "",
       data.item || "",
       data.tipo || "",
       normalizeMoney(data.qtdeSc),

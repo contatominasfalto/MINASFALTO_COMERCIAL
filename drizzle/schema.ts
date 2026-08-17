@@ -356,6 +356,7 @@ export const licitacoes = mysqlTable("licitacoes", {
   plataformaId: int("plataformaId"),
   horaInicioDisputa: varchar("horaInicioDisputa", { length: 8 }),
   alertaPregao: boolean("alertaPregao").default(true),
+  observacoesGerais: text("observacoesGerais"),
   item: varchar("item", { length: 120 }),
   tipo: varchar("tipo", { length: 120 }),
   qtdeSc: decimal("qtdeSc", { precision: 18, scale: 3 }).default("0"),

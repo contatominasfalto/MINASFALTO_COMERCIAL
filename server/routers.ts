@@ -294,6 +294,7 @@ export const licitacaoSchema = z.object({
   plataformaId: z.number().int().positive().nullable().optional(),
   horaInicioDisputa: z.string().max(8).optional(),
   alertaPregao: licitacaoBooleanSchema.optional(),
+  observacoesGerais: z.string().max(10000).optional(),
   item: z.string().max(120).optional(),
   tipo: z.string().max(120).optional(),
   qtdeSc: z.coerce.number().nonnegative().optional(),

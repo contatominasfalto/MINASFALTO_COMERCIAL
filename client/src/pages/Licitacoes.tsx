@@ -77,6 +77,7 @@ const emptyLicitacao = {
   status: "Pendente",
   horaInicioDisputa: "",
   alertaPregao: true,
+  observacoesGerais: "",
   item: "",
   tipo: "",
   qtdeSc: 0,
@@ -558,7 +559,7 @@ export default function Licitacoes() {
     ];
 
     if (panelTab === "geral") {
-      columns.splice(4, 0, ["plataformaNome", "Link Plat. Pregão"]);
+      columns.splice(4, 0, ["horaInicioDisputa", "Hora Início Disputa"], ["plataformaNome", "Link Plat. Pregão"]);
     }
 
     if (panelTab === "adjudicadas") {
@@ -985,6 +986,9 @@ export default function Licitacoes() {
                     {getLicitacaoStatusDisplay(licitacao)}
                   </td>
                   {panelTab === "geral" && (
+                    <td className="licitacao-col-horaInicioDisputa">{licitacao.horaInicioDisputa || "-"}</td>
+                  )}
+                  {panelTab === "geral" && (
                     <td className="licitacao-platform-cell licitacao-col-plataformaNome">
                       {licitacao.plataformaLink ? (
                         <button
@@ -1182,6 +1186,15 @@ export default function Licitacoes() {
                 onChange={(event) => setLicitacaoForm((current: any) => ({ ...current, alertaPregao: event.target.checked }))}
               />
               <i aria-hidden="true"><b /></i>
+            </label>
+            <label className="licitacao-field licitacao-observacoes-field">
+              <span>Observações gerais</span>
+              <textarea
+                value={licitacaoForm.observacoesGerais || ""}
+                onChange={(event) => setLicitacaoForm((current: any) => ({ ...current, observacoesGerais: event.target.value }))}
+                maxLength={10000}
+                placeholder="Registre informações importantes sobre esta licitação"
+              />
             </label>
           </section>
           <footer className="licitacao-modal-actions">
