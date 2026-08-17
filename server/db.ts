@@ -3044,7 +3044,19 @@ export async function updateLicitacao(id: number, data: LicitacaoInput) {
     "UPDATE licitacao_atas SET vendedorId = ?, vendedorNome = ? WHERE licitacaoId = ?",
     [data.ataVendedorId || null, data.ataVendedorNome || "NA", id],
   );
-  return { success: true };
+  const [persistedRows] = await pool.query<mysql.RowDataPacket[]>(
+    "SELECT observacoesGerais FROM licitacoes WHERE id = ? LIMIT 1",
+    [id],
+  );
+  if (!persistedRows.length) {
+    throw new Error("A licitação não foi encontrada após a atualização.");
+  }
+  const observacoesPersistidas = String(persistedRows[0].observacoesGerais || "");
+  const observacoesEnviadas = String(data.observacoesGerais || "");
+  if (observacoesPersistidas !== observacoesEnviadas) {
+    throw new Error("O banco não confirmou a gravação das observações gerais da licitação.");
+  }
+  return { success: true, observacoesGerais: observacoesPersistidas };
 }
 
 export async function deleteLicitacao(id: number) {
