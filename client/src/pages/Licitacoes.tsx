@@ -679,15 +679,25 @@ export default function Licitacoes() {
     scrollSelectedLicitacaoIntoView();
   };
 
-  const openLicitacaoForm = (licitacao?: Licitacao) => {
-    setEditingLicitacao(licitacao || null);
-    setLicitacaoForm(licitacao ? {
+  const openLicitacaoForm = async (licitacao?: Licitacao) => {
+    let registroCompleto = licitacao || null;
+    if (licitacao?.id) {
+      try {
+        registroCompleto = await utils.licitacoes.get.fetch(licitacao.id);
+      } catch (error) {
+        toast.error(`Erro ao carregar os dados da licitação: ${error instanceof Error ? error.message : "falha desconhecida"}`);
+        return;
+      }
+    }
+    setEditingLicitacao(registroCompleto);
+    setLicitacaoForm(registroCompleto ? {
       ...emptyLicitacao,
-      ...licitacao,
-      alertaPregao: licitacao.alertaPregao !== false && licitacao.alertaPregao !== 0,
-      status: normalizeLicitacaoStatusLabel(licitacao.status),
+      ...registroCompleto,
+      observacoesGerais: String(registroCompleto.observacoesGerais || ""),
+      alertaPregao: registroCompleto.alertaPregao !== false && registroCompleto.alertaPregao !== 0,
+      status: normalizeLicitacaoStatusLabel(registroCompleto.status),
     } : emptyLicitacao);
-    setCidadeMode(licitacao?.cidade && !cidadesMg.includes(licitacao.cidade) ? "outra" : "lista");
+    setCidadeMode(registroCompleto?.cidade && !cidadesMg.includes(registroCompleto.cidade) ? "outra" : "lista");
     setModal("licitacao");
   };
 

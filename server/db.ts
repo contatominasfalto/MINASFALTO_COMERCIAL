@@ -2829,6 +2829,27 @@ export async function listLicitacoes(filters?: { search?: string; adjudicadas?: 
   }) as mysql.RowDataPacket);
 }
 
+export async function getLicitacao(id: number) {
+  const pool = await ensureMysqlPool();
+  await ensureLicitacaoPregaoAlertSchema(pool);
+  const [rows] = await pool.query<mysql.RowDataPacket[]>(`
+    SELECT
+      l.*,
+      pl.nome AS plataformaNome,
+      pl.link AS plataformaLink
+    FROM licitacoes l
+    LEFT JOIN licitacao_plataformas pl ON pl.id = l.plataformaId
+    WHERE l.id = ?
+    LIMIT 1
+  `, [id]);
+  if (!rows.length) return null;
+  return {
+    ...rows[0],
+    alertaPregao: Boolean(rows[0].alertaPregao),
+    observacoesGerais: String(rows[0].observacoesGerais || ""),
+  };
+}
+
 export async function listLicitacaoAlertasPregao() {
   const pool = await ensureMysqlPool();
   await ensureLicitacaoPregaoAlertSchema(pool);

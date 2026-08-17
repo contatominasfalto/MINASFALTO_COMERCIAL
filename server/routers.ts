@@ -767,6 +767,9 @@ export const appRouter = router({
         adjudicadas: z.boolean().optional(),
       }).optional())
       .query(({ input }) => db.listLicitacoes(input)),
+    get: costAccessProcedure
+      .input(z.number().int().positive())
+      .query(({ input }) => db.getLicitacao(input)),
     alertasPregao: costAccessProcedure.query(() => db.listLicitacaoAlertasPregao()),
     exportarPdf: costAccessProcedure
       .input(z.object({
