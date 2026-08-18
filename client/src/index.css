@@ -2053,6 +2053,26 @@ table :is(th, td) :where(a, button, input, select, textarea, label, span, strong
   font-weight: 900 !important;
 }
 
+.licitacao-table tbody tr.licitacao-disputa-hoje > td {
+  animation: licitacao-disputa-hoje-pulse 3.6s ease-in-out infinite;
+}
+
+.licitacao-table tbody tr.licitacao-disputa-hoje > td:first-child {
+  box-shadow: inset 4px 0 #d89000;
+}
+
+@keyframes licitacao-disputa-hoje-pulse {
+  0%, 100% { background-color: #fff8df; }
+  50% { background-color: #f5dda0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .licitacao-table tbody tr.licitacao-disputa-hoje > td {
+    animation: none;
+    background-color: #fff1bd;
+  }
+}
+
 .licitacao-filter-row th {
   padding: 2px 4px;
   background: linear-gradient(#edf4fa, #dbe7f0);

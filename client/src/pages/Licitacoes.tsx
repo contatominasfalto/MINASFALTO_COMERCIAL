@@ -123,6 +123,22 @@ function formatDateBR(value: unknown) {
   return `${match[3]}/${match[2]}/${match[1]}`;
 }
 
+function getLocalDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getLicitacaoDateKey(value: unknown) {
+  const text = String(value ?? "").trim();
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const br = text.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (br) return `${br[3]}-${br[2]}-${br[1]}`;
+  return "";
+}
+
 function getPotencial(km: unknown) {
   const value = numberValue(km);
   if (!value) return "";
@@ -344,6 +360,7 @@ export default function Licitacoes() {
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [sortKey, setSortKey] = useState("data");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [todayKey, setTodayKey] = useState(() => getLocalDateKey());
   const [licitacaoPage, setLicitacaoPage] = useState(1);
   const [licitacaoPageSize, setLicitacaoPageSize] = useState(50);
   const [selectedTableLicitacaoId, setSelectedTableLicitacaoId] = useState<number | null>(null);
@@ -374,6 +391,13 @@ export default function Licitacoes() {
   const [alertaVencimentoAberto, setAlertaVencimentoAberto] = useState(false);
   const [relatorioForm, setRelatorioForm] = useState({ tipoRelatorio: "status", inicio: "", fim: "" });
   const alertaVencimentoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const now = new Date();
+    const nextDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const timer = window.setTimeout(() => setTodayKey(getLocalDateKey()), nextDay.getTime() - now.getTime() + 1_000);
+    return () => window.clearTimeout(timer);
+  }, [todayKey]);
 
   const opcoes = trpc.licitacoes.opcoes.useQuery();
   const exportarRelatorioPdf = trpc.licitacoes.exportarPdf.useMutation();
@@ -1011,10 +1035,13 @@ export default function Licitacoes() {
                 <tr><td colSpan={licitacaoTableColumnCount} className="desktop-empty">Carregando licitações...</td></tr>
               ) : visibleLicitacoes.length === 0 ? (
                 <tr><td colSpan={licitacaoTableColumnCount} className="desktop-empty">Nenhuma licitação encontrada</td></tr>
-              ) : visibleLicitacoes.map((licitacao) => (
+              ) : visibleLicitacoes.map((licitacao) => {
+                const disputaHoje = panelTab === "geral" && getLicitacaoDateKey(licitacao.data) === todayKey;
+                return (
                 <tr
                   key={licitacao.id}
-                  className={currentTableLicitacao?.id === licitacao.id ? "selected" : ""}
+                  className={`${currentTableLicitacao?.id === licitacao.id ? "selected" : ""}${disputaHoje ? " licitacao-disputa-hoje" : ""}`.trim()}
+                  title={disputaHoje ? "Disputa de pregão agendada para hoje" : undefined}
                   onClick={() => setSelectedTableLicitacaoId(licitacao.id)}
                   onDoubleClick={() => openLicitacaoForm(licitacao)}
                 >
@@ -1104,7 +1131,8 @@ export default function Licitacoes() {
                     <button className="mini-icon-button danger" onClick={() => setDeleteLicitacaoTarget(licitacao)}><Trash2 size={14} /></button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
