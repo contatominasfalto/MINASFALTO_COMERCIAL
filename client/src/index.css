@@ -1499,15 +1499,36 @@ table :is(th, td) :where(a, button, input, select, textarea, label, span, strong
   border: 8px solid var(--sap-panel);
 }
 
-.home-stage-banner {
-  background-color: #eef3f8;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: 88% auto;
+.home-stage-welcome {
+  padding: 42px;
+  background: linear-gradient(145deg, #f8fafc, #eaf1f7);
 }
 
-.home-stage-banner::before {
+.home-stage-welcome::before {
   display: none;
+}
+
+.home-welcome-card {
+  position: relative;
+  z-index: 1;
+  width: min(760px, calc(100% - 32px));
+  padding: 12px;
+  border: 1px solid #a9bdcf;
+  background: #fff;
+  box-shadow: 0 12px 30px rgb(25 48 70 / 16%);
+}
+
+.home-welcome-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 62vh;
+  object-fit: contain;
+}
+
+@media (max-width: 700px) {
+  .home-stage-welcome { padding: 20px; }
+  .home-welcome-card { width: 100%; padding: 7px; }
 }
 
 .home-stage::before {
