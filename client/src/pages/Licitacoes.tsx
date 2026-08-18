@@ -1439,12 +1439,20 @@ export default function Licitacoes() {
               <div className="desktop-empty">{entregaLicitacaoId ? "Licitação não encontrada." : "Nenhuma licitação adjudicada com saldo pendente."}</div>
             ) : licitacoesEntrega.map((licitacao: any) => {
               const isOpen = Boolean(openEntregaGroups[licitacao.id]);
-              const isSelected = selectedLicitacao?.id === licitacao.id;
+              const isSelected = Number(selectedLicitacao?.id) === Number(licitacao.id);
               const saldoEntrega = numberValue(licitacao.saldoEntrega);
               const statusEntrega = Math.abs(saldoEntrega) < 0.001 ? "PEDIDO ENTREGUE" : "ENTREGA TOTAL PENDENTE";
               return (
                 <article className="licitacao-delivery-group" key={licitacao.id}>
-                  <button type="button" className="licitacao-group-header" onClick={() => { setSelectedLicitacao(licitacao); setOpenEntregaGroups((current) => ({ ...current, [licitacao.id]: !isOpen })); }}>
+                  <button
+                    type="button"
+                    className="licitacao-group-header"
+                    onClick={() => {
+                      const willOpen = !isOpen;
+                      setSelectedLicitacao(willOpen ? licitacao : null);
+                      setOpenEntregaGroups(willOpen ? { [licitacao.id]: true } : {});
+                    }}
+                  >
                     <span>{isOpen ? "-" : "+"}</span>
                     <strong>
                       <em>{normalizeText(licitacao.orgao)}</em>
