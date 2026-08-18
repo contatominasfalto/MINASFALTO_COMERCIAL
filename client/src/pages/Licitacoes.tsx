@@ -304,6 +304,65 @@ function SelectField({ label, value, onChange, children }: { label: string; valu
   );
 }
 
+function PedidosCrtiVinculados({
+  licitacao,
+  onEdit,
+  onDelete,
+}: {
+  licitacao: Licitacao;
+  onEdit: (pedido: any) => void;
+  onDelete: (pedido: any) => void;
+}) {
+  const pedidos = trpc.licitacoes.pedidosCrti.list.useQuery(
+    { licitacaoId: Number(licitacao.id) },
+    { enabled: Number(licitacao.id) > 0 },
+  );
+
+  return (
+    <div className="desktop-table-scroll licitacao-list-scroll">
+      <table className="desktop-table licitacao-delivery-table">
+        <thead>
+          <tr><th>Pedido</th><th>Cliente</th><th>Data</th><th>Status</th><th>Qtde</th><th>Valor</th><th>Saldo Entrega</th><th>Ações</th></tr>
+        </thead>
+        <tbody>
+          {pedidos.isLoading ? (
+            <tr><td colSpan={8} className="desktop-empty">Carregando pedidos vinculados...</td></tr>
+          ) : pedidos.error ? (
+            <tr><td colSpan={8} className="desktop-empty">Não foi possível carregar os pedidos vinculados: {pedidos.error.message}</td></tr>
+          ) : (pedidos.data?.items || []).length === 0 ? (
+            <tr><td colSpan={8} className="desktop-empty">Nenhum pedido vinculado a esta licitação.</td></tr>
+          ) : (pedidos.data?.items || []).map((pedido: any) => (
+            <tr key={pedido.id}>
+              <td>{pedido.pedidoCrti}</td>
+              <td>{normalizeText(pedido.cliente)}</td>
+              <td>{formatDateBR(pedido.dataPedido)}</td>
+              <td>{normalizeText(pedido.statusPedido)}</td>
+              <td className="num">{formatDecimal(pedido.quantidade)}</td>
+              <td className="num">{formatCurrency(pedido.valorTotal)}</td>
+              <td className="num">{formatSaldoEntrega(pedidos.data?.saldoEntrega || 0)}</td>
+              <td>
+                {String(pedido.origem || "CRTI").toUpperCase() === "MANUAL" && (
+                  <button type="button" className="mini-icon-button" onClick={() => onEdit(pedido)} title="Editar pedido manual">
+                    <Pencil size={14} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="mini-icon-button danger"
+                  onClick={() => onDelete(pedido)}
+                  title={String(pedido.origem || "CRTI").toUpperCase() === "MANUAL" ? "Excluir pedido manual" : "Desvincular pedido"}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function LicitacaoPagination({
   page,
   pageSize,
@@ -409,10 +468,6 @@ export default function Licitacoes() {
     adjudicadas: panelTab === "adjudicadas" ? true : false,
   });
   const adjudicadas = trpc.licitacoes.list.useQuery({ adjudicadas: true });
-  const pedidosCrti = trpc.licitacoes.pedidosCrti.list.useQuery(
-    { licitacaoId: selectedLicitacao?.id || 0 },
-    { enabled: Boolean(selectedLicitacao?.id) },
-  );
   const ata = trpc.licitacoes.ata.get.useQuery(
     { licitacaoId: selectedLicitacao?.id || 0 },
     { enabled: modal === "ata" && Boolean(selectedLicitacao?.id) },
@@ -1439,7 +1494,6 @@ export default function Licitacoes() {
               <div className="desktop-empty">{entregaLicitacaoId ? "Licitação não encontrada." : "Nenhuma licitação adjudicada com saldo pendente."}</div>
             ) : licitacoesEntrega.map((licitacao: any) => {
               const isOpen = Boolean(openEntregaGroups[licitacao.id]);
-              const isSelected = Number(selectedLicitacao?.id) === Number(licitacao.id);
               const saldoEntrega = numberValue(licitacao.saldoEntrega);
               const statusEntrega = Math.abs(saldoEntrega) < 0.001 ? "PEDIDO ENTREGUE" : "ENTREGA TOTAL PENDENTE";
               return (
@@ -1486,57 +1540,14 @@ export default function Licitacoes() {
                           <strong>{formatDecimal(licitacao.qtdeSc)}</strong>
                         </div>
                       </section>
-                      {isSelected && (
-                        <div className="desktop-table-scroll licitacao-list-scroll">
-                          <table className="desktop-table licitacao-delivery-table">
-                            <thead>
-                              <tr><th>Pedido</th><th>Cliente</th><th>Data</th><th>Status</th><th>Qtde</th><th>Valor</th><th>Saldo Entrega</th><th>Ações</th></tr>
-                            </thead>
-                            <tbody>
-                              {(pedidosCrti.data?.items || []).map((pedido: any) => (
-                                <tr key={pedido.id}>
-                                  <td>{pedido.pedidoCrti}</td>
-                                  <td>{normalizeText(pedido.cliente)}</td>
-                                  <td>{formatDateBR(pedido.dataPedido)}</td>
-                                  <td>{normalizeText(pedido.statusPedido)}</td>
-                                  <td className="num">{formatDecimal(pedido.quantidade)}</td>
-                                  <td className="num">{formatCurrency(pedido.valorTotal)}</td>
-                                  <td className="num">{formatSaldoEntrega(pedidosCrti.data?.saldoEntrega || 0)}</td>
-                                  <td>
-                                    {String(pedido.origem || "CRTI").toUpperCase() === "MANUAL" && (
-                                      <button
-                                        type="button"
-                                        className="mini-icon-button"
-                                        onClick={(event) => {
-                                          event.preventDefault();
-                                          event.stopPropagation();
-                                          openPedidoManual(licitacao, pedido);
-                                        }}
-                                        title="Editar pedido manual"
-                                      >
-                                        <Pencil size={14} />
-                                      </button>
-                                    )}
-                                    <button
-                                      type="button"
-                                      className="mini-icon-button danger"
-                                      onClick={(event) => {
-                                        event.preventDefault();
-                                        event.stopPropagation();
-                                        setSelectedLicitacao(licitacao);
-                                        setDeletePedidoTarget({ pedido, licitacao });
-                                      }}
-                                      title={String(pedido.origem || "CRTI").toUpperCase() === "MANUAL" ? "Excluir pedido manual" : "Desvincular pedido"}
-                                    >
-                                      <Trash2 size={14} />
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
+                      <PedidosCrtiVinculados
+                        licitacao={licitacao}
+                        onEdit={(pedido) => openPedidoManual(licitacao, pedido)}
+                        onDelete={(pedido) => {
+                          setSelectedLicitacao(licitacao);
+                          setDeletePedidoTarget({ pedido, licitacao });
+                        }}
+                      />
                     </div>
                   )}
                 </article>
