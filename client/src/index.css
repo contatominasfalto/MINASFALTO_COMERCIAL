@@ -2048,7 +2048,7 @@ table :is(th, td) :where(a, button, input, select, textarea, label, span, strong
   background: linear-gradient(#fff8e6, #ead89f) !important;
 }
 
-.licitacao-status-pendente {
+.licitacao-status-alerta {
   color: #c00000 !important;
   font-weight: 900 !important;
 }

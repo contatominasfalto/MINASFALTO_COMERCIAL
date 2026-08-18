@@ -206,8 +206,26 @@ function isAdjucadoStatus(value: unknown) {
   return text.includes("ADJUCADO") || text.includes("ADJUDICADO");
 }
 
-function isPendenteStatus(value: unknown) {
-  return normalizeText(value).trim() === "PENDENTE";
+const LICITACAO_STATUS_SEM_DESTAQUE = new Set([
+  "RECURSO ENVIADO",
+  "INVIAVEL",
+  "INABILITADO POR DOCUMENTOS",
+  "ENCERRADO",
+  "CONTRATO CANCELADO",
+  "ADJUDICADO",
+  "ADJUCADO",
+]);
+
+function shouldHighlightLicitacaoStatus(value: unknown) {
+  const status = normalizeText(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return !LICITACAO_STATUS_SEM_DESTAQUE.has(status)
+    && !status.startsWith("ADJUDICADO/")
+    && !status.startsWith("ADJUCADO/");
 }
 
 function getLicitacaoStatusDisplay(licitacao: Licitacao) {
@@ -1003,7 +1021,7 @@ export default function Licitacoes() {
                   <td className="licitacao-col-data">{formatDateBR(licitacao.data)}</td>
                   <td className="licitacao-col-orgao" title={licitacao.orgao}>{normalizeText(licitacao.orgao)}</td>
                   <td className="licitacao-col-cidade">{normalizeText(licitacao.cidade)}</td>
-                  <td className={`licitacao-col-status${isPendenteStatus(getLicitacaoStatusDisplay(licitacao)) ? " licitacao-status-pendente" : ""}`}>
+                  <td className={`licitacao-col-status${shouldHighlightLicitacaoStatus(getLicitacaoStatusDisplay(licitacao)) ? " licitacao-status-alerta" : ""}`}>
                     {getLicitacaoStatusDisplay(licitacao)}
                   </td>
                   {panelTab === "geral" && (
