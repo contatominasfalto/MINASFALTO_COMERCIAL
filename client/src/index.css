@@ -1478,6 +1478,17 @@
   border: 8px solid var(--sap-panel);
 }
 
+.home-stage-banner {
+  background-color: #eef3f8;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.home-stage-banner::before {
+  display: none;
+}
+
 .home-stage::before {
   content: "";
   position: absolute;

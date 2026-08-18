@@ -17,6 +17,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
+import bannerTapFacil from "@/assets/banner-tapfacil.jpg";
 import { usePermissions } from "@/_core/hooks/usePermissions";
 
 type HomeView = "welcome" | "costs";
@@ -170,9 +171,16 @@ export default function Home({ view = "welcome" }: { view?: HomeView }) {
           </button>
         </header>
 
-        <section className="home-stage">
-          <div className="home-watermark home-watermark-left" />
-          <div className="home-watermark home-watermark-right" />
+        <section
+          className={`home-stage${activeView === "welcome" ? " home-stage-banner" : ""}`}
+          style={activeView === "welcome" ? { backgroundImage: `url(${bannerTapFacil})` } : undefined}
+        >
+          {activeView === "costs" && (
+            <>
+              <div className="home-watermark home-watermark-left" />
+              <div className="home-watermark home-watermark-right" />
+            </>
+          )}
 
           {activeView === "costs" ? (
             <div className="home-center">
@@ -181,13 +189,7 @@ export default function Home({ view = "welcome" }: { view?: HomeView }) {
               <h2>Painel de Custos</h2>
               <p>Modulo em desenvolvimento.</p>
             </div>
-          ) : (
-            <div className="home-center">
-              <MinasfaltoLogo />
-              <h2>Bem-vindo!</h2>
-              <p>Selecione uma opcao no menu ao lado para comecar.</p>
-            </div>
-          )}
+          ) : null}
         </section>
       </section>
     </main>
