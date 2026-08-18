@@ -356,7 +356,6 @@ export default function Licitacoes() {
   const utils = trpc.useUtils();
   const [modal, setModal] = useState<ActiveModal>("menu");
   const [panelTab, setPanelTab] = useState<PanelTab>("geral");
-  const [search, setSearch] = useState("");
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [sortKey, setSortKey] = useState("data");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
@@ -407,7 +406,6 @@ export default function Licitacoes() {
   const alertasVencimentoRefetch = useRef(alertasVencimento.refetch);
   alertasVencimentoRefetch.current = alertasVencimento.refetch;
   const licitacoes = trpc.licitacoes.list.useQuery({
-    search,
     adjudicadas: panelTab === "adjudicadas" ? true : false,
   });
   const adjudicadas = trpc.licitacoes.list.useQuery({ adjudicadas: true });
@@ -655,7 +653,7 @@ export default function Licitacoes() {
 
   useEffect(() => {
     setLicitacaoPage(1);
-  }, [search, panelTab, licitacaoPageSize, columnFilters]);
+  }, [panelTab, licitacaoPageSize, columnFilters]);
 
   useEffect(() => {
     if (licitacaoPage > licitacaoTotalPages) setLicitacaoPage(licitacaoTotalPages);
@@ -965,10 +963,6 @@ export default function Licitacoes() {
       <section className="desktop-toolbar">
         <button className="desktop-action" onClick={() => setModal("menu")}><Plus size={14} /> Menu Licitações</button>
         <button className="desktop-action" onClick={() => openLicitacaoForm()}><Plus size={14} /> Nova Licitação</button>
-        <label className="desktop-search">
-          <Search size={13} /> Buscar:
-          <input value={search} onChange={(event) => setSearch(event.target.value)} />
-        </label>
       </section>
 
       <section className="desktop-tabs licitacao-tabs">
