@@ -19,6 +19,27 @@
   --sap-text: #001b34;
   --sap-muted: #40566d;
   --sap-yellow: #f5a623;
+  --sap-table-font-family: "Segoe UI", Arial, sans-serif;
+  --sap-table-font-size: 12px;
+}
+
+/*
+ * Padrão tipográfico único para todas as grades do sistema.
+ * Mantido fora dos módulos para impedir divergências visuais entre telas.
+ */
+table {
+  font-family: var(--sap-table-font-family) !important;
+  font-size: var(--sap-table-font-size) !important;
+}
+
+table :is(th, td) {
+  font-family: var(--sap-table-font-family) !important;
+  font-size: var(--sap-table-font-size) !important;
+}
+
+table :is(th, td) :where(a, button, input, select, textarea, label, span, strong, small, em) {
+  font-family: inherit !important;
+  font-size: inherit !important;
 }
 
 @layer base {
