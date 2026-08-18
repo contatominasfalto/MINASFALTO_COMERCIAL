@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS `system_audit_log` (
   `occurredAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `userId` int NULL,
   `username` varchar(64) NULL,
-  `userName` varchar(255) NULL,
+  `displayName` varchar(255) NULL,
   `module` varchar(80) NOT NULL,
   `action` varchar(80) NOT NULL,
   `procedurePath` varchar(180) NOT NULL,

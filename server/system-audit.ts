@@ -16,7 +16,7 @@ async function ensureSchema() {
     const pool = await getMysqlPool();
     await pool.query(`CREATE TABLE IF NOT EXISTS \`system_audit_log\` (
       \`id\` int NOT NULL AUTO_INCREMENT PRIMARY KEY, \`occurredAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      \`userId\` int NULL, \`username\` varchar(64) NULL, \`userName\` varchar(255) NULL,
+      \`userId\` int NULL, \`username\` varchar(64) NULL, \`displayName\` varchar(255) NULL,
       \`module\` varchar(80) NOT NULL, \`action\` varchar(80) NOT NULL, \`procedurePath\` varchar(180) NOT NULL,
       \`entityType\` varchar(100) NULL, \`entityId\` varchar(100) NULL, \`description\` varchar(500) NOT NULL,
       \`result\` enum('success','error') NOT NULL, \`ipAddress\` varchar(64) NULL, \`userAgent\` varchar(500) NULL,
@@ -56,7 +56,7 @@ export async function recordAudit(event: {
     const module = MODULE_LABELS[root] || root;
     const description = `${event.result === "success" ? "Operação concluída" : "Falha na operação"}: ${action}`;
     await pool.execute(`INSERT INTO \`system_audit_log\`
-      (\`userId\`,\`username\`,\`userName\`,\`module\`,\`action\`,\`procedurePath\`,\`entityType\`,\`entityId\`,\`description\`,\`result\`,\`ipAddress\`,\`userAgent\`,\`inputData\`,\`errorMessage\`)
+      (\`userId\`,\`username\`,\`displayName\`,\`module\`,\`action\`,\`procedurePath\`,\`entityType\`,\`entityId\`,\`description\`,\`result\`,\`ipAddress\`,\`userAgent\`,\`inputData\`,\`errorMessage\`)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
       event.user?.id || null, event.user?.username || null, event.user?.name || null, module, action, event.path,
       segments.length > 1 ? segments.at(-2) : root, entityId == null ? null : String(entityId), description, event.result,
@@ -74,7 +74,7 @@ export async function listAudit(filters: { search?: string; module?: string; res
   const pool = await getMysqlPool();
   const where: string[] = ["1=1"];
   const values: unknown[] = [];
-  if (filters.search) { where.push("(\`username\` LIKE ? OR \`userName\` LIKE ? OR \`action\` LIKE ? OR \`description\` LIKE ? OR \`entityId\` LIKE ?)"); const q = `%${filters.search}%`; values.push(q,q,q,q,q); }
+  if (filters.search) { where.push("(\`username\` LIKE ? OR \`displayName\` LIKE ? OR \`action\` LIKE ? OR \`description\` LIKE ? OR \`entityId\` LIKE ?)"); const q = `%${filters.search}%`; values.push(q,q,q,q,q); }
   if (filters.module) { where.push("\`module\` = ?"); values.push(filters.module); }
   if (filters.result) { where.push("\`result\` = ?"); values.push(filters.result); }
   if (filters.start) { where.push("\`occurredAt\` >= ?"); values.push(`${filters.start} 00:00:00`); }

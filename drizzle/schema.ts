@@ -83,7 +83,7 @@ export const systemAuditLog = mysqlTable("system_audit_log", {
   occurredAt: timestamp("occurredAt").defaultNow().notNull(),
   userId: int("userId"),
   username: varchar("username", { length: 64 }),
-  userName: varchar("userName", { length: 255 }),
+  displayName: varchar("displayName", { length: 255 }),
   module: varchar("module", { length: 80 }).notNull(),
   action: varchar("action", { length: 80 }).notNull(),
   procedurePath: varchar("procedurePath", { length: 180 }).notNull(),
