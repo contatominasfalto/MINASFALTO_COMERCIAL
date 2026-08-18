@@ -12,6 +12,7 @@ import {
   Warehouse,
   Utensils,
   UserCog,
+  ShieldCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -48,6 +49,7 @@ export default function Home({ view = "welcome" }: { view?: HomeView }) {
   const [userOpen, setUserOpen] = useState(false);
   const userProfile = normalizeUserKey((user as { profile?: unknown } | null)?.profile);
   const userName = normalizeUserKey(user?.name);
+  const isAdmfull = [userProfile, normalizeUserKey((user as any)?.username), userName].includes("admfull");
   const canAccessCosts = permissions.can("custo_obras", "access");
   const activeView = view === "costs" && canAccessCosts ? "costs" : "welcome";
 
@@ -132,6 +134,12 @@ export default function Home({ view = "welcome" }: { view?: HomeView }) {
             <button type="button" className="home-menu-trigger" onClick={() => navigate("/controle-usuarios")} title="Controle de Usuários">
               <UserCog size={22} />
               {!collapsed && <span>Controle de Usuários</span>}
+            </button>
+          )}
+          {isAdmfull && (
+            <button type="button" className="home-menu-trigger" onClick={() => navigate("/rastreabilidade")} title="Rastreabilidade">
+              <ShieldCheck size={22} />
+              {!collapsed && <span>Rastreabilidade</span>}
             </button>
           )}
         </nav>

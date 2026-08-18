@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
+import { publicProcedure, router, protectedProcedure, masterProcedure } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
 import * as crtiSync from "./crti-sync";
@@ -18,6 +18,7 @@ import * as accessDb from "./access-control-db";
 import { ACCESS_CATALOG, ACCESS_EFFECTS, USER_STATUSES } from "../shared/access-control";
 import { verifyPassword } from "./password-security";
 import { isLegacyEnvironmentUser } from "./local-login-users";
+import { listAudit } from "./system-audit";
 
 const STATUS_SAIDA_OK = "SA\u00cdDA OK";
 const pedidoAtividadeDescricaoSchema = z.string().trim().min(1, "Informe a atividade.").max(2000, "A atividade deve ter no máximo 2.000 caracteres.");
@@ -372,6 +373,17 @@ const permissionEntrySchema = z.object({
 
 export const appRouter = router({
   system: systemRouter,
+  rastreabilidade: router({
+    list: masterProcedure.input(z.object({
+      search: z.string().trim().max(200).optional(),
+      module: z.string().trim().max(80).optional(),
+      result: z.enum(["success", "error"]).optional(),
+      start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      page: z.number().int().positive().default(1),
+      pageSize: z.number().int().min(10).max(100).default(50),
+    })).query(({ input }) => listAudit(input)),
+  }),
   auth: router({
     me: publicProcedure.query(opts => {
       if (!opts.ctx.user) return null;

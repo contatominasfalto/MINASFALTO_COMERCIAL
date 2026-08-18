@@ -4,13 +4,34 @@ import superjson from "superjson";
 import type { TrpcContext } from "./context";
 import { assertPermission } from "../access-control-db";
 import { isMasterIdentity, permissionTargetForProcedure } from "../../shared/access-control";
+import { recordAudit } from "../system-audit";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
 });
 
 export const router = t.router;
-export const publicProcedure = t.procedure;
+
+const auditMutation = t.middleware(async (opts) => {
+  if (opts.type !== "mutation") return opts.next();
+  const input = await opts.getRawInput();
+  const context = opts.ctx as TrpcContext;
+  const request = context.req;
+  const loginIdentity = opts.path === "auth.localLogin" && input && typeof input === "object"
+    ? { username: String((input as { username?: unknown }).username || "").trim().toLowerCase(), name: "Tentativa de login" }
+    : null;
+  const details = { path: opts.path, input, user: context.user || loginIdentity, ipAddress: request?.ip || request?.socket?.remoteAddress, userAgent: request?.headers?.["user-agent"] };
+  try {
+    const result = await opts.next();
+    await recordAudit({ ...details, result: "success" });
+    return result;
+  } catch (error) {
+    await recordAudit({ ...details, result: "error", error });
+    throw error;
+  }
+});
+
+export const publicProcedure = t.procedure.use(auditMutation);
 
 const requireUser = t.middleware(async opts => {
   const { ctx, next } = opts;
@@ -35,7 +56,7 @@ const requireEffectivePermission = t.middleware(async (opts) => {
   return next({ ctx: { ...ctx, user: ctx.user } });
 });
 
-export const protectedProcedure = t.procedure.use(requireUser).use(requireEffectivePermission);
+export const protectedProcedure = t.procedure.use(requireUser).use(requireEffectivePermission).use(auditMutation);
 
 export const masterProcedure = t.procedure.use(requireUser).use(
   t.middleware(async ({ ctx, next }) => {
@@ -44,7 +65,7 @@ export const masterProcedure = t.procedure.use(requireUser).use(
     }
     return next({ ctx: { ...ctx, user: ctx.user } });
   }),
-);
+).use(auditMutation);
 
 export const adminProcedure = t.procedure.use(
   t.middleware(async opts => {
@@ -61,4 +82,4 @@ export const adminProcedure = t.procedure.use(
       },
     });
   }),
-);
+).use(auditMutation);

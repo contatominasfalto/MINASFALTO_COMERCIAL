@@ -78,6 +78,29 @@ export const permissionAuditLog = mysqlTable("permission_audit_log", {
   permissionAuditTargetIndex: index("permission_audit_target_idx").on(table.targetUserId),
 }));
 
+export const systemAuditLog = mysqlTable("system_audit_log", {
+  id: int("id").autoincrement().primaryKey(),
+  occurredAt: timestamp("occurredAt").defaultNow().notNull(),
+  userId: int("userId"),
+  username: varchar("username", { length: 64 }),
+  userName: varchar("userName", { length: 255 }),
+  module: varchar("module", { length: 80 }).notNull(),
+  action: varchar("action", { length: 80 }).notNull(),
+  procedurePath: varchar("procedurePath", { length: 180 }).notNull(),
+  entityType: varchar("entityType", { length: 100 }),
+  entityId: varchar("entityId", { length: 100 }),
+  description: varchar("description", { length: 500 }).notNull(),
+  result: mysqlEnum("result", ["success", "error"]).notNull(),
+  ipAddress: varchar("ipAddress", { length: 64 }),
+  userAgent: varchar("userAgent", { length: 500 }),
+  inputData: text("inputData"),
+  errorMessage: text("errorMessage"),
+}, (table) => ({
+  systemAuditDateIndex: index("system_audit_date_idx").on(table.occurredAt),
+  systemAuditUserIndex: index("system_audit_user_idx").on(table.userId),
+  systemAuditModuleIndex: index("system_audit_module_idx").on(table.module),
+}));
+
 export type UserPermission = typeof userPermissions.$inferSelect;
 export type ProfilePermission = typeof profilePermissions.$inferSelect;
 

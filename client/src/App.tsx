@@ -9,6 +9,7 @@ import CustoObras from "@/pages/CustoObras";
 import Licitacoes from "@/pages/Licitacoes";
 import Alimentacao from "@/pages/Alimentacao";
 import ControleUsuarios from "@/pages/ControleUsuarios";
+import Rastreabilidade from "@/pages/Rastreabilidade";
 import { Route, Router as WouterRouter, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -93,6 +94,7 @@ function Router() {
   }
 
   const canAccessCosts = permissions.can("custo_obras", "access");
+  const isAdmfull = [user?.username, user?.profile, user?.name].some((value) => normalizeUserKey(value) === "admfull");
   const denied = <main className="users-denied"><h1>Acesso negado</h1><p>Você não possui permissão para acessar este módulo.</p></main>;
 
   return (
@@ -116,6 +118,7 @@ function Router() {
         </StockProvider> : denied}
       </Route>
       <Route path={"/controle-usuarios"}>{permissions.can("usuarios", "access") ? <ControleUsuarios /> : denied}</Route>
+      <Route path={"/rastreabilidade"}>{isAdmfull ? <Rastreabilidade /> : denied}</Route>
       <Route path={"/login"}>
         <Home />
       </Route>

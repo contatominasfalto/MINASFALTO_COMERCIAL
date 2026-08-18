@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS `system_audit_log` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `occurredAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `userId` int NULL,
+  `username` varchar(64) NULL,
+  `userName` varchar(255) NULL,
+  `module` varchar(80) NOT NULL,
+  `action` varchar(80) NOT NULL,
+  `procedurePath` varchar(180) NOT NULL,
+  `entityType` varchar(100) NULL,
+  `entityId` varchar(100) NULL,
+  `description` varchar(500) NOT NULL,
+  `result` enum('success','error') NOT NULL,
+  `ipAddress` varchar(64) NULL,
+  `userAgent` varchar(500) NULL,
+  `inputData` text NULL,
+  `errorMessage` text NULL,
+  PRIMARY KEY (`id`),
+  KEY `system_audit_date_idx` (`occurredAt`),
+  KEY `system_audit_user_idx` (`userId`),
+  KEY `system_audit_module_idx` (`module`)
+);
