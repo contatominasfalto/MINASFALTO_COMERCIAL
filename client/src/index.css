@@ -1526,9 +1526,20 @@ table :is(th, td) :where(a, button, input, select, textarea, label, span, strong
   object-fit: contain;
 }
 
+.home-stage-signature {
+  position: absolute;
+  right: 24px;
+  bottom: 16px;
+  z-index: 2;
+  width: 237px;
+  height: 65px;
+  object-fit: contain;
+}
+
 @media (max-width: 700px) {
   .home-stage-welcome { padding: 20px; }
   .home-welcome-card { width: 100%; padding: 7px; }
+  .home-stage-signature { right: 12px; bottom: 10px; width: 170px; height: 47px; }
 }
 
 .home-stage::before {

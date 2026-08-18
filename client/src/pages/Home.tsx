@@ -19,6 +19,7 @@ import { useLocation } from "wouter";
 import { toast } from "sonner";
 import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
 import cartaoMinasfalto from "@/assets/cartao-minasfalto.png";
+import assinaturaMaxwell from "@/assets/assinatura-maxwell.png";
 import { usePermissions } from "@/_core/hooks/usePermissions";
 
 type HomeView = "welcome" | "costs";
@@ -195,9 +196,16 @@ export default function Home({ view = "welcome" }: { view?: HomeView }) {
               <p>Modulo em desenvolvimento.</p>
             </div>
           ) : (
-            <div className="home-welcome-card">
-              <img src={cartaoMinasfalto} alt="Minasfalto" />
-            </div>
+            <>
+              <div className="home-welcome-card">
+                <img src={cartaoMinasfalto} alt="Minasfalto" />
+              </div>
+              <img
+                src={assinaturaMaxwell}
+                alt="Assinatura digital"
+                className="home-stage-signature"
+              />
+            </>
           )}
         </section>
       </section>
