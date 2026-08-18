@@ -1482,7 +1482,7 @@
   background-color: #eef3f8;
   background-position: center;
   background-repeat: no-repeat;
-  background-size: cover;
+  background-size: 88% auto;
 }
 
 .home-stage-banner::before {
