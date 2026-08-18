@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,7 +9,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import SapDoubleConfirmDialog from "@/components/SapDoubleConfirmDialog";
 import { StockModal } from "@/components/StockModal";
 import { useStock } from "@/contexts/StockContext";
@@ -39,6 +38,73 @@ export default function StockPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [selectedMovementId, setSelectedMovementId] = useState<string | null>(null);
+  const [sortColumn, setSortColumn] = useState<string>("date");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const stockTableRef = useRef<HTMLDivElement>(null);
+
+  const visibleMovements = useMemo(() => {
+    const multiplier = sortDirection === "asc" ? 1 : -1;
+    return [...movements].sort((left: any, right: any) => {
+      const leftValue = sortColumn === "date" ? new Date(left.date).getTime() : left[sortColumn];
+      const rightValue = sortColumn === "date" ? new Date(right.date).getTime() : right[sortColumn];
+
+      if (typeof leftValue === "number" && typeof rightValue === "number") {
+        return (leftValue - rightValue) * multiplier;
+      }
+
+      return String(leftValue ?? "").localeCompare(String(rightValue ?? ""), "pt-BR", {
+        numeric: true,
+        sensitivity: "base",
+      }) * multiplier;
+    });
+  }, [movements, sortColumn, sortDirection]);
+
+  const selectedMovement = visibleMovements.find((item) => item.id === selectedMovementId)
+    ?? visibleMovements[0]
+    ?? null;
+
+  const formatStockNumber = (value: number) => value.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection((current) => current === "asc" ? "desc" : "asc");
+      return;
+    }
+    setSortColumn(column);
+    setSortDirection("asc");
+  };
+
+  const sortIndicator = (column: string) => sortColumn === column
+    ? (sortDirection === "asc" ? "▲" : "▼")
+    : "";
+
+  const handleTableKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!visibleMovements.length) return;
+    if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Enter"].includes(event.key)) return;
+
+    event.preventDefault();
+    if (event.key === "Enter") {
+      if (selectedMovement) handleEdit(selectedMovement.id);
+      return;
+    }
+
+    const currentIndex = visibleMovements.findIndex((item) => item.id === selectedMovement?.id);
+    const startIndex = currentIndex >= 0 ? currentIndex : 0;
+    const nextIndex = event.key === "ArrowDown" || event.key === "ArrowRight"
+      ? Math.min(startIndex + 1, visibleMovements.length - 1)
+      : Math.max(startIndex - 1, 0);
+    const nextMovement = visibleMovements[nextIndex];
+    setSelectedMovementId(nextMovement.id);
+    requestAnimationFrame(() => {
+      stockTableRef.current
+        ?.querySelector<HTMLTableRowElement>(`tr[data-movement-id="${nextMovement.id}"]`)
+        ?.scrollIntoView({ block: "nearest" });
+    });
+  };
 
   const handleEdit = (id: string) => {
     setEditId(id);
@@ -296,30 +362,39 @@ export default function StockPage() {
             </Button>
           </div>
         ) : (
-          <div className="stock-table-scroll">
+          <>
+          <div
+            className="stock-table-scroll keyboard-table-scroll"
+            ref={stockTableRef}
+            tabIndex={0}
+            role="grid"
+            aria-label="Movimentações de estoque"
+            onKeyDown={handleTableKeyDown}
+          >
             <Table className="stock-data-table">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead className="text-center">Est. Inicial</TableHead>
-                  <TableHead className="text-center">Producao</TableHead>
-                  <TableHead className="text-center">Saidas</TableHead>
-                  <TableHead className="text-center">Saida Granel (t)</TableHead>
-                  <TableHead className="text-center">Entrada Granel (t)</TableHead>
-                  <TableHead className="text-center">Est. Final</TableHead>
-                  <TableHead className="text-center">Granel Final (t)</TableHead>
-                  <TableHead>Ocorrencias</TableHead>
-                  <TableHead className="text-center">Acoes</TableHead>
+                  <TableHead onClick={() => handleSort("date")}>Data <span className="table-sort-indicator">{sortIndicator("date")}</span></TableHead>
+                  <TableHead className="text-center" onClick={() => handleSort("initialStock")}>Est. Inicial <span className="table-sort-indicator">{sortIndicator("initialStock")}</span></TableHead>
+                  <TableHead className="text-center" onClick={() => handleSort("production")}>Produção <span className="table-sort-indicator">{sortIndicator("production")}</span></TableHead>
+                  <TableHead className="text-center" onClick={() => handleSort("outputs")}>Saídas <span className="table-sort-indicator">{sortIndicator("outputs")}</span></TableHead>
+                  <TableHead className="text-center" onClick={() => handleSort("bulkOutputTons")}>Saída Granel (t) <span className="table-sort-indicator">{sortIndicator("bulkOutputTons")}</span></TableHead>
+                  <TableHead className="text-center" onClick={() => handleSort("bulkEntryTons")}>Entrada Granel (t) <span className="table-sort-indicator">{sortIndicator("bulkEntryTons")}</span></TableHead>
+                  <TableHead className="text-center" onClick={() => handleSort("finalStock")}>Est. Final <span className="table-sort-indicator">{sortIndicator("finalStock")}</span></TableHead>
+                  <TableHead className="text-center" onClick={() => handleSort("bulkFinalTons")}>Granel Final (t) <span className="table-sort-indicator">{sortIndicator("bulkFinalTons")}</span></TableHead>
+                  <TableHead onClick={() => handleSort("occurrences")}>Ocorrências <span className="table-sort-indicator">{sortIndicator("occurrences")}</span></TableHead>
+                  <TableHead className="text-center">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {movements.map((item, index) => {
-                  const isPositive = item.finalStock >= 0;
-
+                {visibleMovements.map((item) => {
                   return (
                     <TableRow
                       key={item.id}
-                      className={index % 2 === 0 ? "stock-row-muted" : ""}
+                      data-movement-id={item.id}
+                      className={selectedMovement?.id === item.id ? "selected" : ""}
+                      onClick={() => setSelectedMovementId(item.id)}
+                      onDoubleClick={() => handleEdit(item.id)}
                     >
                       <TableCell className="font-medium">
                         {format(new Date(item.date), "dd/MM/yyyy", {
@@ -330,39 +405,28 @@ export default function StockPage() {
                         </span>
                       </TableCell>
                       <TableCell className="text-center">
-                        {item.initialStock.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-center text-blue-600">
-                        {item.production.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-center text-red-600">
-                        {item.outputs.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-center text-red-600">
-                        {item.bulkOutputTons.toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-center text-blue-600">
-                        {item.bulkEntryTons.toFixed(2)}
-                      </TableCell>
-                      <TableCell
-                        className={`text-center font-semibold ${
-                          isPositive ? "text-green-600" : "text-red-600"
-                        }`}
-                      >
-                        {item.finalStock.toFixed(2)}
+                        {formatStockNumber(item.initialStock)}
                       </TableCell>
                       <TableCell className="text-center">
-                        {item.bulkFinalTons.toFixed(2)}
+                        {formatStockNumber(item.production)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {formatStockNumber(item.outputs)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {formatStockNumber(item.bulkOutputTons)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {formatStockNumber(item.bulkEntryTons)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {formatStockNumber(item.finalStock)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {formatStockNumber(item.bulkFinalTons)}
                       </TableCell>
                       <TableCell>
-                        {item.occurrences && (
-                          <Badge
-                            variant="outline"
-                            className="max-w-[150px] truncate"
-                          >
-                            {item.occurrences}
-                          </Badge>
-                        )}
+                        {item.occurrences || ""}
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex justify-center gap-1">
@@ -370,7 +434,7 @@ export default function StockPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleEdit(item.id)}
-                            className="h-8 w-8 stock-icon-button"
+                            className="stock-icon-button"
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -378,7 +442,7 @@ export default function StockPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => setDeleteTarget(item)}
-                            className="h-8 w-8 text-red-500 hover:text-red-700 stock-icon-button"
+                            className="stock-icon-button"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -390,6 +454,12 @@ export default function StockPage() {
               </TableBody>
             </Table>
           </div>
+          <div className="stock-table-statusbar">
+            <span>{visibleMovements.length} lançamento(ões) exibido(s)</span>
+            <span>Use as setas para navegar e Enter para editar</span>
+            <strong>Usuário: {user?.name ?? "admfull"}</strong>
+          </div>
+          </>
         )}
       </section>
 
