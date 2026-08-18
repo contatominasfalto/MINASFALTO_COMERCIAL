@@ -14,14 +14,14 @@ let schemaPromise: Promise<void> | null = null;
 async function ensureSchema() {
   if (!schemaPromise) schemaPromise = (async () => {
     const pool = await getMysqlPool();
-    await pool.query(`CREATE TABLE IF NOT EXISTS system_audit_log (
-      id int NOT NULL AUTO_INCREMENT PRIMARY KEY, occurredAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      userId int NULL, username varchar(64) NULL, userName varchar(255) NULL,
-      module varchar(80) NOT NULL, action varchar(80) NOT NULL, procedurePath varchar(180) NOT NULL,
-      entityType varchar(100) NULL, entityId varchar(100) NULL, description varchar(500) NOT NULL,
-      result enum('success','error') NOT NULL, ipAddress varchar(64) NULL, userAgent varchar(500) NULL,
-      inputData text NULL, errorMessage text NULL,
-      KEY system_audit_date_idx (occurredAt), KEY system_audit_user_idx (userId), KEY system_audit_module_idx (module)
+    await pool.query(`CREATE TABLE IF NOT EXISTS \`system_audit_log\` (
+      \`id\` int NOT NULL AUTO_INCREMENT PRIMARY KEY, \`occurredAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      \`userId\` int NULL, \`username\` varchar(64) NULL, \`userName\` varchar(255) NULL,
+      \`module\` varchar(80) NOT NULL, \`action\` varchar(80) NOT NULL, \`procedurePath\` varchar(180) NOT NULL,
+      \`entityType\` varchar(100) NULL, \`entityId\` varchar(100) NULL, \`description\` varchar(500) NOT NULL,
+      \`result\` enum('success','error') NOT NULL, \`ipAddress\` varchar(64) NULL, \`userAgent\` varchar(500) NULL,
+      \`inputData\` text NULL, \`errorMessage\` text NULL,
+      KEY \`system_audit_date_idx\` (\`occurredAt\`), KEY \`system_audit_user_idx\` (\`userId\`), KEY \`system_audit_module_idx\` (\`module\`)
     )`);
   })().catch((error) => { schemaPromise = null; throw error; });
   return schemaPromise;
@@ -55,8 +55,8 @@ export async function recordAudit(event: {
     const entityId = identity(event.input);
     const module = MODULE_LABELS[root] || root;
     const description = `${event.result === "success" ? "Operação concluída" : "Falha na operação"}: ${action}`;
-    await pool.execute(`INSERT INTO system_audit_log
-      (userId,username,userName,module,action,procedurePath,entityType,entityId,description,result,ipAddress,userAgent,inputData,errorMessage)
+    await pool.execute(`INSERT INTO \`system_audit_log\`
+      (\`userId\`,\`username\`,\`userName\`,\`module\`,\`action\`,\`procedurePath\`,\`entityType\`,\`entityId\`,\`description\`,\`result\`,\`ipAddress\`,\`userAgent\`,\`inputData\`,\`errorMessage\`)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [
       event.user?.id || null, event.user?.username || null, event.user?.name || null, module, action, event.path,
       segments.length > 1 ? segments.at(-2) : root, entityId == null ? null : String(entityId), description, event.result,
@@ -74,15 +74,15 @@ export async function listAudit(filters: { search?: string; module?: string; res
   const pool = await getMysqlPool();
   const where: string[] = ["1=1"];
   const values: unknown[] = [];
-  if (filters.search) { where.push("(username LIKE ? OR userName LIKE ? OR action LIKE ? OR description LIKE ? OR entityId LIKE ?)"); const q = `%${filters.search}%`; values.push(q,q,q,q,q); }
-  if (filters.module) { where.push("module = ?"); values.push(filters.module); }
-  if (filters.result) { where.push("result = ?"); values.push(filters.result); }
-  if (filters.start) { where.push("occurredAt >= ?"); values.push(`${filters.start} 00:00:00`); }
-  if (filters.end) { where.push("occurredAt <= ?"); values.push(`${filters.end} 23:59:59`); }
+  if (filters.search) { where.push("(\`username\` LIKE ? OR \`userName\` LIKE ? OR \`action\` LIKE ? OR \`description\` LIKE ? OR \`entityId\` LIKE ?)"); const q = `%${filters.search}%`; values.push(q,q,q,q,q); }
+  if (filters.module) { where.push("\`module\` = ?"); values.push(filters.module); }
+  if (filters.result) { where.push("\`result\` = ?"); values.push(filters.result); }
+  if (filters.start) { where.push("\`occurredAt\` >= ?"); values.push(`${filters.start} 00:00:00`); }
+  if (filters.end) { where.push("\`occurredAt\` <= ?"); values.push(`${filters.end} 23:59:59`); }
   const clause = where.join(" AND ");
-  const [countRows] = await pool.query<mysql.RowDataPacket[]>(`SELECT COUNT(*) total FROM system_audit_log WHERE ${clause}`, values);
+  const [countRows] = await pool.query<mysql.RowDataPacket[]>(`SELECT COUNT(*) total FROM \`system_audit_log\` WHERE ${clause}`, values);
   const offset = (filters.page - 1) * filters.pageSize;
-  const [rows] = await pool.query<mysql.RowDataPacket[]>(`SELECT * FROM system_audit_log WHERE ${clause} ORDER BY occurredAt DESC, id DESC LIMIT ? OFFSET ?`, [...values, filters.pageSize, offset]);
-  const [modules] = await pool.query<mysql.RowDataPacket[]>("SELECT DISTINCT module FROM system_audit_log ORDER BY module");
+  const [rows] = await pool.query<mysql.RowDataPacket[]>(`SELECT * FROM \`system_audit_log\` WHERE ${clause} ORDER BY \`occurredAt\` DESC, \`id\` DESC LIMIT ? OFFSET ?`, [...values, filters.pageSize, offset]);
+  const [modules] = await pool.query<mysql.RowDataPacket[]>("SELECT DISTINCT `module` FROM `system_audit_log` ORDER BY `module`");
   return { items: rows, total: Number(countRows[0]?.total || 0), modules: modules.map((row) => String(row.module)) };
 }
