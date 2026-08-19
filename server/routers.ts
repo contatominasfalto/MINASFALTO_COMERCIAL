@@ -790,7 +790,10 @@ export const appRouter = router({
         adjudicadas: z.boolean().optional(),
       }).optional())
       .query(({ input }) => db.listLicitacoes(input)),
-    alertasPregao: costAccessProcedure.query(() => db.listLicitacaoAlertasPregao()),
+    alertasPregao: costAccessProcedure.query(async ({ ctx }) => {
+      await accessDb.assertPermission(ctx.user, "licitacoes", "alerts");
+      return db.listLicitacaoAlertasPregao();
+    }),
     exportarPdf: costAccessProcedure
       .input(z.object({
         tipoRelatorio: z.enum(["status", "cidade", "vendedor", "adesoes_vendedor", "entregas"]),

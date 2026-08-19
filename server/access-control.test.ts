@@ -51,6 +51,12 @@ describe("controle de acesso", () => {
     expect(legacyProfileEffect("diretoria", "usuarios", "manage")).toBe("deny");
   });
 
+  it("mantém alertas de pregão ativos por padrão e aceita bloqueio individual", () => {
+    expect(legacyProfileEffect("comercial", "licitacoes", "alerts")).toBe("allow");
+    expect(effectAllows("allow", "alerts")).toBe(true);
+    expect(effectAllows("deny", "alerts")).toBe(false);
+  });
+
   it("mapeia procedures para recursos e ações estáveis", () => {
     expect(permissionTargetForProcedure("licitacoes.adesoes.create", "mutation")).toEqual({ resource: "licitacoes", action: "create" });
     expect(permissionTargetForProcedure("crti.sincronizacaoCustosObras", "mutation")).toEqual({ resource: "custo_obras", action: "sync" });

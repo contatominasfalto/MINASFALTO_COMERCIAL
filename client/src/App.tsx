@@ -99,7 +99,7 @@ function Router() {
 
   return (
     <>
-      {permissions.can("licitacoes", "access") && <LicitacaoPregaoAlert />}
+      {permissions.can("licitacoes", "access") && permissions.can("licitacoes", "alerts") && <LicitacaoPregaoAlert />}
       <Switch>
       <Route path={"/"}>
         {permissions.can("inicio", "access") ? <Home /> : denied}

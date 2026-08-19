@@ -6,7 +6,7 @@ export type UserStatus = (typeof USER_STATUSES)[number];
 
 export type PermissionAction =
   | "access" | "read" | "create" | "update" | "delete"
-  | "export" | "import" | "sync" | "manage";
+  | "export" | "import" | "sync" | "manage" | "alerts";
 
 export type AccessResource = {
   key: string;
@@ -29,7 +29,7 @@ export const ACCESS_CATALOG: AccessResource[] = [
   { key: "comercial", label: "Comercial", route: "/comercial", actions: [...crud, { key: "import", label: "Importar", write: true }, { key: "sync", label: "Sincronizar CRTI", write: true }] },
   { key: "estoque", label: "Estoque", route: "/estoque", actions: crud },
   { key: "custo_obras", label: "Custo Obras", route: "/custo-obras", actions: [...crud, { key: "export", label: "Exportar", write: false }, { key: "sync", label: "Sincronizar CRTI", write: true }] },
-  { key: "licitacoes", label: "Licitações", route: "/licitacoes", actions: [...crud, { key: "export", label: "Exportar relatórios", write: false }, { key: "manage", label: "Gerenciar atas, adesões e cadastros", write: true }] },
+  { key: "licitacoes", label: "Licitações", route: "/licitacoes", actions: [...crud, { key: "export", label: "Exportar relatórios", write: false }, { key: "manage", label: "Gerenciar atas, adesões e cadastros", write: true }, { key: "alerts", label: "Receber alertas de pregão?", write: false }] },
   { key: "alimentacao", label: "Controle de Alimentação", route: "/alimentacao", actions: [...crud, { key: "export", label: "Exportar relatórios", write: false }, { key: "manage", label: "Gerenciar cadastros", write: true }] },
   { key: "usuarios", label: "Controle de Usuários", route: "/controle-usuarios", actions: [...crud, { key: "manage", label: "Alterar permissões", write: true }] },
 ];
@@ -95,6 +95,9 @@ export function permissionTargetForProcedure(path: string, type: "query" | "muta
 export function legacyProfileEffect(profile: unknown, resource: string, action: string): PermissionEffect {
   const key = normalizeIdentity(profile);
   if (key === MASTER_USERNAME) return "allow";
+  // Mantém o comportamento anterior para usuários ativos. A preferência
+  // individual "Não" passa a ter precedência quando for configurada.
+  if (resource === "licitacoes" && action === "alerts") return "allow";
   if (["comercial", "subcomercial"].includes(key)) {
     return ["inicio", "comercial", "estoque"].includes(resource) ? "allow" : "deny";
   }
