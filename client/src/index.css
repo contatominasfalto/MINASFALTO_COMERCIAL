@@ -2546,6 +2546,10 @@ table :is(th, td) :where(a, button, input, select, textarea, label, span, strong
   line-height: 1.15;
 }
 
+.licitacao-menu-grid button:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 .licitacao-form-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

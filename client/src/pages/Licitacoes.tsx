@@ -1204,7 +1204,6 @@ export default function Licitacoes() {
             <button onClick={() => openLicitacaoForm()}><Plus size={18} /> Cadastro Licitação</button>
             <button onClick={() => setModal("status")}><Plus size={18} /> Cadastro status</button>
             <button onClick={() => setModal("plataforma")}><ExternalLink size={18} /> Cadastro Plataforma Pregão</button>
-            <button onClick={() => setModal(null)}><Search size={18} /> Acesso ao Painel Principal</button>
             <button onClick={() => setModal("vendedor")}><Plus size={18} /> Cadastro Vendedor</button>
             <button onClick={() => { setEntregaLicitacaoId(null); setSelectedLicitacao(null); setOpenEntregaGroups({}); setModal("entrega"); }}><Link2 size={18} /> Vincular Pedido CRTI Controle de Entrega</button>
             <button onClick={() => setModal("relatorios")}><FileText size={18} /> Relatórios</button>
