@@ -1,8 +1,12 @@
-import { access, mkdir, readdir } from "node:fs/promises";
+import { access, mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export const LICITACOES_DOCUMENTOS_ROOT = process.env.LICITACOES_DOCUMENTOS_ROOT
   || "\\\\SERVIDOR\\Dados\\Minasfalto_Licitacoes";
+
+const MAX_DOCUMENT_SIZE = 25 * 1024 * 1024;
+const INVALID_WINDOWS_NAME = /[<>:"/\\|?*\u0000-\u001f]/;
+const RESERVED_WINDOWS_NAMES = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
 
 function dateParts(value: string) {
   const text = String(value || "").trim().split("T")[0];
@@ -39,6 +43,43 @@ export function validateLicitacaoDocumentPath(value: string) {
   return resolvedPath;
 }
 
+function validateEntryName(value: string) {
+  const name = String(value || "").trim();
+  if (!name || name === "." || name === ".." || INVALID_WINDOWS_NAME.test(name)
+    || RESERVED_WINDOWS_NAMES.test(name) || /[. ]$/.test(name)) {
+    throw new Error("Nome de arquivo ou pasta inválido.");
+  }
+  return name;
+}
+
+function resolveWithinLicitacao(baseValue: string, relativeValue = "", entryName?: string) {
+  const basePath = validateLicitacaoDocumentPath(baseValue);
+  const normalizedRelative = String(relativeValue || "").replaceAll("/", "\\").trim();
+  if (path.win32.isAbsolute(normalizedRelative)) throw new Error("Caminho relativo inválido.");
+  const directoryPath = path.win32.resolve(basePath, normalizedRelative || ".");
+  const relativeToBase = path.win32.relative(basePath, directoryPath);
+  if (relativeToBase.startsWith("..") || path.win32.isAbsolute(relativeToBase)) {
+    throw new Error("Acesso fora da pasta desta licitação não é permitido.");
+  }
+  if (!entryName) return { basePath, targetPath: directoryPath };
+  return { basePath, targetPath: path.win32.join(directoryPath, validateEntryName(entryName)) };
+}
+
+function relativeFromBase(basePath: string, targetPath: string) {
+  return path.win32.relative(basePath, targetPath).replaceAll("\\", "/");
+}
+
+function mimeTypeFor(name: string) {
+  const extension = path.win32.extname(name).toLowerCase();
+  return ({
+    ".pdf": "application/pdf", ".txt": "text/plain; charset=utf-8", ".csv": "text/csv; charset=utf-8",
+    ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".gif": "image/gif",
+    ".doc": "application/msword", ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".xls": "application/vnd.ms-excel", ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".zip": "application/zip",
+  } as Record<string, string>)[extension] || "application/octet-stream";
+}
+
 export async function ensureLicitacaoDocumentFolder(value: string) {
   const folderPath = validateLicitacaoDocumentPath(value);
   await mkdir(folderPath, { recursive: true });
@@ -46,21 +87,71 @@ export async function ensureLicitacaoDocumentFolder(value: string) {
   return folderPath;
 }
 
-export async function inspectLicitacaoDocumentFolder(value: string) {
-  const folderPath = validateLicitacaoDocumentPath(value);
+export async function inspectLicitacaoDocumentFolder(value: string, relativePath = "") {
+  const resolved = resolveWithinLicitacao(value, relativePath);
   try {
-    await access(folderPath);
+    await access(resolved.targetPath);
   } catch {
-    return { path: folderPath, exists: false, entries: [] as Array<{ name: string; type: "folder" | "file" }> };
+    return { path: resolved.targetPath, relativePath: "", parentPath: null, exists: false, entries: [] };
   }
-  const entries = await readdir(folderPath, { withFileTypes: true });
+  const directoryStats = await stat(resolved.targetPath);
+  if (!directoryStats.isDirectory()) throw new Error("O caminho informado não é uma pasta.");
+  const entries = await readdir(resolved.targetPath, { withFileTypes: true });
+  const detailedEntries = await Promise.all(entries.filter((entry) => !entry.isSymbolicLink()).map(async (entry) => {
+    const entryPath = path.win32.join(resolved.targetPath, entry.name);
+    const entryStats = await stat(entryPath);
+    return {
+      name: entry.name,
+      type: entry.isDirectory() ? "folder" as const : "file" as const,
+      size: entry.isFile() ? entryStats.size : null,
+      modifiedAt: entryStats.mtime.toISOString(),
+    };
+  }));
+  const currentRelative = relativeFromBase(resolved.basePath, resolved.targetPath);
   return {
-    path: folderPath,
+    path: resolved.targetPath,
+    relativePath: currentRelative,
+    parentPath: currentRelative ? relativeFromBase(resolved.basePath, path.win32.dirname(resolved.targetPath)) : null,
     exists: true,
-    entries: entries
-      .map((entry) => ({ name: entry.name, type: entry.isDirectory() ? "folder" as const : "file" as const }))
-      .sort((left, right) => left.type === right.type
-        ? left.name.localeCompare(right.name, "pt-BR", { sensitivity: "base" })
-        : left.type === "folder" ? -1 : 1),
+    entries: detailedEntries.sort((left, right) => left.type === right.type
+      ? left.name.localeCompare(right.name, "pt-BR", { sensitivity: "base" })
+      : left.type === "folder" ? -1 : 1),
   };
+}
+
+export async function createLicitacaoDocumentFolder(base: string, relativePath: string, name: string) {
+  const resolved = resolveWithinLicitacao(base, relativePath, name);
+  await mkdir(resolved.targetPath, { recursive: false });
+  return { success: true };
+}
+
+export async function uploadLicitacaoDocument(base: string, relativePath: string, name: string, base64: string) {
+  const resolved = resolveWithinLicitacao(base, relativePath, name);
+  const content = Buffer.from(base64, "base64");
+  if (!content.length) throw new Error("O arquivo está vazio.");
+  if (content.length > MAX_DOCUMENT_SIZE) throw new Error("O arquivo excede o limite de 25 MB.");
+  await writeFile(resolved.targetPath, content, { flag: "wx" });
+  return { success: true };
+}
+
+export async function downloadLicitacaoDocument(base: string, relativePath: string, name: string) {
+  const resolved = resolveWithinLicitacao(base, relativePath, name);
+  const fileStats = await stat(resolved.targetPath);
+  if (!fileStats.isFile()) throw new Error("O item selecionado não é um arquivo.");
+  if (fileStats.size > MAX_DOCUMENT_SIZE) throw new Error("O arquivo excede o limite de download de 25 MB.");
+  const content = await readFile(resolved.targetPath);
+  return { name, mimeType: mimeTypeFor(name), base64: content.toString("base64") };
+}
+
+export async function renameLicitacaoDocument(base: string, relativePath: string, oldName: string, newName: string) {
+  const source = resolveWithinLicitacao(base, relativePath, oldName);
+  const destination = resolveWithinLicitacao(base, relativePath, newName);
+  await rename(source.targetPath, destination.targetPath);
+  return { success: true };
+}
+
+export async function deleteLicitacaoDocument(base: string, relativePath: string, name: string) {
+  const resolved = resolveWithinLicitacao(base, relativePath, name);
+  await rm(resolved.targetPath, { recursive: true, force: false });
+  return { success: true };
 }

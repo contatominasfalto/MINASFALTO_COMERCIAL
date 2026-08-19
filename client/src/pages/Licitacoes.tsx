@@ -4,13 +4,18 @@ import SapDoubleConfirmDialog from "@/components/SapDoubleConfirmDialog";
 import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
 import {
   ArrowLeft,
+  ArrowUp,
   BellRing,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
   ExternalLink,
+  Download,
+  Eye,
+  File as FileIcon,
   FileText,
+  FolderPlus,
   FolderOpen,
   Copy,
   Link2,
@@ -19,6 +24,7 @@ import {
   Save,
   Search,
   Trash2,
+  Upload,
   X,
 } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
@@ -427,6 +433,11 @@ export default function Licitacoes() {
   const [selectedTableLicitacaoId, setSelectedTableLicitacaoId] = useState<number | null>(null);
   const [editingLicitacao, setEditingLicitacao] = useState<Licitacao | null>(null);
   const [documentosLicitacao, setDocumentosLicitacao] = useState<Licitacao | null>(null);
+  const [documentosCaminho, setDocumentosCaminho] = useState("");
+  const [novaPastaDocumentos, setNovaPastaDocumentos] = useState("");
+  const [documentoRenomeando, setDocumentoRenomeando] = useState<{ nomeAtual: string; novoNome: string } | null>(null);
+  const [deleteDocumentoTarget, setDeleteDocumentoTarget] = useState<{ name: string; type: "folder" | "file" } | null>(null);
+  const documentosFileInput = useRef<HTMLInputElement | null>(null);
   const [licitacaoForm, setLicitacaoForm] = useState<any>(emptyLicitacao);
   const [cidadeMode, setCidadeMode] = useState("lista");
   const [simpleEdit, setSimpleEdit] = useState<any>(null);
@@ -473,7 +484,7 @@ export default function Licitacoes() {
   });
   const adjudicadas = trpc.licitacoes.list.useQuery({ adjudicadas: true });
   const documentos = trpc.licitacoes.documentos.inspecionar.useQuery(
-    { pastaDocumentos: documentosLicitacao?.pastaDocumentos || "" },
+    { pastaDocumentos: documentosLicitacao?.pastaDocumentos || "", caminhoRelativo: documentosCaminho },
     { enabled: modal === "documentos" && Boolean(documentosLicitacao?.pastaDocumentos) },
   );
   const ata = trpc.licitacoes.ata.get.useQuery(
@@ -570,6 +581,26 @@ export default function Licitacoes() {
       invalidateAll();
     },
     onError: (error) => toast.error(`Erro ao excluir licitação: ${error.message}`),
+  });
+
+  const atualizarDocumentos = () => void documentos.refetch();
+  const criarPastaDocumentos = trpc.licitacoes.documentos.criarPasta.useMutation({
+    onSuccess: () => { setNovaPastaDocumentos(""); atualizarDocumentos(); toast.success("Pasta criada."); },
+    onError: (error) => toast.error(`Erro ao criar pasta: ${error.message}`),
+  });
+  const enviarArquivoDocumentos = trpc.licitacoes.documentos.enviarArquivo.useMutation({
+    onError: (error) => toast.error(`Erro ao enviar arquivo: ${error.message}`),
+  });
+  const baixarArquivoDocumentos = trpc.licitacoes.documentos.baixarArquivo.useMutation({
+    onError: (error) => toast.error(`Erro ao abrir arquivo: ${error.message}`),
+  });
+  const renomearDocumento = trpc.licitacoes.documentos.renomear.useMutation({
+    onSuccess: () => { setDocumentoRenomeando(null); atualizarDocumentos(); toast.success("Item renomeado."); },
+    onError: (error) => toast.error(`Erro ao renomear: ${error.message}`),
+  });
+  const excluirDocumento = trpc.licitacoes.documentos.excluir.useMutation({
+    onSuccess: () => { setDeleteDocumentoTarget(null); atualizarDocumentos(); toast.success("Item excluído."); },
+    onError: (error) => toast.error(`Erro ao excluir: ${error.message}`),
   });
 
   const statusCreate = trpc.licitacoes.status.create.useMutation({ onSuccess: () => { setSimpleForm({ nome: "", link: "" }); invalidateAll(); } });
@@ -863,9 +894,61 @@ export default function Licitacoes() {
     toast.success("Caminho da pasta copiado.");
   };
 
-  const abrirPastaDocumentos = (caminho: string) => {
-    const fileUrl = `file:${caminho.replaceAll("\\", "/")}`;
-    window.open(fileUrl, "_blank", "noopener,noreferrer");
+  const parametrosDocumentos = () => ({
+    pastaDocumentos: documentosLicitacao?.pastaDocumentos || "",
+    caminhoRelativo: documentosCaminho,
+  });
+
+  const arquivoParaBase64 = (arquivo: globalThis.File) => new Promise<string>((resolve, reject) => {
+    const leitor = new FileReader();
+    leitor.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
+    leitor.onload = () => resolve(String(leitor.result || "").split(",")[1] || "");
+    leitor.readAsDataURL(arquivo);
+  });
+
+  const enviarDocumentosSelecionados = async (arquivos: FileList | null) => {
+    if (!arquivos?.length || !documentosLicitacao) return;
+    try {
+      for (const arquivo of Array.from(arquivos)) {
+        if (arquivo.size > 25 * 1024 * 1024) throw new Error(`${arquivo.name} excede o limite de 25 MB.`);
+        await enviarArquivoDocumentos.mutateAsync({ ...parametrosDocumentos(), nome: arquivo.name, base64: await arquivoParaBase64(arquivo) });
+      }
+      toast.success(`${arquivos.length} arquivo(s) enviado(s).`);
+      atualizarDocumentos();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível enviar os arquivos.");
+    } finally {
+      if (documentosFileInput.current) documentosFileInput.current.value = "";
+    }
+  };
+
+  const abrirOuBaixarDocumento = async (nome: string, baixar = false) => {
+    const novaJanela = baixar ? null : window.open("", "_blank");
+    try {
+      const arquivo = await baixarArquivoDocumentos.mutateAsync({ ...parametrosDocumentos(), nome });
+      const bytes = Uint8Array.from(atob(arquivo.base64), (char) => char.charCodeAt(0));
+      const url = URL.createObjectURL(new Blob([bytes], { type: arquivo.mimeType }));
+      if (baixar) {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = arquivo.name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } else if (novaJanela) {
+        novaJanela.location.href = url;
+      }
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+      novaJanela?.close();
+    }
+  };
+
+  const formatarTamanhoDocumento = (bytes: number | null) => {
+    if (bytes === null) return "—";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   };
 
   const gerarRelatorioPdf = () => {
@@ -1148,6 +1231,8 @@ export default function Licitacoes() {
                         onClick={(event) => {
                           event.stopPropagation();
                           setDocumentosLicitacao(licitacao);
+                          setDocumentosCaminho("");
+                          setDocumentoRenomeando(null);
                           setModal("documentos");
                         }}
                       ><FolderOpen size={15} /></button>
@@ -1395,11 +1480,19 @@ export default function Licitacoes() {
         <SimpleModal title={`Documentos - ${documentosLicitacao.orgao} - ${documentosLicitacao.cidade}`} onClose={() => setModal(null)} wide>
           <section className="licitacao-documentos-modal">
             <div className="licitacao-documentos-path">
-              <input readOnly value={documentosLicitacao.pastaDocumentos || ""} />
-              <button className="desktop-action" onClick={() => copiarCaminhoDocumentos(documentosLicitacao.pastaDocumentos)}><Copy size={14} /> Copiar caminho</button>
-              <button className="desktop-action primary" onClick={() => abrirPastaDocumentos(documentosLicitacao.pastaDocumentos)}><FolderOpen size={14} /> Abrir pasta</button>
+              <input readOnly value={documentos.data?.path || documentosLicitacao.pastaDocumentos || ""} />
+              <button className="desktop-action" onClick={() => copiarCaminhoDocumentos(documentos.data?.path || documentosLicitacao.pastaDocumentos)}><Copy size={14} /> Copiar caminho</button>
             </div>
-            <p>Se o navegador bloquear a abertura direta, copie o caminho e cole na barra do Explorador de Arquivos.</p>
+            <div className="licitacao-documentos-toolbar">
+              <button type="button" className="desktop-action" disabled={!documentos.data?.parentPath} onClick={() => setDocumentosCaminho(documentos.data?.parentPath || "")}><ArrowUp size={14} /> Voltar uma pasta</button>
+              <span className="licitacao-documentos-new-folder">
+                <input value={novaPastaDocumentos} onChange={(event) => setNovaPastaDocumentos(event.target.value)} placeholder="Nome da nova pasta" maxLength={180} />
+                <button type="button" className="desktop-action" disabled={!novaPastaDocumentos.trim() || criarPastaDocumentos.isPending} onClick={() => criarPastaDocumentos.mutate({ ...parametrosDocumentos(), nome: novaPastaDocumentos.trim() })}><FolderPlus size={14} /> Criar pasta</button>
+              </span>
+              <input ref={documentosFileInput} type="file" multiple hidden onChange={(event) => void enviarDocumentosSelecionados(event.target.files)} />
+              <button type="button" className="desktop-action primary" disabled={enviarArquivoDocumentos.isPending} onClick={() => documentosFileInput.current?.click()}><Upload size={14} /> {enviarArquivoDocumentos.isPending ? "Enviando..." : "Enviar arquivos"}</button>
+            </div>
+            <p>Gerencie aqui os documentos da licitação. Limite de 25 MB por arquivo.</p>
             <div className="licitacao-documentos-lista">
               {documentos.isLoading ? <span>Consultando a pasta...</span> : documentos.isError ? (
                 <span className="licitacao-documentos-error">Não foi possível acessar: {documentos.error.message}</span>
@@ -1407,9 +1500,29 @@ export default function Licitacoes() {
                 <span>A pasta está vazia.</span>
               ) : (
                 <table className="desktop-table">
-                  <thead><tr><th>Tipo</th><th>Nome</th></tr></thead>
+                  <thead><tr><th>Tipo</th><th>Nome</th><th>Tamanho</th><th>Alterado em</th><th>Ações</th></tr></thead>
                   <tbody>{documentos.data.entries.map((entry) => (
-                    <tr key={`${entry.type}-${entry.name}`}><td>{entry.type === "folder" ? "Pasta" : "Arquivo"}</td><td>{entry.name}</td></tr>
+                    <tr key={`${entry.type}-${entry.name}`}>
+                      <td className="licitacao-documentos-type">{entry.type === "folder" ? <FolderOpen size={16} /> : <FileIcon size={16} />} {entry.type === "folder" ? "Pasta" : "Arquivo"}</td>
+                      <td>{documentoRenomeando?.nomeAtual === entry.name ? (
+                        <input className="licitacao-documentos-rename" autoFocus value={documentoRenomeando.novoNome} onChange={(event) => setDocumentoRenomeando({ ...documentoRenomeando, novoNome: event.target.value })} />
+                      ) : entry.type === "folder" ? (
+                        <button type="button" className="licitacao-documentos-link" onClick={() => setDocumentosCaminho([documentosCaminho, entry.name].filter(Boolean).join("/"))}>{entry.name}</button>
+                      ) : entry.name}</td>
+                      <td>{formatarTamanhoDocumento(entry.size)}</td>
+                      <td>{new Date(entry.modifiedAt).toLocaleString("pt-BR")}</td>
+                      <td><span className="licitacao-documentos-actions">
+                        {documentoRenomeando?.nomeAtual === entry.name ? <>
+                          <button type="button" title="Salvar nome" onClick={() => renomearDocumento.mutate({ ...parametrosDocumentos(), nomeAtual: entry.name, novoNome: documentoRenomeando.novoNome.trim() })}><Save size={14} /></button>
+                          <button type="button" title="Cancelar" onClick={() => setDocumentoRenomeando(null)}><X size={14} /></button>
+                        </> : <>
+                          {entry.type === "file" && <button type="button" title="Visualizar" onClick={() => void abrirOuBaixarDocumento(entry.name)}><Eye size={14} /></button>}
+                          {entry.type === "file" && <button type="button" title="Baixar" onClick={() => void abrirOuBaixarDocumento(entry.name, true)}><Download size={14} /></button>}
+                          <button type="button" title="Renomear" onClick={() => setDocumentoRenomeando({ nomeAtual: entry.name, novoNome: entry.name })}><Pencil size={14} /></button>
+                          <button type="button" title="Excluir" onClick={() => setDeleteDocumentoTarget(entry)}><Trash2 size={14} /></button>
+                        </>}
+                      </span></td>
+                    </tr>
                   ))}</tbody>
                 </table>
               )}
@@ -1725,6 +1838,25 @@ export default function Licitacoes() {
           </section>
         </div>
       )}
+
+      <SapDoubleConfirmDialog
+        open={Boolean(deleteDocumentoTarget)}
+        onOpenChange={(open) => { if (!open) setDeleteDocumentoTarget(null); }}
+        title={`Confirmar exclusão de ${deleteDocumentoTarget?.type === "folder" ? "pasta" : "arquivo"}`}
+        description={deleteDocumentoTarget?.type === "folder" ? "Esta ação excluirá a pasta e todo o conteúdo armazenado nela." : "Esta ação excluirá o arquivo selecionado."}
+        finalDescription="Confirmação final: o item será excluído definitivamente da pasta da licitação."
+        finalConfirmLabel="Excluir definitivamente"
+        details={[
+          { label: "Tipo", value: deleteDocumentoTarget?.type === "folder" ? "Pasta" : "Arquivo" },
+          { label: "Nome", value: deleteDocumentoTarget?.name || "-" },
+          { label: "Local", value: documentosCaminho || "Pasta principal" },
+        ]}
+        isPending={excluirDocumento.isPending}
+        onConfirm={() => {
+          if (!deleteDocumentoTarget) return;
+          excluirDocumento.mutate({ ...parametrosDocumentos(), nome: deleteDocumentoTarget.name });
+        }}
+      />
 
       <SapDoubleConfirmDialog
         open={Boolean(deleteLicitacaoTarget)}

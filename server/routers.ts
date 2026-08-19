@@ -21,8 +21,13 @@ import { isLegacyEnvironmentUser } from "./local-login-users";
 import { listAudit } from "./system-audit";
 import {
   buildLicitacaoDocumentPath,
+  createLicitacaoDocumentFolder,
+  deleteLicitacaoDocument,
+  downloadLicitacaoDocument,
   ensureLicitacaoDocumentFolder,
   inspectLicitacaoDocumentFolder,
+  renameLicitacaoDocument,
+  uploadLicitacaoDocument,
 } from "./licitacao-documentos";
 
 const STATUS_SAIDA_OK = "SA\u00cdDA OK";
@@ -800,8 +805,23 @@ export const appRouter = router({
         .input(z.object({ data: z.string().min(1).max(10), cidade: z.string().min(1).max(120) }))
         .query(({ input }) => ({ pastaDocumentos: buildLicitacaoDocumentPath(input.data, input.cidade) })),
       inspecionar: costAccessProcedure
-        .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024) }))
-        .query(({ input }) => inspectLicitacaoDocumentFolder(input.pastaDocumentos)),
+        .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024), caminhoRelativo: z.string().max(1024).optional() }))
+        .query(({ input }) => inspectLicitacaoDocumentFolder(input.pastaDocumentos, input.caminhoRelativo)),
+      criarPasta: costAccessProcedure
+        .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024), caminhoRelativo: z.string().max(1024).default(""), nome: z.string().trim().min(1).max(180) }))
+        .mutation(({ input }) => createLicitacaoDocumentFolder(input.pastaDocumentos, input.caminhoRelativo, input.nome)),
+      enviarArquivo: costAccessProcedure
+        .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024), caminhoRelativo: z.string().max(1024).default(""), nome: z.string().trim().min(1).max(255), base64: z.string().min(1).max(36_000_000) }))
+        .mutation(({ input }) => uploadLicitacaoDocument(input.pastaDocumentos, input.caminhoRelativo, input.nome, input.base64)),
+      baixarArquivo: costAccessProcedure
+        .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024), caminhoRelativo: z.string().max(1024).default(""), nome: z.string().trim().min(1).max(255) }))
+        .mutation(({ input }) => downloadLicitacaoDocument(input.pastaDocumentos, input.caminhoRelativo, input.nome)),
+      renomear: costAccessProcedure
+        .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024), caminhoRelativo: z.string().max(1024).default(""), nomeAtual: z.string().trim().min(1).max(255), novoNome: z.string().trim().min(1).max(255) }))
+        .mutation(({ input }) => renameLicitacaoDocument(input.pastaDocumentos, input.caminhoRelativo, input.nomeAtual, input.novoNome)),
+      excluir: costAccessProcedure
+        .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024), caminhoRelativo: z.string().max(1024).default(""), nome: z.string().trim().min(1).max(255) }))
+        .mutation(({ input }) => deleteLicitacaoDocument(input.pastaDocumentos, input.caminhoRelativo, input.nome)),
     }),
     create: costAccessProcedure
       .input(licitacaoSchema)
