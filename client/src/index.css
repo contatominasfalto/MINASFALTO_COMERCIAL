@@ -2263,6 +2263,8 @@ table :is(th, td) :where(a, button, input, select, textarea, label, span, strong
 }
 
 .licitacao-table .licitacao-col-data { min-width: 90px; max-width: 100px; white-space: nowrap; }
+.licitacao-table .licitacao-col-pastaDocumentos { min-width: 54px; max-width: 62px; width: 58px; text-align: center; white-space: nowrap; }
+.licitacao-folder-button { margin: 0 auto; color: #174d79; }
 .licitacao-table .licitacao-col-orgao { min-width: 190px; max-width: 300px; }
 .licitacao-table .licitacao-col-cidade { min-width: 125px; max-width: 210px; }
 .licitacao-table .licitacao-col-status { min-width: 140px; max-width: 220px; }
@@ -2564,6 +2566,40 @@ table :is(th, td) :where(a, button, input, select, textarea, label, span, strong
 .licitacao-observacoes-field {
   grid-column: 1 / -1;
 }
+
+.licitacao-documentos-field {
+  grid-column: 1 / -1;
+}
+
+.licitacao-documentos-controls,
+.licitacao-documentos-path {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.licitacao-documentos-controls input,
+.licitacao-documentos-path input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--sap-line);
+  background: #fff;
+  padding: 7px 8px;
+  font: inherit;
+}
+
+.licitacao-documentos-field small,
+.licitacao-documentos-modal > p {
+  display: block;
+  margin-top: 5px;
+  color: #52697e;
+  font-size: 11px;
+}
+
+.licitacao-documentos-modal { padding: 16px; }
+.licitacao-documentos-lista { margin-top: 14px; max-height: 48vh; overflow: auto; border: 1px solid var(--sap-line); }
+.licitacao-documentos-lista > span { display: block; padding: 18px; text-align: center; }
+.licitacao-documentos-error { color: #a32525; }
 
 .licitacao-observacoes-field textarea {
   width: 100%;

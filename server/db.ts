@@ -2589,6 +2589,14 @@ export async function ensureLicitacaoPregaoAlertSchema(pool: mysql.Pool) {
           "ALTER TABLE licitacoes ADD COLUMN observacoesGerais text NULL AFTER alertaPregao",
         );
       }
+      const [pastaDocumentosColumns] = await pool.query<mysql.RowDataPacket[]>(
+        "SHOW COLUMNS FROM licitacoes LIKE 'pastaDocumentos'",
+      );
+      if (!Array.isArray(pastaDocumentosColumns) || pastaDocumentosColumns.length === 0) {
+        await pool.query(
+          "ALTER TABLE licitacoes ADD COLUMN pastaDocumentos varchar(1024) NULL AFTER observacoesGerais",
+        );
+      }
     })().catch((error) => {
       _licitacaoPregaoAlertSchemaPromise = null;
       throw error;
@@ -2777,6 +2785,7 @@ export type LicitacaoInput = {
   horaInicioDisputa?: string;
   alertaPregao?: boolean;
   observacoesGerais?: string;
+  pastaDocumentos?: string;
   item?: string;
   tipo?: string;
   qtdeSc?: number;
@@ -3005,10 +3014,10 @@ export async function createLicitacao(data: LicitacaoInput & { criadoPor?: strin
   const potencial = getLicitacaoPotencial(data.kmDistancia);
   const [result] = await pool.query<mysql.ResultSetHeader>(
     `INSERT INTO licitacoes (
-      data, orgao, cidade, status, plataformaId, horaInicioDisputa, alertaPregao, observacoesGerais, item, tipo, qtdeSc, valorUnit,
+      data, orgao, cidade, status, plataformaId, horaInicioDisputa, alertaPregao, observacoesGerais, pastaDocumentos, item, tipo, qtdeSc, valorUnit,
       lanceLimite, valorAdjudicado, qtdeTn, valorInicialContrato, kmDistancia,
       potencialCliente, regiao, statusContrato, ataVendedorId, ataVendedorNome, criadoPor
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.data || "",
       data.orgao.trim(),
@@ -3018,6 +3027,7 @@ export async function createLicitacao(data: LicitacaoInput & { criadoPor?: strin
       data.horaInicioDisputa || "",
       data.alertaPregao !== false,
       data.observacoesGerais || "",
+      data.pastaDocumentos || null,
       data.item || "",
       data.tipo || "",
       normalizeMoney(data.qtdeSc),
@@ -3044,7 +3054,7 @@ export async function updateLicitacao(id: number, data: LicitacaoInput) {
   const status = normalizeLicitacaoStatus(data.status);
   await pool.query(
     `UPDATE licitacoes SET
-      data = ?, orgao = ?, cidade = ?, status = ?, plataformaId = ?, horaInicioDisputa = ?, alertaPregao = ?, observacoesGerais = ?, item = ?, tipo = ?,
+      data = ?, orgao = ?, cidade = ?, status = ?, plataformaId = ?, horaInicioDisputa = ?, alertaPregao = ?, observacoesGerais = ?, pastaDocumentos = ?, item = ?, tipo = ?,
       qtdeSc = ?, valorUnit = ?, lanceLimite = ?, valorAdjudicado = ?, qtdeTn = ?,
       valorInicialContrato = ?, kmDistancia = ?, potencialCliente = ?, regiao = ?,
       statusContrato = ?, ataVendedorId = ?, ataVendedorNome = ?
@@ -3058,6 +3068,7 @@ export async function updateLicitacao(id: number, data: LicitacaoInput) {
       data.horaInicioDisputa || "",
       data.alertaPregao !== false,
       data.observacoesGerais || "",
+      data.pastaDocumentos || null,
       data.item || "",
       data.tipo || "",
       normalizeMoney(data.qtdeSc),
@@ -3080,7 +3091,7 @@ export async function updateLicitacao(id: number, data: LicitacaoInput) {
     [data.ataVendedorId || null, data.ataVendedorNome || "NA", id],
   );
   const [persistedRows] = await pool.query<mysql.RowDataPacket[]>(
-    "SELECT observacoesGerais FROM licitacoes WHERE id = ? LIMIT 1",
+    "SELECT observacoesGerais, pastaDocumentos FROM licitacoes WHERE id = ? LIMIT 1",
     [id],
   );
   if (!persistedRows.length) {
@@ -3091,7 +3102,11 @@ export async function updateLicitacao(id: number, data: LicitacaoInput) {
   if (observacoesPersistidas !== observacoesEnviadas) {
     throw new Error("O banco não confirmou a gravação das observações gerais da licitação.");
   }
-  return { success: true, observacoesGerais: observacoesPersistidas };
+  const pastaDocumentosPersistida = String(persistedRows[0].pastaDocumentos || "");
+  if (pastaDocumentosPersistida !== String(data.pastaDocumentos || "")) {
+    throw new Error("O banco não confirmou o vínculo da pasta de documentos da licitação.");
+  }
+  return { success: true, observacoesGerais: observacoesPersistidas, pastaDocumentos: pastaDocumentosPersistida };
 }
 
 export async function deleteLicitacao(id: number) {

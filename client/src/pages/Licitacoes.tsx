@@ -11,6 +11,8 @@ import {
   ChevronsRight,
   ExternalLink,
   FileText,
+  FolderOpen,
+  Copy,
   Link2,
   Pencil,
   Plus,
@@ -36,7 +38,7 @@ const cidadesMg = [
 ];
 
 type Licitacao = any;
-type ActiveModal = "menu" | "licitacao" | "status" | "plataforma" | "vendedor" | "entrega" | "ata" | "relatorios" | null;
+type ActiveModal = "menu" | "licitacao" | "status" | "plataforma" | "vendedor" | "entrega" | "ata" | "relatorios" | "documentos" | null;
 type PanelTab = "geral" | "adjudicadas";
 type SortDirection = "asc" | "desc";
 
@@ -78,6 +80,7 @@ const emptyLicitacao = {
   horaInicioDisputa: "",
   alertaPregao: true,
   observacoesGerais: "",
+  pastaDocumentos: "",
   item: "",
   tipo: "",
   qtdeSc: 0,
@@ -423,6 +426,7 @@ export default function Licitacoes() {
   const [licitacaoPageSize, setLicitacaoPageSize] = useState(50);
   const [selectedTableLicitacaoId, setSelectedTableLicitacaoId] = useState<number | null>(null);
   const [editingLicitacao, setEditingLicitacao] = useState<Licitacao | null>(null);
+  const [documentosLicitacao, setDocumentosLicitacao] = useState<Licitacao | null>(null);
   const [licitacaoForm, setLicitacaoForm] = useState<any>(emptyLicitacao);
   const [cidadeMode, setCidadeMode] = useState("lista");
   const [simpleEdit, setSimpleEdit] = useState<any>(null);
@@ -468,6 +472,10 @@ export default function Licitacoes() {
     adjudicadas: panelTab === "adjudicadas" ? true : false,
   });
   const adjudicadas = trpc.licitacoes.list.useQuery({ adjudicadas: true });
+  const documentos = trpc.licitacoes.documentos.inspecionar.useQuery(
+    { pastaDocumentos: documentosLicitacao?.pastaDocumentos || "" },
+    { enabled: modal === "documentos" && Boolean(documentosLicitacao?.pastaDocumentos) },
+  );
   const ata = trpc.licitacoes.ata.get.useQuery(
     { licitacaoId: selectedLicitacao?.id || 0 },
     { enabled: modal === "ata" && Boolean(selectedLicitacao?.id) },
@@ -644,6 +652,7 @@ export default function Licitacoes() {
   const plataformas = opcoes.data?.plataformas || [];
   const licitacaoTableColumns = useMemo(() => {
     const columns: Array<[string, string]> = [
+      ["pastaDocumentos", "Docs"],
       ["data", "Data"],
       ["orgao", "Órgão"],
       ["cidade", "Cidade"],
@@ -800,6 +809,7 @@ export default function Licitacoes() {
       ...emptyLicitacao,
       ...registroCompleto,
       observacoesGerais: String(registroCompleto.observacoesGerais || ""),
+      pastaDocumentos: String(registroCompleto.pastaDocumentos || ""),
       alertaPregao: registroCompleto.alertaPregao !== false && registroCompleto.alertaPregao !== 0,
       status: normalizeLicitacaoStatusLabel(registroCompleto.status),
     } : emptyLicitacao);
@@ -821,6 +831,41 @@ export default function Licitacoes() {
     };
     if (editingLicitacao) updateLicitacao.mutate({ id: editingLicitacao.id, data: payload });
     else createLicitacao.mutate(payload);
+  };
+
+  const sugerirPastaDocumentos = async () => {
+    if (!licitacaoForm.data || !licitacaoForm.cidade) {
+      toast.error("Informe a data e a cidade antes de gerar o caminho da pasta.");
+      return;
+    }
+    try {
+      const result = await utils.licitacoes.documentos.sugerirCaminho.fetch({
+        data: licitacaoForm.data,
+        cidade: licitacaoForm.cidade,
+      });
+      setLicitacaoForm((current: any) => ({ ...current, pastaDocumentos: result.pastaDocumentos }));
+    } catch (error) {
+      toast.error(`Não foi possível gerar o caminho: ${error instanceof Error ? error.message : "falha desconhecida"}`);
+    }
+  };
+
+  const copiarCaminhoDocumentos = async (caminho: string) => {
+    try {
+      await navigator.clipboard.writeText(caminho);
+    } catch {
+      const campo = document.createElement("textarea");
+      campo.value = caminho;
+      document.body.appendChild(campo);
+      campo.select();
+      document.execCommand("copy");
+      campo.remove();
+    }
+    toast.success("Caminho da pasta copiado.");
+  };
+
+  const abrirPastaDocumentos = (caminho: string) => {
+    const fileUrl = `file:${caminho.replaceAll("\\", "/")}`;
+    window.open(fileUrl, "_blank", "noopener,noreferrer");
   };
 
   const gerarRelatorioPdf = () => {
@@ -1052,7 +1097,7 @@ export default function Licitacoes() {
               <tr className="licitacao-filter-row">
                 {licitacaoTableColumns.map(([key, label]) => (
                   <th key={`${key}-filter`} className={`licitacao-col-${key}`}>
-                    <input
+                    {key === "pastaDocumentos" ? <span aria-hidden="true" /> : <input
                       aria-label={`Filtrar ${label}`}
                       value={columnFilters[key] || ""}
                       onChange={(event) => {
@@ -1061,7 +1106,7 @@ export default function Licitacoes() {
                       }}
                       onClick={(event) => event.stopPropagation()}
                       onKeyDown={(event) => event.stopPropagation()}
-                    />
+                    />}
                   </th>
                 ))}
                 <th className="licitacao-col-acoes">
@@ -1094,6 +1139,20 @@ export default function Licitacoes() {
                   onClick={() => setSelectedTableLicitacaoId(licitacao.id)}
                   onDoubleClick={() => openLicitacaoForm(licitacao)}
                 >
+                  <td className="licitacao-col-pastaDocumentos">
+                    {licitacao.pastaDocumentos ? (
+                      <button
+                        type="button"
+                        className="mini-icon-button licitacao-folder-button"
+                        title="Abrir documentos da licitação"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setDocumentosLicitacao(licitacao);
+                          setModal("documentos");
+                        }}
+                      ><FolderOpen size={15} /></button>
+                    ) : <span>-</span>}
+                  </td>
                   <td className="licitacao-col-data">{formatDateBR(licitacao.data)}</td>
                   <td className="licitacao-col-orgao" title={licitacao.orgao}>{normalizeText(licitacao.orgao)}</td>
                   <td className="licitacao-col-cidade">{normalizeText(licitacao.cidade)}</td>
@@ -1302,6 +1361,19 @@ export default function Licitacoes() {
               />
               <i aria-hidden="true"><b /></i>
             </label>
+            <label className="licitacao-field licitacao-documentos-field">
+              <span>Pasta de documentos da licitação</span>
+              <span className="licitacao-documentos-controls">
+                <input
+                  value={licitacaoForm.pastaDocumentos || ""}
+                  onChange={(event) => setLicitacaoForm((current: any) => ({ ...current, pastaDocumentos: event.target.value }))}
+                  maxLength={1024}
+                  placeholder="\\SERVIDOR\Dados\Minasfalto_Licitacoes\ano\data_cidade"
+                />
+                <button type="button" className="desktop-action" onClick={sugerirPastaDocumentos}><FolderOpen size={14} /> Gerar caminho</button>
+              </span>
+              <small>A pasta será criada ou validada no servidor quando a licitação for salva.</small>
+            </label>
             <label className="licitacao-field licitacao-observacoes-field">
               <span>Observações gerais</span>
               <textarea
@@ -1316,6 +1388,33 @@ export default function Licitacoes() {
             <button className="desktop-action" onClick={() => setModal(null)}><X size={14} /> Cancelar</button>
             <button className="desktop-action primary" onClick={submitLicitacao}><Save size={14} /> Salvar</button>
           </footer>
+        </SimpleModal>
+      )}
+
+      {modal === "documentos" && documentosLicitacao && (
+        <SimpleModal title={`Documentos - ${documentosLicitacao.orgao} - ${documentosLicitacao.cidade}`} onClose={() => setModal(null)} wide>
+          <section className="licitacao-documentos-modal">
+            <div className="licitacao-documentos-path">
+              <input readOnly value={documentosLicitacao.pastaDocumentos || ""} />
+              <button className="desktop-action" onClick={() => copiarCaminhoDocumentos(documentosLicitacao.pastaDocumentos)}><Copy size={14} /> Copiar caminho</button>
+              <button className="desktop-action primary" onClick={() => abrirPastaDocumentos(documentosLicitacao.pastaDocumentos)}><FolderOpen size={14} /> Abrir pasta</button>
+            </div>
+            <p>Se o navegador bloquear a abertura direta, copie o caminho e cole na barra do Explorador de Arquivos.</p>
+            <div className="licitacao-documentos-lista">
+              {documentos.isLoading ? <span>Consultando a pasta...</span> : documentos.isError ? (
+                <span className="licitacao-documentos-error">Não foi possível acessar: {documentos.error.message}</span>
+              ) : !documentos.data?.exists ? <span>A pasta ainda não existe ou não está acessível.</span> : documentos.data.entries.length === 0 ? (
+                <span>A pasta está vazia.</span>
+              ) : (
+                <table className="desktop-table">
+                  <thead><tr><th>Tipo</th><th>Nome</th></tr></thead>
+                  <tbody>{documentos.data.entries.map((entry) => (
+                    <tr key={`${entry.type}-${entry.name}`}><td>{entry.type === "folder" ? "Pasta" : "Arquivo"}</td><td>{entry.name}</td></tr>
+                  ))}</tbody>
+                </table>
+              )}
+            </div>
+          </section>
         </SimpleModal>
       )}
 

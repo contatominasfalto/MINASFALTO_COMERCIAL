@@ -19,6 +19,11 @@ import { ACCESS_CATALOG, ACCESS_EFFECTS, USER_STATUSES } from "../shared/access-
 import { verifyPassword } from "./password-security";
 import { isLegacyEnvironmentUser } from "./local-login-users";
 import { listAudit } from "./system-audit";
+import {
+  buildLicitacaoDocumentPath,
+  ensureLicitacaoDocumentFolder,
+  inspectLicitacaoDocumentFolder,
+} from "./licitacao-documentos";
 
 const STATUS_SAIDA_OK = "SA\u00cdDA OK";
 const pedidoAtividadeDescricaoSchema = z.string().trim().min(1, "Informe a atividade.").max(2000, "A atividade deve ter no máximo 2.000 caracteres.");
@@ -296,6 +301,7 @@ export const licitacaoSchema = z.object({
   horaInicioDisputa: z.string().max(8).optional(),
   alertaPregao: licitacaoBooleanSchema.optional(),
   observacoesGerais: z.string().max(10000).optional(),
+  pastaDocumentos: z.string().trim().max(1024).optional(),
   item: z.string().max(120).optional(),
   tipo: z.string().max(120).optional(),
   qtdeSc: z.coerce.number().nonnegative().optional(),
@@ -789,15 +795,30 @@ export const appRouter = router({
         const pdf = await buildLicitacaoPdf(input.tipoRelatorio, input.filtros);
         return { filename: pdf.filename, base64: pdf.buffer.toString("base64") };
       }),
+    documentos: router({
+      sugerirCaminho: costAccessProcedure
+        .input(z.object({ data: z.string().min(1).max(10), cidade: z.string().min(1).max(120) }))
+        .query(({ input }) => ({ pastaDocumentos: buildLicitacaoDocumentPath(input.data, input.cidade) })),
+      inspecionar: costAccessProcedure
+        .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024) }))
+        .query(({ input }) => inspectLicitacaoDocumentFolder(input.pastaDocumentos)),
+    }),
     create: costAccessProcedure
       .input(licitacaoSchema)
-      .mutation(({ input, ctx }) => db.createLicitacao({
-        ...input,
-        criadoPor: ctx.user?.name || "Sistema",
-      })),
+      .mutation(async ({ input, ctx }) => {
+        const pastaDocumentos = input.pastaDocumentos
+          ? await ensureLicitacaoDocumentFolder(input.pastaDocumentos)
+          : "";
+        return db.createLicitacao({ ...input, pastaDocumentos, criadoPor: ctx.user?.name || "Sistema" });
+      }),
     update: costAccessProcedure
       .input(z.object({ id: z.number().int().positive(), data: licitacaoSchema }))
-      .mutation(({ input }) => db.updateLicitacao(input.id, input.data)),
+      .mutation(async ({ input }) => {
+        const pastaDocumentos = input.data.pastaDocumentos
+          ? await ensureLicitacaoDocumentFolder(input.data.pastaDocumentos)
+          : "";
+        return db.updateLicitacao(input.id, { ...input.data, pastaDocumentos });
+      }),
     delete: costAccessProcedure
       .input(z.number().int().positive())
       .mutation(({ input }) => db.deleteLicitacao(input)),
