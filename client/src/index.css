@@ -2604,7 +2604,20 @@ table :is(th, td) :where(a, button, input, select, textarea, label, span, strong
 .licitacao-documentos-lista { margin-top: 14px; height: min(52vh, 520px); overflow: auto; border: 1px solid var(--sap-line); background: #fff; }
 .licitacao-documentos-lista > span { display: block; padding: 18px; text-align: center; }
 .licitacao-documentos-error { color: #a32525; }
-.licitacao-documentos-type { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.licitacao-documentos-lista .desktop-table { width: 100%; table-layout: fixed; }
+.licitacao-documentos-lista .desktop-table th:nth-child(1),
+.licitacao-documentos-lista .desktop-table td:nth-child(1) { width: 10%; }
+.licitacao-documentos-lista .desktop-table th:nth-child(2),
+.licitacao-documentos-lista .desktop-table td:nth-child(2) { width: 46%; }
+.licitacao-documentos-lista .desktop-table th:nth-child(3),
+.licitacao-documentos-lista .desktop-table td:nth-child(3) { width: 10%; }
+.licitacao-documentos-lista .desktop-table th:nth-child(4),
+.licitacao-documentos-lista .desktop-table td:nth-child(4) { width: 20%; }
+.licitacao-documentos-lista .desktop-table th:nth-child(5),
+.licitacao-documentos-lista .desktop-table td:nth-child(5) { width: 14%; }
+.licitacao-documentos-type { white-space: nowrap; }
+.licitacao-documentos-type svg { margin-right: 6px; vertical-align: middle; }
+.licitacao-documentos-lista .desktop-table td:nth-child(2) { overflow-wrap: anywhere; }
 .licitacao-documentos-link { border: 0; padding: 0; background: transparent; color: #064f86; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
 .licitacao-documentos-actions { display: inline-flex; gap: 4px; }
 .licitacao-documentos-actions button { width: 27px; height: 25px; display: inline-grid; place-items: center; border: 1px solid #7894ad; background: #f6f9fc; color: #092640; cursor: pointer; }
