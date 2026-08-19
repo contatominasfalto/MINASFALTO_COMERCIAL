@@ -57,6 +57,15 @@ describe("controle de acesso", () => {
     expect(effectAllows("deny", "alerts")).toBe(false);
   });
 
+  it("configura documentação com acesso total, visualização ou bloqueio", () => {
+    expect(legacyProfileEffect("comercial", "licitacoes", "documents")).toBe("allow");
+    expect(effectAllows("allow", "documents")).toBe(true);
+    expect(effectAllows("view", "documents")).toBe(true);
+    expect(effectAllows("deny", "documents")).toBe(false);
+    expect(permissionTargetForProcedure("licitacoes.documentos.inspecionar", "query")).toEqual({ resource: "licitacoes", action: "documents" });
+    expect(permissionTargetForProcedure("licitacoes.documentos.enviarArquivo", "mutation")).toEqual({ resource: "licitacoes", action: "documents" });
+  });
+
   it("mapeia procedures para recursos e ações estáveis", () => {
     expect(permissionTargetForProcedure("licitacoes.adesoes.create", "mutation")).toEqual({ resource: "licitacoes", action: "create" });
     expect(permissionTargetForProcedure("crti.sincronizacaoCustosObras", "mutation")).toEqual({ resource: "custo_obras", action: "sync" });

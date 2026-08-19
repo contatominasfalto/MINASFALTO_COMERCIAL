@@ -3109,6 +3109,17 @@ export async function updateLicitacao(id: number, data: LicitacaoInput) {
   return { success: true, observacoesGerais: observacoesPersistidas, pastaDocumentos: pastaDocumentosPersistida };
 }
 
+export async function getLicitacaoDocumentPath(id: number) {
+  const pool = await ensureMysqlPool();
+  await ensureLicitacaoPregaoAlertSchema(pool);
+  const [rows] = await pool.query<mysql.RowDataPacket[]>(
+    "SELECT pastaDocumentos FROM licitacoes WHERE id = ? LIMIT 1",
+    [id],
+  );
+  if (!rows.length) throw new Error("Licitação não encontrada.");
+  return String(rows[0].pastaDocumentos || "");
+}
+
 export async function deleteLicitacao(id: number) {
   const pool = await ensureMysqlPool();
   await ensureLicitacaoAdesoesSchema(pool);

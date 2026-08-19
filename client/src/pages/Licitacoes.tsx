@@ -1,6 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { withAppBase } from "@/lib/app-base";
 import SapDoubleConfirmDialog from "@/components/SapDoubleConfirmDialog";
+import { usePermissions } from "@/_core/hooks/usePermissions";
 import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
 import {
   ArrowLeft,
@@ -422,6 +423,9 @@ function LicitacaoPagination({
 
 export default function Licitacoes() {
   const utils = trpc.useUtils();
+  const access = usePermissions();
+  const canViewDocuments = access.can("licitacoes", "documents");
+  const canManageDocuments = access.effect("licitacoes", "documents") === "allow";
   const [modal, setModal] = useState<ActiveModal>("menu");
   const [panelTab, setPanelTab] = useState<PanelTab>("geral");
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
@@ -485,7 +489,7 @@ export default function Licitacoes() {
   const adjudicadas = trpc.licitacoes.list.useQuery({ adjudicadas: true });
   const documentos = trpc.licitacoes.documentos.inspecionar.useQuery(
     { pastaDocumentos: documentosLicitacao?.pastaDocumentos || "", caminhoRelativo: documentosCaminho },
-    { enabled: modal === "documentos" && Boolean(documentosLicitacao?.pastaDocumentos) },
+    { enabled: canViewDocuments && modal === "documentos" && Boolean(documentosLicitacao?.pastaDocumentos) },
   );
   const ata = trpc.licitacoes.ata.get.useQuery(
     { licitacaoId: selectedLicitacao?.id || 0 },
@@ -683,7 +687,6 @@ export default function Licitacoes() {
   const plataformas = opcoes.data?.plataformas || [];
   const licitacaoTableColumns = useMemo(() => {
     const columns: Array<[string, string]> = [
-      ["pastaDocumentos", "Docs"],
       ["data", "Data"],
       ["orgao", "Órgão"],
       ["cidade", "Cidade"],
@@ -701,6 +704,8 @@ export default function Licitacoes() {
       ["regiao", "Região"],
     ];
 
+    if (canViewDocuments) columns.unshift(["pastaDocumentos", "Docs"]);
+
     if (panelTab === "geral") {
       columns.splice(4, 0, ["horaInicioDisputa", "Hora Início Disputa"], ["plataformaNome", "Link Plat. Pregão"]);
     }
@@ -710,7 +715,7 @@ export default function Licitacoes() {
     }
 
     return columns;
-  }, [panelTab]);
+  }, [panelTab, canViewDocuments]);
   const licitacaoTableColumnCount = licitacaoTableColumns.length + 1;
   const rows = useMemo(() => {
     const visibleColumnKeys = new Set(licitacaoTableColumns.map(([key]) => key));
@@ -1222,7 +1227,7 @@ export default function Licitacoes() {
                   onClick={() => setSelectedTableLicitacaoId(licitacao.id)}
                   onDoubleClick={() => openLicitacaoForm(licitacao)}
                 >
-                  <td className="licitacao-col-pastaDocumentos">
+                  {canViewDocuments && <td className="licitacao-col-pastaDocumentos">
                     {licitacao.pastaDocumentos ? (
                       <button
                         type="button"
@@ -1237,7 +1242,7 @@ export default function Licitacoes() {
                         }}
                       ><FolderOpen size={15} /></button>
                     ) : <span>-</span>}
-                  </td>
+                  </td>}
                   <td className="licitacao-col-data">{formatDateBR(licitacao.data)}</td>
                   <td className="licitacao-col-orgao" title={licitacao.orgao}>{normalizeText(licitacao.orgao)}</td>
                   <td className="licitacao-col-cidade">{normalizeText(licitacao.cidade)}</td>
@@ -1446,19 +1451,20 @@ export default function Licitacoes() {
               />
               <i aria-hidden="true"><b /></i>
             </label>
-            <label className="licitacao-field licitacao-documentos-field">
+            {canViewDocuments && <label className="licitacao-field licitacao-documentos-field">
               <span>Pasta de documentos da licitação</span>
               <span className="licitacao-documentos-controls">
                 <input
                   value={licitacaoForm.pastaDocumentos || ""}
+                  readOnly={!canManageDocuments}
                   onChange={(event) => setLicitacaoForm((current: any) => ({ ...current, pastaDocumentos: event.target.value }))}
                   maxLength={1024}
                   placeholder="\\SERVIDOR\Dados\Minasfalto_Licitacoes\ano\data_cidade"
                 />
-                <button type="button" className="desktop-action" onClick={sugerirPastaDocumentos}><FolderOpen size={14} /> Gerar caminho</button>
+                {canManageDocuments && <button type="button" className="desktop-action" onClick={sugerirPastaDocumentos}><FolderOpen size={14} /> Gerar caminho</button>}
               </span>
-              <small>A pasta será criada ou validada no servidor quando a licitação for salva.</small>
-            </label>
+              <small>{canManageDocuments ? "A pasta será criada ou validada no servidor quando a licitação for salva." : "Pasta disponível somente para consulta."}</small>
+            </label>}
             <label className="licitacao-field licitacao-observacoes-field">
               <span>Observações gerais</span>
               <textarea
@@ -1485,14 +1491,16 @@ export default function Licitacoes() {
             </div>
             <div className="licitacao-documentos-toolbar">
               <button type="button" className="desktop-action" disabled={!documentos.data?.parentPath} onClick={() => setDocumentosCaminho(documentos.data?.parentPath || "")}><ArrowUp size={14} /> Voltar uma pasta</button>
-              <span className="licitacao-documentos-new-folder">
+              {canManageDocuments && <span className="licitacao-documentos-new-folder">
                 <input value={novaPastaDocumentos} onChange={(event) => setNovaPastaDocumentos(event.target.value)} placeholder="Nome da nova pasta" maxLength={180} />
                 <button type="button" className="desktop-action" disabled={!novaPastaDocumentos.trim() || criarPastaDocumentos.isPending} onClick={() => criarPastaDocumentos.mutate({ ...parametrosDocumentos(), nome: novaPastaDocumentos.trim() })}><FolderPlus size={14} /> Criar pasta</button>
-              </span>
-              <input ref={documentosFileInput} type="file" multiple hidden onChange={(event) => void enviarDocumentosSelecionados(event.target.files)} />
-              <button type="button" className="desktop-action primary" disabled={enviarArquivoDocumentos.isPending} onClick={() => documentosFileInput.current?.click()}><Upload size={14} /> {enviarArquivoDocumentos.isPending ? "Enviando..." : "Enviar arquivos"}</button>
+              </span>}
+              {canManageDocuments && <>
+                <input ref={documentosFileInput} type="file" multiple hidden onChange={(event) => void enviarDocumentosSelecionados(event.target.files)} />
+                <button type="button" className="desktop-action primary" disabled={enviarArquivoDocumentos.isPending} onClick={() => documentosFileInput.current?.click()}><Upload size={14} /> {enviarArquivoDocumentos.isPending ? "Enviando..." : "Enviar arquivos"}</button>
+              </>}
             </div>
-            <p>Gerencie aqui os documentos da licitação. Limite de 25 MB por arquivo.</p>
+            <p>{canManageDocuments ? "Gerencie aqui os documentos da licitação. Limite de 25 MB por arquivo." : "Consulte, visualize ou baixe os documentos da licitação."}</p>
             <div className="licitacao-documentos-lista">
               {documentos.isLoading ? <span>Consultando a pasta...</span> : documentos.isError ? (
                 <span className="licitacao-documentos-error">Não foi possível acessar: {documentos.error.message}</span>
@@ -1512,14 +1520,14 @@ export default function Licitacoes() {
                       <td>{formatarTamanhoDocumento(entry.size)}</td>
                       <td>{new Date(entry.modifiedAt).toLocaleString("pt-BR")}</td>
                       <td><span className="licitacao-documentos-actions">
-                        {documentoRenomeando?.nomeAtual === entry.name ? <>
+                        {canManageDocuments && documentoRenomeando?.nomeAtual === entry.name ? <>
                           <button type="button" title="Salvar nome" onClick={() => renomearDocumento.mutate({ ...parametrosDocumentos(), nomeAtual: entry.name, novoNome: documentoRenomeando.novoNome.trim() })}><Save size={14} /></button>
                           <button type="button" title="Cancelar" onClick={() => setDocumentoRenomeando(null)}><X size={14} /></button>
                         </> : <>
                           {entry.type === "file" && <button type="button" title="Visualizar" onClick={() => void abrirOuBaixarDocumento(entry.name)}><Eye size={14} /></button>}
                           {entry.type === "file" && <button type="button" title="Baixar" onClick={() => void abrirOuBaixarDocumento(entry.name, true)}><Download size={14} /></button>}
-                          <button type="button" title="Renomear" onClick={() => setDocumentoRenomeando({ nomeAtual: entry.name, novoNome: entry.name })}><Pencil size={14} /></button>
-                          <button type="button" title="Excluir" onClick={() => setDeleteDocumentoTarget(entry)}><Trash2 size={14} /></button>
+                          {canManageDocuments && <button type="button" title="Renomear" onClick={() => setDocumentoRenomeando({ nomeAtual: entry.name, novoNome: entry.name })}><Pencil size={14} /></button>}
+                          {canManageDocuments && <button type="button" title="Excluir" onClick={() => setDeleteDocumentoTarget(entry)}><Trash2 size={14} /></button>}
                         </>}
                       </span></td>
                     </tr>

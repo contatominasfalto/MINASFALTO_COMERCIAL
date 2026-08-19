@@ -80,6 +80,19 @@ function canAccessCostPanel(value: unknown) {
 
 const costAccessProcedure = protectedProcedure;
 
+async function assertLicitacaoDocumentPermission(user: any, write = false) {
+  await accessDb.assertPermission(user, "licitacoes", "access");
+  const effect = await accessDb.getEffectivePermission(user, "licitacoes", "documents");
+  if (effect === "deny" || (write && effect !== "allow")) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: write
+        ? "A documentação está disponível somente para visualização."
+        : "Você não possui acesso à documentação desta licitação.",
+    });
+  }
+}
+
 const alimentacaoAccessProcedure = costAccessProcedure;
 const dataIsoSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida");
 const alimentacaoFiltrosSchema = z.object({
@@ -806,29 +819,51 @@ export const appRouter = router({
     documentos: router({
       sugerirCaminho: costAccessProcedure
         .input(z.object({ data: z.string().min(1).max(10), cidade: z.string().min(1).max(120) }))
-        .query(({ input }) => ({ pastaDocumentos: buildLicitacaoDocumentPath(input.data, input.cidade) })),
+        .query(async ({ input, ctx }) => {
+          await assertLicitacaoDocumentPermission(ctx.user, true);
+          return { pastaDocumentos: buildLicitacaoDocumentPath(input.data, input.cidade) };
+        }),
       inspecionar: costAccessProcedure
         .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024), caminhoRelativo: z.string().max(1024).optional() }))
-        .query(({ input }) => inspectLicitacaoDocumentFolder(input.pastaDocumentos, input.caminhoRelativo)),
+        .query(async ({ input, ctx }) => {
+          await assertLicitacaoDocumentPermission(ctx.user);
+          return inspectLicitacaoDocumentFolder(input.pastaDocumentos, input.caminhoRelativo);
+        }),
       criarPasta: costAccessProcedure
         .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024), caminhoRelativo: z.string().max(1024).default(""), nome: z.string().trim().min(1).max(180) }))
-        .mutation(({ input }) => createLicitacaoDocumentFolder(input.pastaDocumentos, input.caminhoRelativo, input.nome)),
+        .mutation(async ({ input, ctx }) => {
+          await assertLicitacaoDocumentPermission(ctx.user, true);
+          return createLicitacaoDocumentFolder(input.pastaDocumentos, input.caminhoRelativo, input.nome);
+        }),
       enviarArquivo: costAccessProcedure
         .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024), caminhoRelativo: z.string().max(1024).default(""), nome: z.string().trim().min(1).max(255), base64: z.string().min(1).max(36_000_000) }))
-        .mutation(({ input }) => uploadLicitacaoDocument(input.pastaDocumentos, input.caminhoRelativo, input.nome, input.base64)),
+        .mutation(async ({ input, ctx }) => {
+          await assertLicitacaoDocumentPermission(ctx.user, true);
+          return uploadLicitacaoDocument(input.pastaDocumentos, input.caminhoRelativo, input.nome, input.base64);
+        }),
       baixarArquivo: costAccessProcedure
         .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024), caminhoRelativo: z.string().max(1024).default(""), nome: z.string().trim().min(1).max(255) }))
-        .mutation(({ input }) => downloadLicitacaoDocument(input.pastaDocumentos, input.caminhoRelativo, input.nome)),
+        .mutation(async ({ input, ctx }) => {
+          await assertLicitacaoDocumentPermission(ctx.user);
+          return downloadLicitacaoDocument(input.pastaDocumentos, input.caminhoRelativo, input.nome);
+        }),
       renomear: costAccessProcedure
         .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024), caminhoRelativo: z.string().max(1024).default(""), nomeAtual: z.string().trim().min(1).max(255), novoNome: z.string().trim().min(1).max(255) }))
-        .mutation(({ input }) => renameLicitacaoDocument(input.pastaDocumentos, input.caminhoRelativo, input.nomeAtual, input.novoNome)),
+        .mutation(async ({ input, ctx }) => {
+          await assertLicitacaoDocumentPermission(ctx.user, true);
+          return renameLicitacaoDocument(input.pastaDocumentos, input.caminhoRelativo, input.nomeAtual, input.novoNome);
+        }),
       excluir: costAccessProcedure
         .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024), caminhoRelativo: z.string().max(1024).default(""), nome: z.string().trim().min(1).max(255) }))
-        .mutation(({ input }) => deleteLicitacaoDocument(input.pastaDocumentos, input.caminhoRelativo, input.nome)),
+        .mutation(async ({ input, ctx }) => {
+          await assertLicitacaoDocumentPermission(ctx.user, true);
+          return deleteLicitacaoDocument(input.pastaDocumentos, input.caminhoRelativo, input.nome);
+        }),
     }),
     create: costAccessProcedure
       .input(licitacaoSchema)
       .mutation(async ({ input, ctx }) => {
+        if (input.pastaDocumentos) await assertLicitacaoDocumentPermission(ctx.user, true);
         const pastaDocumentos = input.pastaDocumentos
           ? await ensureLicitacaoDocumentFolder(input.pastaDocumentos)
           : "";
@@ -836,7 +871,11 @@ export const appRouter = router({
       }),
     update: costAccessProcedure
       .input(z.object({ id: z.number().int().positive(), data: licitacaoSchema }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const pastaAtual = await db.getLicitacaoDocumentPath(input.id);
+        if (String(input.data.pastaDocumentos || "") !== pastaAtual) {
+          await assertLicitacaoDocumentPermission(ctx.user, true);
+        }
         const pastaDocumentos = input.data.pastaDocumentos
           ? await ensureLicitacaoDocumentFolder(input.data.pastaDocumentos)
           : "";
