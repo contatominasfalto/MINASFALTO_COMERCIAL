@@ -3266,6 +3266,10 @@ table :is(th, td) :where(a, button, input, select, textarea, label, span, strong
   padding: 10px;
 }
 
+.licitacao-modal-delivery .licitacao-group-body {
+  min-height: min(340px, 45vh);
+}
+
 .licitacao-delivery-table {
   min-width: 1030px;
   table-layout: fixed;
@@ -3410,6 +3414,7 @@ table :is(th, td) :where(a, button, input, select, textarea, label, span, strong
 }
 
 .licitacao-modal-delivery .licitacao-list-scroll {
+  min-height: min(220px, 28vh);
   max-height: min(40vh, 420px);
 }
 
