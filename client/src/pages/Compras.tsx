@@ -364,8 +364,8 @@ export default function Compras() {
         "Status",
         "Fornecedor escolhido",
         "Valor cotado",
-        "Valor negociado",
-        "Valor pago",
+        "Valor do desconto",
+        "Valor final",
       ],
       ...((data?.orcamentos || []) as any[]).map(o => [
         o.numero,
@@ -454,7 +454,7 @@ export default function Compras() {
               </b>
             </article>
             <article>
-              <span>Valor pago</span>
+              <span>Valor final</span>
               <b>
                 {money(
                   ((data?.orcamentos as any[]) || []).reduce(
@@ -476,8 +476,8 @@ export default function Compras() {
                   <th>Itens</th>
                   <th>Fornecedor escolhido</th>
                   <th>Cotado</th>
-                  <th>Negociado</th>
-                  <th>Pago</th>
+                  <th>Valor do desconto</th>
+                  <th>Valor final</th>
                   <th>Ações</th>
                 </tr>
               </thead>
@@ -685,8 +685,8 @@ export default function Compras() {
                     (
                       {
                         valorCotado: "Valor cotado",
-                        valorNegociado: "Valor negociado",
-                        valorPago: "Valor pago",
+                        valorNegociado: "Valor do desconto",
+                        valorPago: "Valor final",
                       } as any
                     )[k]
                   }
