@@ -34,7 +34,7 @@ const emptyItem = () => ({
   ofertas: [] as any[],
 });
 const emptyForm = () => ({
-  numero: `COT-${new Date().getFullYear()}-`,
+  numero: "",
   titulo: "",
   dataOrcamento: new Date().toISOString().slice(0, 10),
   status: "EM_COTACAO",
@@ -303,12 +303,11 @@ export default function Compras() {
   };
   const submit = () => {
     if (
-      !form.numero.trim() ||
       !form.titulo.trim() ||
       form.itens.some(i => !i.materialId || !i.descricao.trim())
     )
       return toast.error(
-        "Preencha número, objeto da cotação e selecione o material de todos os itens."
+        "Preencha o objeto da cotação e selecione o material de todos os itens."
       );
 
     if (
@@ -336,7 +335,7 @@ export default function Compras() {
       String(value ?? "").trim().toLocaleUpperCase("pt-BR");
     const payload = {
       ...form,
-      numero: upper(form.numero),
+      numero: form.numero ? upper(form.numero) : undefined,
       titulo: upper(form.titulo),
       observacoes: upper(form.observacoes),
       prazoEntregaPadrao: upper(form.prazoEntregaPadrao),
@@ -603,8 +602,13 @@ export default function Compras() {
               <label>
                 Número do orçamento
                 <input
-                  value={form.numero}
-                  onChange={e => setForm({ ...form, numero: e.target.value })}
+                  value={
+                    editingId
+                      ? form.numero
+                      : "GERADO AUTOMATICAMENTE AO SALVAR"
+                  }
+                  readOnly
+                  aria-readonly="true"
                 />
               </label>
               <label>

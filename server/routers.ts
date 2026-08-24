@@ -447,7 +447,7 @@ const compraItemSchema = z.object({
 });
 const compraOrcamentoSchema = z.object({
   id: z.number().int().positive().optional(),
-  numero: z.string().trim().min(1).max(40),
+  numero: z.string().trim().max(40).optional(),
   titulo: z.string().trim().min(2).max(220),
   dataOrcamento: dataIsoSchema,
   status: z.enum([

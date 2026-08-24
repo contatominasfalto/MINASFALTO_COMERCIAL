@@ -6,6 +6,12 @@ const comprasSchemaPromises = new WeakMap<object, Promise<void>>();
 export const comprasPrazoEntregaPadraoMigration =
   "ALTER TABLE compras_orcamentos ADD COLUMN prazo_entrega_padrao varchar(120) NULL AFTER observacoes";
 
+export const comprasOrcamentoSequenciaMigration = `CREATE TABLE IF NOT EXISTS compras_orcamento_sequencias (
+  ano smallint unsigned NOT NULL PRIMARY KEY,
+  ultimo_numero bigint unsigned NOT NULL DEFAULT 0,
+  atualizado_em timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
 /** Garante evoluções compatíveis sem depender de comando manual após o deploy. */
 export async function ensureComprasSchema(pool: mysql.Pool) {
   let pending = comprasSchemaPromises.get(pool);
@@ -15,6 +21,15 @@ export async function ensureComprasSchema(pool: mysql.Pool) {
         "SELECT column_name FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='compras_orcamentos' AND column_name='prazo_entrega_padrao'"
       );
       if (!columns.length) await pool.query(comprasPrazoEntregaPadraoMigration);
+      await pool.query(comprasOrcamentoSequenciaMigration);
+      await pool.query(`INSERT INTO compras_orcamento_sequencias (ano,ultimo_numero)
+        SELECT
+          CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(numero,'-',2),'-',-1) AS UNSIGNED) ano,
+          MAX(CAST(SUBSTRING_INDEX(numero,'-',-1) AS UNSIGNED)) ultimo_numero
+        FROM compras_orcamentos
+        WHERE numero REGEXP '^COT-[0-9]{4}-[0-9]+$'
+        GROUP BY CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(numero,'-',2),'-',-1) AS UNSIGNED)
+        ON DUPLICATE KEY UPDATE ultimo_numero=GREATEST(compras_orcamento_sequencias.ultimo_numero,VALUES(ultimo_numero))`);
     })().catch((error) => {
       comprasSchemaPromises.delete(pool);
       throw error;
@@ -26,6 +41,37 @@ export async function ensureComprasSchema(pool: mysql.Pool) {
 
 export function comprasUppercase(value: unknown) {
   return String(value ?? "").trim().toLocaleUpperCase("pt-BR");
+}
+
+export function anoDoOrcamento(dataOrcamento: string) {
+  const match = /^(\d{4})-\d{2}-\d{2}$/.exec(dataOrcamento);
+  if (!match) throw new Error("Data do orcamento invalida.");
+  return Number(match[1]);
+}
+
+export function formatarNumeroOrcamento(ano: number, sequencia: number) {
+  if (!Number.isInteger(ano) || ano < 2000 || ano > 9999)
+    throw new Error("Ano do orcamento invalido.");
+  if (!Number.isInteger(sequencia) || sequencia < 1)
+    throw new Error("Sequencia do orcamento invalida.");
+  return `COT-${ano}-${sequencia}`;
+}
+
+async function gerarNumeroOrcamento(
+  cx: mysql.PoolConnection,
+  dataOrcamento: string
+) {
+  const ano = anoDoOrcamento(dataOrcamento);
+  await cx.execute(
+    `INSERT INTO compras_orcamento_sequencias (ano,ultimo_numero)
+     VALUES (?,LAST_INSERT_ID(1))
+     ON DUPLICATE KEY UPDATE ultimo_numero=LAST_INSERT_ID(ultimo_numero+1)`,
+    [ano]
+  );
+  const [rows] = await cx.query<mysql.RowDataPacket[]>(
+    "SELECT LAST_INSERT_ID() sequencia"
+  );
+  return formatarNumeroOrcamento(ano, Number(rows[0].sequencia));
 }
 
 export type TipoCadastroCompras =
@@ -60,7 +106,7 @@ export async function painel() {
   const [[orcamentos], [fornecedores], [materiais], [historico]] =
     await Promise.all([
       pool.query(
-        `SELECT o.id,o.numero,o.titulo,DATE_FORMAT(o.data_orcamento,'%Y-%m-%d') dataOrcamento,o.status,o.observacoes,o.valor_cotado valorCotado,o.valor_negociado valorNegociado,o.valor_pago valorPago,o.fornecedor_escolhido_id fornecedorEscolhidoId,f.nome fornecedorEscolhido,(SELECT COUNT(*) FROM compras_orcamento_itens i WHERE i.orcamento_id=o.id) itens FROM compras_orcamentos o LEFT JOIN compras_fornecedores f ON f.id=o.fornecedor_escolhido_id ORDER BY o.data_orcamento DESC,o.id DESC`
+        `SELECT o.id,o.numero,o.titulo,DATE_FORMAT(o.data_orcamento,'%Y-%m-%d') dataOrcamento,o.status,o.observacoes,o.valor_cotado valorCotado,o.valor_negociado valorNegociado,o.valor_pago valorPago,o.fornecedor_escolhido_id fornecedorEscolhidoId,f.nome fornecedorEscolhido,(SELECT COUNT(*) FROM compras_orcamento_itens i WHERE i.orcamento_id=o.id) itens FROM compras_orcamentos o LEFT JOIN compras_fornecedores f ON f.id=o.fornecedor_escolhido_id ORDER BY CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(o.numero,'-',2),'-',-1) AS UNSIGNED),CAST(SUBSTRING_INDEX(o.numero,'-',-1) AS UNSIGNED),o.id`
       ),
       pool.query(
         "SELECT id,nome,documento,telefone,email,endereco,ativo,origem_planilha origemPlanilha,fornecedor_nota fornecedorNota,fornecedor_item fornecedorItem FROM compras_fornecedores ORDER BY ativo DESC,nome"
@@ -121,7 +167,7 @@ export async function obterOrcamento(id: number) {
 
 type OrcamentoInput = {
   id?: number;
-  numero: string;
+  numero?: string;
   titulo: string;
   dataOrcamento: string;
   status: string;
@@ -153,11 +199,11 @@ export async function salvarOrcamento(data: OrcamentoInput, usuario: string) {
   try {
     await cx.beginTransaction();
     let id = data.id;
+    let numero = data.numero || "";
     if (id)
       await cx.execute(
-        "UPDATE compras_orcamentos SET numero=?,titulo=?,data_orcamento=?,status=?,observacoes=?,prazo_entrega_padrao=?,fornecedor_escolhido_id=?,valor_cotado=?,valor_negociado=?,valor_pago=?,atualizado_por=? WHERE id=?",
+        "UPDATE compras_orcamentos SET titulo=?,data_orcamento=?,status=?,observacoes=?,prazo_entrega_padrao=?,fornecedor_escolhido_id=?,valor_cotado=?,valor_negociado=?,valor_pago=?,atualizado_por=? WHERE id=?",
         [
-          comprasUppercase(data.numero),
           comprasUppercase(data.titulo),
           data.dataOrcamento,
           data.status,
@@ -172,10 +218,11 @@ export async function salvarOrcamento(data: OrcamentoInput, usuario: string) {
         ]
       );
     else {
+      numero = await gerarNumeroOrcamento(cx, data.dataOrcamento);
       const [result] = await cx.execute<mysql.ResultSetHeader>(
         "INSERT INTO compras_orcamentos(numero,titulo,data_orcamento,status,observacoes,prazo_entrega_padrao,fornecedor_escolhido_id,valor_cotado,valor_negociado,valor_pago,criado_por,atualizado_por) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
         [
-          comprasUppercase(data.numero),
+          numero,
           comprasUppercase(data.titulo),
           data.dataOrcamento,
           data.status,
@@ -228,7 +275,7 @@ export async function salvarOrcamento(data: OrcamentoInput, usuario: string) {
         );
     }
     await cx.commit();
-    return { ok: true, id };
+    return { ok: true, id, numero };
   } catch (e) {
     await cx.rollback();
     throw e;
