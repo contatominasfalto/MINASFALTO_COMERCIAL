@@ -24,13 +24,16 @@ export async function painel() {
 export async function obterOrcamento(id: number) {
   const pool = await getMysqlPool();
   const [[rows], [itens], [ofertas]] = await Promise.all([
-    pool.query("SELECT * FROM compras_orcamentos WHERE id=?", [id]),
+    pool.query(
+      "SELECT o.*,DATE_FORMAT(o.data_orcamento,'%Y-%m-%d') data_orcamento FROM compras_orcamentos o WHERE o.id=?",
+      [id]
+    ),
     pool.query(
       "SELECT id,material_id materialId,descricao,quantidade,unidade,ordem FROM compras_orcamento_itens WHERE orcamento_id=? ORDER BY ordem,id",
       [id]
     ),
     pool.query(
-      "SELECT o.id,o.item_id itemId,o.fornecedor_id fornecedorId,f.nome fornecedor,o.valor_unitario valorUnitario,o.valor_total valorTotal,o.prazo_entrega prazoEntrega,o.condicao_pagamento condicaoPagamento,o.selecionada FROM compras_orcamento_ofertas o JOIN compras_fornecedores f ON f.id=o.fornecedor_id WHERE o.orcamento_id=? ORDER BY o.item_id,f.nome",
+      "SELECT o.id,o.item_id itemId,o.fornecedor_id fornecedorId,f.nome fornecedor,o.valor_unitario valorUnitario,o.valor_total valorTotal,COALESCE(o.prazo_entrega,'') prazoEntrega,COALESCE(o.condicao_pagamento,'') condicaoPagamento,o.selecionada FROM compras_orcamento_ofertas o JOIN compras_fornecedores f ON f.id=o.fornecedor_id WHERE o.orcamento_id=? ORDER BY o.item_id,f.nome",
       [id]
     ),
   ]);

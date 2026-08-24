@@ -196,6 +196,8 @@ export default function Compras() {
           .map(x => ({
             ...x,
             valorUnitario: Number(x.valorUnitario),
+            prazoEntrega: x.prazoEntrega || "",
+            condicaoPagamento: x.condicaoPagamento || "",
             selecionada: Boolean(x.selecionada),
           })),
       })),
