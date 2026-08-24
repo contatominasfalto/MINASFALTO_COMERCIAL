@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { permissionTargetForProcedure } from "../shared/access-control";
 import {
   comandoExclusaoCadastro,
+  comprasPrazoEntregaPadraoMigration,
   comprasUppercase,
   destinosTransferenciaCompras,
   validarTransferenciaCompras,
@@ -56,6 +57,12 @@ describe("Controle de Compras", () => {
   it("normaliza o conteúdo textual de compras em caixa alta", () => {
     expect(comprasUppercase("  prazo de 15 dias  ")).toBe("PRAZO DE 15 DIAS");
     expect(comprasUppercase("material e servico")).toBe("MATERIAL E SERVICO");
+  });
+
+  it("possui migração automática para o prazo padrão de entrega", () => {
+    expect(comprasPrazoEntregaPadraoMigration).toContain(
+      "ADD COLUMN prazo_entrega_padrao varchar(120) NULL"
+    );
   });
 
   it("exclui fornecedores fisicamente em vez de apenas inativá-los", () => {

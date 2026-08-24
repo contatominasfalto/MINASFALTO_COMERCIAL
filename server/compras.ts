@@ -1,6 +1,29 @@
 import type mysql from "mysql2/promise";
 import { getMysqlPool } from "./db";
 
+const comprasSchemaPromises = new WeakMap<object, Promise<void>>();
+
+export const comprasPrazoEntregaPadraoMigration =
+  "ALTER TABLE compras_orcamentos ADD COLUMN prazo_entrega_padrao varchar(120) NULL AFTER observacoes";
+
+/** Garante evoluções compatíveis sem depender de comando manual após o deploy. */
+export async function ensureComprasSchema(pool: mysql.Pool) {
+  let pending = comprasSchemaPromises.get(pool);
+  if (!pending) {
+    pending = (async () => {
+      const [columns] = await pool.query<mysql.RowDataPacket[]>(
+        "SELECT column_name FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='compras_orcamentos' AND column_name='prazo_entrega_padrao'"
+      );
+      if (!columns.length) await pool.query(comprasPrazoEntregaPadraoMigration);
+    })().catch((error) => {
+      comprasSchemaPromises.delete(pool);
+      throw error;
+    });
+    comprasSchemaPromises.set(pool, pending);
+  }
+  await pending;
+}
+
 export function comprasUppercase(value: unknown) {
   return String(value ?? "").trim().toLocaleUpperCase("pt-BR");
 }
@@ -33,6 +56,7 @@ export function comandoExclusaoCadastro(
 
 export async function painel() {
   const pool = await getMysqlPool();
+  await ensureComprasSchema(pool);
   const [[orcamentos], [fornecedores], [materiais], [historico]] =
     await Promise.all([
       pool.query(
@@ -76,6 +100,7 @@ export async function painel() {
 
 export async function obterOrcamento(id: number) {
   const pool = await getMysqlPool();
+  await ensureComprasSchema(pool);
   const [[rows], [itens], [ofertas]] = await Promise.all([
     pool.query(
       "SELECT o.*,DATE_FORMAT(o.data_orcamento,'%Y-%m-%d') data_orcamento FROM compras_orcamentos o WHERE o.id=?",
@@ -123,6 +148,7 @@ type OrcamentoInput = {
 };
 export async function salvarOrcamento(data: OrcamentoInput, usuario: string) {
   const pool = await getMysqlPool();
+  await ensureComprasSchema(pool);
   const cx = await pool.getConnection();
   try {
     await cx.beginTransaction();
