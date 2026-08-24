@@ -31,7 +31,8 @@
     "alimentacao:schema": "node scripts/create-alimentacao-schema.mjs",
     "usuarios:schema": "node scripts/create-user-access-schema.mjs",
     "compras:schema": "node scripts/create-compras-schema.mjs",
-    "compras:migrate": "node scripts/migrate-compras-planilha.mjs"
+    "compras:migrate": "node scripts/migrate-compras-planilha.mjs",
+    "compras:setup": "npm run compras:schema -- --apply && npm run compras:migrate -- --apply"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",

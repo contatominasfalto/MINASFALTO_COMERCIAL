@@ -1,17 +1,28 @@
 # Controle de Compras
 
-## Implantação
+## Implantação automática
 
-Execute no diretório da aplicação, antes de reiniciar o servidor:
+Execute no diretório da aplicação:
 
 ```powershell
-npm run compras:schema
-npm run compras:schema -- --apply
-npm run compras:migrate -- --file "C:\caminho\COTAÇÃO MATERIAIS DE CONSTRUÇÃO (version 1).xlsb.xlsx"
-npm run compras:migrate -- --file "C:\caminho\COTAÇÃO MATERIAIS DE CONSTRUÇÃO (version 1).xlsb.xlsx" --apply
+npm run compras:setup
 ```
 
-O primeiro comando de cada par é apenas diagnóstico. A carga é idempotente: o hash SHA-256 do arquivo impede que a mesma versão da planilha seja importada duas vezes.
+Esse único comando cria e valida as tabelas necessárias e importa a planilha-base incluída no projeto. Não é necessário copiar, localizar ou informar manualmente a planilha no servidor.
+
+A execução é idempotente: as tabelas usam `CREATE TABLE IF NOT EXISTS` e o hash SHA-256 impede a importação duplicada da mesma versão da planilha. Portanto, o comando pode ser executado novamente com segurança após um `git pull`.
+
+Para somente conferir a carga, sem alterar o banco:
+
+```powershell
+npm run compras:migrate
+```
+
+Uma planilha diferente ainda pode ser informada excepcionalmente:
+
+```powershell
+npm run compras:migrate -- --file "C:\caminho\planilha.xlsx" --apply
+```
 
 ## Dados importados
 

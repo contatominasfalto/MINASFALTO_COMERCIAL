@@ -1,14 +1,15 @@
 import "dotenv/config";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import ExcelJS from "exceljs";
 import mysql from "mysql2/promise";
 
 const apply = process.argv.includes("--apply");
 const fileArg = process.argv.find((value, index, args) => index > 1 && !value.startsWith("--") && args[index - 1] !== "--file");
 const fileFlag = process.argv.indexOf("--file");
-const file = fileFlag >= 0 ? process.argv[fileFlag + 1] : fileArg;
-if (!file) throw new Error('Informe a planilha: npm run compras:migrate -- --file "C:\\caminho\\planilha.xlsx"');
+const bundledFile = fileURLToPath(new URL("../data/compras/carga-inicial-compras.xlsx", import.meta.url));
+const file = fileFlag >= 0 ? process.argv[fileFlag + 1] : fileArg || bundledFile;
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL não configurado.");
 
 const buffer = await readFile(file);
