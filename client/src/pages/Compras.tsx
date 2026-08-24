@@ -136,6 +136,28 @@ export default function Compras() {
       form.itens.some(i => !i.descricao.trim())
     )
       return toast.error("Preencha número, título e todos os itens.");
+
+    if (
+      form.itens.some(item =>
+        item.ofertas.some(oferta => !Number(oferta.fornecedorId))
+      )
+    ) {
+      return toast.error(
+        "Selecione um fornecedor em todas as propostas ou remova a proposta vazia."
+      );
+    }
+
+    if (
+      form.itens.some(item => {
+        const ids = item.ofertas.map(oferta => Number(oferta.fornecedorId));
+        return new Set(ids).size !== ids.length;
+      })
+    ) {
+      return toast.error(
+        "O mesmo fornecedor não pode aparecer duas vezes no mesmo item."
+      );
+    }
+
     const payload = {
       ...form,
       valorCotado: form.valorCotado || suggestedTotal,
@@ -273,6 +295,14 @@ export default function Compras() {
                 {isLoading ? (
                   <tr>
                     <td colSpan={10}>Carregando...</td>
+                  </tr>
+                ) : ((data?.orcamentos || []) as any[]).length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="compras-empty">
+                      Nenhum orçamento cadastrado. Os fornecedores e materiais
+                      da planilha ficam disponíveis após a execução da carga
+                      histórica no servidor.
+                    </td>
                   </tr>
                 ) : (
                   ((data?.orcamentos || []) as any[]).map(o => (
@@ -546,14 +576,33 @@ export default function Compras() {
                   </div>
                 ))}
                 <button
+                  disabled={!((data?.fornecedores as any[]) || []).some(
+                    fornecedor => fornecedor.ativo
+                  )}
+                  title={
+                    ((data?.fornecedores as any[]) || []).some(
+                      fornecedor => fornecedor.ativo
+                    )
+                      ? "Adicionar proposta de fornecedor"
+                      : "Cadastre ou importe ao menos um fornecedor"
+                  }
                   onClick={() => {
+                    const primeiroFornecedor = (
+                      (data?.fornecedores as any[]) || []
+                    ).find(fornecedor => fornecedor.ativo);
+                    if (!primeiroFornecedor) {
+                      toast.error(
+                        "Cadastre um fornecedor ou aplique a carga histórica antes de adicionar propostas."
+                      );
+                      return;
+                    }
                     const itens = [...form.itens];
                     itens[idx] = {
                       ...item,
                       ofertas: [
                         ...item.ofertas,
                         {
-                          fornecedorId: 0,
+                          fornecedorId: Number(primeiroFornecedor.id),
                           valorUnitario: 0,
                           prazoEntrega: "",
                           condicaoPagamento: "",
