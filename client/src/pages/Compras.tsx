@@ -170,7 +170,6 @@ export default function Compras() {
     | "fornecedores"
     | "fornecedor_item"
     | "materiais"
-    | "historico"
   >("orcamentos");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
@@ -309,17 +308,6 @@ export default function Compras() {
           material.ativo && matchesTableSearch(material, tableSearch)
       ),
     [data?.materiais, tableSearch]
-  );
-  const filteredHistory = useMemo(
-    () =>
-      ((data?.historico || []) as any[]).filter(entry =>
-        matchesTableSearch(entry, tableSearch, [
-          entry.criadoEm
-            ? new Date(entry.criadoEm).toLocaleString("pt-BR")
-            : "",
-        ])
-      ),
-    [data?.historico, tableSearch]
   );
   const selectedItemSupplierIds = useMemo(
     () =>
@@ -520,7 +508,6 @@ export default function Compras() {
           ["fornecedores", "Fornecedores", Users],
           ["fornecedor_item", "Fornecedor Item", Users],
           ["materiais", "Materiais", PackageSearch],
-          ["historico", "Carga histórica", Download],
         ].map(([key, label, Icon]: any) => (
           <button
             className={tab === key ? "active" : ""}
@@ -616,7 +603,7 @@ export default function Compras() {
                     <td colSpan={10} className="compras-empty">
                       {tableSearch
                         ? "Nenhum orçamento encontrado para a pesquisa informada."
-                        : "Nenhum orçamento cadastrado. Os fornecedores e materiais da planilha ficam disponíveis após a execução da carga histórica no servidor."}
+                        : "Nenhum orçamento cadastrado."}
                     </td>
                   </tr>
                 ) : (
@@ -679,39 +666,6 @@ export default function Compras() {
           refresh={refresh}
         />
       )}{" "}
-      {tab === "historico" && (
-        <section className="compras-table">
-          <h2>Cargas da planilha</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Arquivo</th>
-                <th>Data</th>
-                <th>Status</th>
-                <th>Resumo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredHistory.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="compras-empty">
-                    {tableSearch
-                      ? "Nenhuma carga encontrada para a pesquisa informada."
-                      : "Nenhuma carga histórica registrada."}
-                  </td>
-                </tr>
-              ) : filteredHistory.map(x => (
-                <tr key={x.id}>
-                  <td>{x.arquivo}</td>
-                  <td>{new Date(x.criadoEm).toLocaleString("pt-BR")}</td>
-                  <td>{x.status}</td>
-                  <td>{x.resumo}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      )}
       {open && (
         <div className="compras-overlay">
           <div className="compras-modal">
@@ -1016,7 +970,7 @@ export default function Compras() {
                     const primeiroFornecedor = itemSupplierOptions[0];
                     if (!primeiroFornecedor) {
                       toast.error(
-                        "Cadastre um fornecedor ou aplique a carga histórica antes de adicionar propostas."
+                        "Cadastre um fornecedor antes de adicionar propostas."
                       );
                       return;
                     }
