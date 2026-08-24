@@ -36,6 +36,8 @@ const emptyItem = () => ({
 const emptyForm = () => ({
   numero: "",
   titulo: "",
+  objetoCotacaoId: null as number | null,
+  veiculoEquipamentoId: null as number | null,
   dataOrcamento: new Date().toISOString().slice(0, 10),
   status: "EM_COTACAO",
   observacoes: "",
@@ -174,6 +176,7 @@ export default function Compras() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm());
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [auxModal, setAuxModal] = useState<"objeto" | "veiculo" | null>(null);
   const [tableSearch, setTableSearch] = useState("");
   const detail = trpc.compras.obterOrcamento.useQuery(
     { id: editingId || 1 },
@@ -210,6 +213,13 @@ export default function Compras() {
     setForm({
       numero: o.numero,
       titulo: o.titulo,
+      objetoCotacaoId:
+        o.objeto_cotacao_id ||
+        (data?.objetosCotacao as any[] | undefined)?.find(
+          item => item.nome === o.titulo
+        )?.id ||
+        null,
+      veiculoEquipamentoId: o.veiculo_equipamento_id || null,
       dataOrcamento: String(o.data_orcamento).slice(0, 10),
       status: o.status,
       observacoes: o.observacoes || "",
@@ -232,7 +242,7 @@ export default function Compras() {
           })),
       })),
     });
-  }, [detail.data]);
+  }, [detail.data, data?.objetosCotacao]);
   const suggestedTotal = useMemo(
     () =>
       form.itens.reduce((sum, item) => {
@@ -250,6 +260,14 @@ export default function Compras() {
   const activeMaterials = useMemo(
     () => ((data?.materiais as any[]) || []).filter(m => m.ativo),
     [data?.materiais]
+  );
+  const activeQuoteObjects = useMemo(
+    () => ((data?.objetosCotacao as any[]) || []).filter(item => item.ativo),
+    [data?.objetosCotacao]
+  );
+  const activeVehicles = useMemo(
+    () => ((data?.veiculosEquipamentos as any[]) || []).filter(item => item.ativo),
+    [data?.veiculosEquipamentos]
   );
   const filteredQuotes = useMemo(
     () =>
@@ -363,6 +381,24 @@ export default function Compras() {
       })),
     []
   );
+  const quoteObjectOptions = useMemo<SearchOption[]>(
+    () =>
+      activeQuoteObjects.map(item => ({
+        value: String(item.id),
+        label: item.nome,
+      })),
+    [activeQuoteObjects]
+  );
+  const vehicleOptions = useMemo<SearchOption[]>(
+    () => [
+      { value: "", label: "Nenhum veículo/equipamento definido" },
+      ...activeVehicles.map(item => ({
+        value: String(item.id),
+        label: item.nome,
+      })),
+    ],
+    [activeVehicles]
+  );
   const openNew = () => {
     setEditingId(null);
     setForm(emptyForm());
@@ -374,7 +410,7 @@ export default function Compras() {
   };
   const submit = () => {
     if (
-      !form.titulo.trim() ||
+      !form.objetoCotacaoId ||
       form.itens.some(i => !i.materialId || !i.descricao.trim())
     )
       return toast.error(
@@ -512,6 +548,14 @@ export default function Compras() {
             <button className="primary" onClick={openNew}>
               <Plus size={16} />
               Novo orçamento
+            </button>
+            <button onClick={() => setAuxModal("veiculo")}>
+              <Plus size={16} />
+              Cadastrar Veículos/Equipamentos
+            </button>
+            <button onClick={() => setAuxModal("objeto")}>
+              <Plus size={16} />
+              Cadastrar Objeto da Cotação
             </button>
             <button onClick={exportCsv}>
               <Download size={16} />
@@ -708,9 +752,36 @@ export default function Compras() {
               </label>
               <label className="compras-object-field">
                 Objeto da cotação
-                <input
-                  value={form.titulo}
-                  onChange={e => setForm({ ...form, titulo: e.target.value })}
+                <SearchableSelect
+                  value={String(form.objetoCotacaoId || "")}
+                  options={quoteObjectOptions}
+                  placeholder="Selecione o objeto da cotação"
+                  searchPlaceholder="Pesquisar objeto da cotação..."
+                  onChange={value => {
+                    const selected = activeQuoteObjects.find(
+                      item => Number(item.id) === Number(value)
+                    );
+                    setForm({
+                      ...form,
+                      objetoCotacaoId: value ? Number(value) : null,
+                      titulo: selected?.nome || "",
+                    });
+                  }}
+                />
+              </label>
+              <label className="compras-vehicle-field">
+                Veículo/Equipamento
+                <SearchableSelect
+                  value={String(form.veiculoEquipamentoId || "")}
+                  options={vehicleOptions}
+                  placeholder="Selecione o veículo/equipamento"
+                  searchPlaceholder="Pesquisar veículo/equipamento..."
+                  onChange={value =>
+                    setForm({
+                      ...form,
+                      veiculoEquipamentoId: value ? Number(value) : null,
+                    })
+                  }
                 />
               </label>
               <label>
@@ -1002,6 +1073,18 @@ export default function Compras() {
           </div>
         </div>
       )}
+      {auxModal && (
+        <CadastroAuxiliarModal
+          tipo={auxModal}
+          items={
+            auxModal === "objeto"
+              ? ((data?.objetosCotacao as any[]) || [])
+              : ((data?.veiculosEquipamentos as any[]) || [])
+          }
+          refresh={refresh}
+          onClose={() => setAuxModal(null)}
+        />
+      )}
       <SapDoubleConfirmDialog
         open={Boolean(deleteTarget)}
         onOpenChange={o => !o && setDeleteTarget(null)}
@@ -1025,6 +1108,128 @@ export default function Compras() {
         isPending={remove.isPending}
       />
     </main>
+  );
+}
+
+function CadastroAuxiliarModal({
+  tipo,
+  items,
+  refresh,
+  onClose,
+}: {
+  tipo: "objeto" | "veiculo";
+  items: any[];
+  refresh: () => void;
+  onClose: () => void;
+}) {
+  const label = tipo === "objeto" ? "Objeto da Cotação" : "Veículo/Equipamento";
+  const [form, setForm] = useState({ id: undefined as number | undefined, nome: "", ativo: true });
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const save = trpc.compras.salvarCadastroAuxiliar.useMutation({
+    onSuccess: () => {
+      toast.success(`${label} salvo com sucesso.`);
+      setForm({ id: undefined, nome: "", ativo: true });
+      refresh();
+    },
+    onError: error => toast.error(error.message),
+  });
+  const remove = trpc.compras.excluirCadastroAuxiliar.useMutation({
+    onSuccess: () => {
+      toast.success(`${label} excluído com sucesso.`);
+      setDeleteTarget(null);
+      setForm({ id: undefined, nome: "", ativo: true });
+      refresh();
+    },
+    onError: error => toast.error(error.message),
+  });
+
+  return (
+    <div className="compras-overlay compras-aux-overlay">
+      <div className="compras-aux-modal" role="dialog" aria-modal="true">
+        <button className="close" aria-label="Fechar" onClick={onClose}>
+          <X size={20} />
+        </button>
+        <div className="compras-modal-heading">
+          <span className="compras-modal-kicker">Controle de Compras</span>
+          <h2>Cadastrar {label}</h2>
+          <p>Inclua, edite ou exclua as opções disponíveis nos orçamentos.</p>
+        </div>
+        <div className="compras-aux-form">
+          <label>
+            Nome
+            <input
+              autoFocus
+              value={form.nome}
+              placeholder={`Informe o ${label.toLocaleLowerCase("pt-BR")}`}
+              onChange={event => setForm({ ...form, nome: event.target.value })}
+            />
+          </label>
+          <label className="compras-active-check">
+            <input
+              type="checkbox"
+              checked={form.ativo}
+              onChange={event => setForm({ ...form, ativo: event.target.checked })}
+            />
+            Cadastro ativo
+          </label>
+          <button
+            className="primary"
+            disabled={save.isPending}
+            onClick={() => {
+              if (!form.nome.trim()) return toast.error(`Informe o ${label.toLocaleLowerCase("pt-BR")}.`);
+              save.mutate({ tipo, ...form });
+            }}
+          >
+            <Save size={15} />
+            Salvar
+          </button>
+          {form.id && (
+            <button onClick={() => setForm({ id: undefined, nome: "", ativo: true })}>
+              Cancelar edição
+            </button>
+          )}
+        </div>
+        <div className="compras-table compras-aux-table">
+          <table>
+            <thead><tr><th>Nome</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody>
+              {items.length === 0 ? (
+                <tr><td colSpan={3} className="compras-empty">Nenhum cadastro encontrado.</td></tr>
+              ) : items.map(item => (
+                <tr key={item.id}>
+                  <td>{item.nome}</td>
+                  <td>{item.ativo ? "ATIVO" : "INATIVO"}</td>
+                  <td>
+                    <button
+                      title="Editar"
+                      onClick={() => setForm({ id: Number(item.id), nome: item.nome, ativo: Boolean(item.ativo) })}
+                    ><Pencil size={15} /></button>
+                    <button title="Excluir" onClick={() => setDeleteTarget(item)}><Trash2 size={15} /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <footer><button onClick={onClose}>Fechar</button></footer>
+      </div>
+      <SapDoubleConfirmDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={value => !value && setDeleteTarget(null)}
+        title={`Confirmar exclusão de ${label.toLocaleLowerCase("pt-BR")}`}
+        description="Confira o cadastro que será excluído."
+        finalDescription="Confirma a exclusão definitiva? Cadastros vinculados a orçamentos não poderão ser excluídos."
+        details={deleteTarget ? [{ label, value: deleteTarget.nome }] : []}
+        onConfirm={() =>
+          remove.mutate({
+            tipo,
+            id: Number(deleteTarget.id),
+            motivo: "Exclusão confirmada em duas etapas",
+          })
+        }
+        isPending={remove.isPending}
+      />
+    </div>
   );
 }
 

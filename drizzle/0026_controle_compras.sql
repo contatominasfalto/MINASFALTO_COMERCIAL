@@ -14,8 +14,21 @@ CREATE TABLE IF NOT EXISTS `compras_materiais` (
   PRIMARY KEY (`id`), UNIQUE KEY `compras_material_descricao_uq` (`descricao`)
 );
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS `compras_objetos_cotacao` (
+  `id` int NOT NULL AUTO_INCREMENT, `nome` varchar(220) NOT NULL, `ativo` boolean NOT NULL DEFAULT true,
+  `criado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`), UNIQUE KEY `compras_objeto_cotacao_nome_uq` (`nome`)
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS `compras_veiculos_equipamentos` (
+  `id` int NOT NULL AUTO_INCREMENT, `nome` varchar(220) NOT NULL, `ativo` boolean NOT NULL DEFAULT true,
+  `criado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`), UNIQUE KEY `compras_veiculo_equipamento_nome_uq` (`nome`)
+);
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS `compras_orcamentos` (
   `id` int NOT NULL AUTO_INCREMENT, `numero` varchar(40) NOT NULL, `titulo` varchar(220) NOT NULL,
+  `objeto_cotacao_id` int NULL, `veiculo_equipamento_id` int NULL,
   `data_orcamento` date NOT NULL, `status` enum('EM_COTACAO','AGUARDANDO_DEFINICAO','COMPRADO','CANCELADO') NOT NULL DEFAULT 'EM_COTACAO',
   `observacoes` text NULL, `prazo_entrega_padrao` varchar(120) NULL, `fornecedor_escolhido_id` int NULL, `valor_cotado` decimal(15,2) NOT NULL DEFAULT 0,
   `valor_negociado` decimal(15,2) NOT NULL DEFAULT 0, `valor_pago` decimal(15,2) NOT NULL DEFAULT 0,

@@ -12,6 +12,21 @@ export const comprasOrcamentoSequenciaMigration = `CREATE TABLE IF NOT EXISTS co
   atualizado_em timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
 
+const comprasCadastrosOrcamentoMigration = `CREATE TABLE IF NOT EXISTS compras_objetos_cotacao (
+  id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  nome varchar(220) NOT NULL UNIQUE,
+  ativo boolean NOT NULL DEFAULT true,
+  criado_em timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  atualizado_em timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+const comprasVeiculosMigration = `CREATE TABLE IF NOT EXISTS compras_veiculos_equipamentos (
+  id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  nome varchar(220) NOT NULL UNIQUE,
+  ativo boolean NOT NULL DEFAULT true,
+  criado_em timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  atualizado_em timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`;
+
 /** Garante evoluções compatíveis sem depender de comando manual após o deploy. */
 export async function ensureComprasSchema(pool: mysql.Pool) {
   let pending = comprasSchemaPromises.get(pool);
@@ -21,6 +36,21 @@ export async function ensureComprasSchema(pool: mysql.Pool) {
         "SELECT column_name FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='compras_orcamentos' AND column_name='prazo_entrega_padrao'"
       );
       if (!columns.length) await pool.query(comprasPrazoEntregaPadraoMigration);
+      await pool.query(comprasCadastrosOrcamentoMigration);
+      await pool.query(comprasVeiculosMigration);
+      const [relationColumns] = await pool.query<mysql.RowDataPacket[]>(
+        "SELECT column_name FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='compras_orcamentos' AND column_name IN ('objeto_cotacao_id','veiculo_equipamento_id')"
+      );
+      const existing = new Set(relationColumns.map(row => row.column_name ?? row.COLUMN_NAME));
+      if (!existing.has("objeto_cotacao_id"))
+        await pool.query("ALTER TABLE compras_orcamentos ADD COLUMN objeto_cotacao_id int NULL AFTER titulo");
+      if (!existing.has("veiculo_equipamento_id"))
+        await pool.query("ALTER TABLE compras_orcamentos ADD COLUMN veiculo_equipamento_id int NULL AFTER objeto_cotacao_id");
+      await pool.query(`INSERT IGNORE INTO compras_objetos_cotacao(nome)
+        SELECT DISTINCT UPPER(TRIM(titulo)) FROM compras_orcamentos WHERE TRIM(COALESCE(titulo,''))<>''`);
+      await pool.query(`UPDATE compras_orcamentos o JOIN compras_objetos_cotacao c
+        ON c.nome=UPPER(TRIM(o.titulo)) SET o.objeto_cotacao_id=c.id
+        WHERE o.objeto_cotacao_id IS NULL`);
       await pool.query(comprasOrcamentoSequenciaMigration);
       await pool.query(`INSERT INTO compras_orcamento_sequencias (ano,ultimo_numero)
         SELECT
@@ -103,10 +133,10 @@ export function comandoExclusaoCadastro(
 export async function painel() {
   const pool = await getMysqlPool();
   await ensureComprasSchema(pool);
-  const [[orcamentos], [fornecedores], [materiais], [historico]] =
+  const [[orcamentos], [fornecedores], [materiais], [historico], [objetosCotacao], [veiculosEquipamentos]] =
     await Promise.all([
       pool.query(
-        `SELECT o.id,o.numero,o.titulo,DATE_FORMAT(o.data_orcamento,'%Y-%m-%d') dataOrcamento,o.status,o.observacoes,o.valor_cotado valorCotado,o.valor_negociado valorNegociado,o.valor_pago valorPago,o.fornecedor_escolhido_id fornecedorEscolhidoId,f.nome fornecedorEscolhido,(SELECT COUNT(*) FROM compras_orcamento_itens i WHERE i.orcamento_id=o.id) itens FROM compras_orcamentos o LEFT JOIN compras_fornecedores f ON f.id=o.fornecedor_escolhido_id ORDER BY CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(o.numero,'-',2),'-',-1) AS UNSIGNED),CAST(SUBSTRING_INDEX(o.numero,'-',-1) AS UNSIGNED),o.id`
+        `SELECT o.id,o.numero,o.titulo,o.objeto_cotacao_id objetoCotacaoId,o.veiculo_equipamento_id veiculoEquipamentoId,DATE_FORMAT(o.data_orcamento,'%Y-%m-%d') dataOrcamento,o.status,o.observacoes,o.valor_cotado valorCotado,o.valor_negociado valorNegociado,o.valor_pago valorPago,o.fornecedor_escolhido_id fornecedorEscolhidoId,f.nome fornecedorEscolhido,v.nome veiculoEquipamento,(SELECT COUNT(*) FROM compras_orcamento_itens i WHERE i.orcamento_id=o.id) itens FROM compras_orcamentos o LEFT JOIN compras_fornecedores f ON f.id=o.fornecedor_escolhido_id LEFT JOIN compras_veiculos_equipamentos v ON v.id=o.veiculo_equipamento_id ORDER BY CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(o.numero,'-',2),'-',-1) AS UNSIGNED),CAST(SUBSTRING_INDEX(o.numero,'-',-1) AS UNSIGNED),o.id`
       ),
       pool.query(
         "SELECT id,nome,documento,telefone,email,endereco,ativo,origem_planilha origemPlanilha,fornecedor_nota fornecedorNota,fornecedor_item fornecedorItem FROM compras_fornecedores ORDER BY ativo DESC,nome"
@@ -117,6 +147,8 @@ export async function painel() {
       pool.query(
         "SELECT id,arquivo,status,resumo,criado_em criadoEm FROM compras_importacoes ORDER BY id DESC LIMIT 20"
       ),
+      pool.query("SELECT id,nome,ativo FROM compras_objetos_cotacao ORDER BY ativo DESC,nome"),
+      pool.query("SELECT id,nome,ativo FROM compras_veiculos_equipamentos ORDER BY ativo DESC,nome"),
     ]);
   const fornecedoresNormalizados = (fornecedores as any[]).map(item => ({
     ...item,
@@ -141,6 +173,8 @@ export async function painel() {
     fornecedores: fornecedoresNormalizados,
     materiais: materiaisNormalizados,
     historico,
+    objetosCotacao: (objetosCotacao as any[]).map(x => ({ ...x, ativo: Boolean(x.ativo) })),
+    veiculosEquipamentos: (veiculosEquipamentos as any[]).map(x => ({ ...x, ativo: Boolean(x.ativo) })),
   } as any;
 }
 
@@ -169,6 +203,8 @@ type OrcamentoInput = {
   id?: number;
   numero?: string;
   titulo: string;
+  objetoCotacaoId: number;
+  veiculoEquipamentoId?: number | null;
   dataOrcamento: string;
   status: string;
   observacoes?: string;
@@ -198,13 +234,28 @@ export async function salvarOrcamento(data: OrcamentoInput, usuario: string) {
   const cx = await pool.getConnection();
   try {
     await cx.beginTransaction();
+    const [objetos] = await cx.execute<mysql.RowDataPacket[]>(
+      "SELECT id,nome FROM compras_objetos_cotacao WHERE id=? AND ativo=TRUE",
+      [data.objetoCotacaoId]
+    );
+    if (!objetos[0]) throw new Error("Objeto da cotacao nao encontrado ou inativo.");
+    if (data.veiculoEquipamentoId) {
+      const [veiculos] = await cx.execute<mysql.RowDataPacket[]>(
+        "SELECT id FROM compras_veiculos_equipamentos WHERE id=? AND ativo=TRUE",
+        [data.veiculoEquipamentoId]
+      );
+      if (!veiculos[0]) throw new Error("Veiculo/equipamento nao encontrado ou inativo.");
+    }
+    const titulo = comprasUppercase(objetos[0].nome);
     let id = data.id;
     let numero = data.numero || "";
     if (id)
       await cx.execute(
-        "UPDATE compras_orcamentos SET titulo=?,data_orcamento=?,status=?,observacoes=?,prazo_entrega_padrao=?,fornecedor_escolhido_id=?,valor_cotado=?,valor_negociado=?,valor_pago=?,atualizado_por=? WHERE id=?",
+        "UPDATE compras_orcamentos SET titulo=?,objeto_cotacao_id=?,veiculo_equipamento_id=?,data_orcamento=?,status=?,observacoes=?,prazo_entrega_padrao=?,fornecedor_escolhido_id=?,valor_cotado=?,valor_negociado=?,valor_pago=?,atualizado_por=? WHERE id=?",
         [
-          comprasUppercase(data.titulo),
+          titulo,
+          data.objetoCotacaoId,
+          data.veiculoEquipamentoId || null,
           data.dataOrcamento,
           data.status,
           comprasUppercase(data.observacoes) || null,
@@ -220,10 +271,12 @@ export async function salvarOrcamento(data: OrcamentoInput, usuario: string) {
     else {
       numero = await gerarNumeroOrcamento(cx, data.dataOrcamento);
       const [result] = await cx.execute<mysql.ResultSetHeader>(
-        "INSERT INTO compras_orcamentos(numero,titulo,data_orcamento,status,observacoes,prazo_entrega_padrao,fornecedor_escolhido_id,valor_cotado,valor_negociado,valor_pago,criado_por,atualizado_por) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO compras_orcamentos(numero,titulo,objeto_cotacao_id,veiculo_equipamento_id,data_orcamento,status,observacoes,prazo_entrega_padrao,fornecedor_escolhido_id,valor_cotado,valor_negociado,valor_pago,criado_por,atualizado_por) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [
           numero,
-          comprasUppercase(data.titulo),
+          titulo,
+          data.objetoCotacaoId,
+          data.veiculoEquipamentoId || null,
           data.dataOrcamento,
           data.status,
           comprasUppercase(data.observacoes) || null,
@@ -451,6 +504,47 @@ export function criarMaterial(data: any) {
 }
 export function atualizarMaterial(data: any) {
   return salvarMaterial(data);
+}
+
+export type TipoCadastroAuxiliar = "objeto" | "veiculo";
+function tabelaCadastroAuxiliar(tipo: TipoCadastroAuxiliar) {
+  return tipo === "objeto"
+    ? "compras_objetos_cotacao"
+    : "compras_veiculos_equipamentos";
+}
+export async function salvarCadastroAuxiliar(
+  tipo: TipoCadastroAuxiliar,
+  data: { id?: number; nome: string; ativo: boolean }
+) {
+  const pool = await getMysqlPool();
+  await ensureComprasSchema(pool);
+  const tabela = tabelaCadastroAuxiliar(tipo);
+  const nome = comprasUppercase(data.nome);
+  if (data.id) {
+    const [result] = await pool.execute<mysql.ResultSetHeader>(
+      `UPDATE ${tabela} SET nome=?,ativo=? WHERE id=?`,
+      [nome, data.ativo, data.id]
+    );
+    if (!result.affectedRows) throw new Error("Cadastro nao encontrado.");
+  } else {
+    await pool.execute(`INSERT INTO ${tabela}(nome,ativo) VALUES(?,?)`, [nome, data.ativo]);
+  }
+  return { ok: true };
+}
+export async function excluirCadastroAuxiliar(tipo: TipoCadastroAuxiliar, id: number) {
+  const pool = await getMysqlPool();
+  await ensureComprasSchema(pool);
+  const coluna = tipo === "objeto" ? "objeto_cotacao_id" : "veiculo_equipamento_id";
+  const [refs] = await pool.execute<mysql.RowDataPacket[]>(
+    `SELECT COUNT(*) total FROM compras_orcamentos WHERE ${coluna}=?`, [id]
+  );
+  if (Number(refs[0]?.total || 0) > 0)
+    throw new Error("Cadastro vinculado a orcamento. Edite os orcamentos antes de exclui-lo.");
+  const [result] = await pool.execute<mysql.ResultSetHeader>(
+    `DELETE FROM ${tabelaCadastroAuxiliar(tipo)} WHERE id=?`, [id]
+  );
+  if (!result.affectedRows) throw new Error("Cadastro nao encontrado ou ja excluido.");
+  return { ok: true };
 }
 export async function excluirCadastro(
   tipo: "fornecedor" | "material",

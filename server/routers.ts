@@ -449,6 +449,8 @@ const compraOrcamentoSchema = z.object({
   id: z.number().int().positive().optional(),
   numero: z.string().trim().max(40).optional(),
   titulo: z.string().trim().min(2).max(220),
+  objetoCotacaoId: z.number().int().positive(),
+  veiculoEquipamentoId: z.number().int().positive().nullable().optional(),
   dataOrcamento: dataIsoSchema,
   status: z.enum([
     "EM_COTACAO",
@@ -1550,6 +1552,21 @@ export const appRouter = router({
         })
       )
       .mutation(({ input }) => compras.atualizarMaterial(input)),
+    salvarCadastroAuxiliar: protectedProcedure
+      .input(z.object({
+        tipo: z.enum(["objeto", "veiculo"]),
+        id: z.number().int().positive().optional(),
+        nome: z.string().trim().min(2).max(220),
+        ativo: z.boolean(),
+      }))
+      .mutation(({ input }) => compras.salvarCadastroAuxiliar(input.tipo, input)),
+    excluirCadastroAuxiliar: protectedProcedure
+      .input(z.object({
+        tipo: z.enum(["objeto", "veiculo"]),
+        id: z.number().int().positive(),
+        motivo: z.string().trim().min(3).max(500),
+      }))
+      .mutation(({ input }) => compras.excluirCadastroAuxiliar(input.tipo, input.id)),
     excluirCadastro: protectedProcedure
       .input(
         z.object({

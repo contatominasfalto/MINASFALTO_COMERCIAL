@@ -33,13 +33,15 @@ describe("Controle de Compras", () => {
     }
   });
 
-  it("possui as sete tabelas e relações que preservam o histórico", async () => {
+  it("possui as nove tabelas e relações que preservam o histórico", async () => {
     const sql = await readFile(new URL("../drizzle/0026_controle_compras.sql", import.meta.url), "utf8");
     const tables = [...sql.matchAll(/CREATE TABLE IF NOT EXISTS `([^`]+)`/g)].map(match => match[1]);
 
     expect(tables).toEqual([
       "compras_fornecedores",
       "compras_materiais",
+      "compras_objetos_cotacao",
+      "compras_veiculos_equipamentos",
       "compras_orcamentos",
       "compras_orcamento_itens",
       "compras_orcamento_ofertas",
@@ -52,6 +54,8 @@ describe("Controle de Compras", () => {
     expect(sql).toContain("`fornecedor_nota` boolean NOT NULL DEFAULT true");
     expect(sql).toContain("`fornecedor_item` boolean NOT NULL DEFAULT false");
     expect(sql).toContain("`prazo_entrega_padrao` varchar(120) NULL");
+    expect(sql).toContain("`objeto_cotacao_id` int NULL");
+    expect(sql).toContain("`veiculo_equipamento_id` int NULL");
   });
 
   it("normaliza o conteúdo textual de compras em caixa alta", () => {

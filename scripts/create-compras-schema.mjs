@@ -33,12 +33,29 @@ try {
         "ALTER TABLE compras_fornecedores ADD COLUMN fornecedor_item boolean NOT NULL DEFAULT false AFTER fornecedor_nota"
       );
     const [quoteColumns] = await connection.query(
-      "SELECT column_name FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='compras_orcamentos' AND column_name='prazo_entrega_padrao'"
+      "SELECT column_name FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='compras_orcamentos' AND column_name IN ('prazo_entrega_padrao','objeto_cotacao_id','veiculo_equipamento_id')"
     );
-    if (!quoteColumns.length)
+    const existingQuoteColumns = new Set(
+      quoteColumns.map(row => row.COLUMN_NAME ?? row.column_name)
+    );
+    if (!existingQuoteColumns.has("prazo_entrega_padrao"))
       await connection.query(
         "ALTER TABLE compras_orcamentos ADD COLUMN prazo_entrega_padrao varchar(120) NULL AFTER observacoes"
       );
+    if (!existingQuoteColumns.has("objeto_cotacao_id"))
+      await connection.query(
+        "ALTER TABLE compras_orcamentos ADD COLUMN objeto_cotacao_id int NULL AFTER titulo"
+      );
+    if (!existingQuoteColumns.has("veiculo_equipamento_id"))
+      await connection.query(
+        "ALTER TABLE compras_orcamentos ADD COLUMN veiculo_equipamento_id int NULL AFTER objeto_cotacao_id"
+      );
+    await connection.query(
+      "INSERT IGNORE INTO compras_objetos_cotacao(nome,ativo) SELECT DISTINCT UPPER(TRIM(titulo)),true FROM compras_orcamentos WHERE TRIM(COALESCE(titulo,''))<>''"
+    );
+    await connection.query(
+      "UPDATE compras_orcamentos o JOIN compras_objetos_cotacao c ON c.nome=UPPER(TRIM(o.titulo)) SET o.objeto_cotacao_id=c.id WHERE o.objeto_cotacao_id IS NULL"
+    );
     const [tables] = await connection.query("SELECT table_name FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name LIKE 'compras_%' ORDER BY table_name");
     console.log("Estrutura criada e validada:");
     tables.forEach(row => console.log(`- ${row.TABLE_NAME ?? row.table_name}`));
