@@ -18,7 +18,30 @@ export async function painel() {
         "SELECT id,arquivo,status,resumo,criado_em criadoEm FROM compras_importacoes ORDER BY id DESC LIMIT 20"
       ),
     ]);
-  return { orcamentos, fornecedores, materiais, historico } as any;
+  const fornecedoresNormalizados = (fornecedores as any[]).map(item => ({
+    ...item,
+    documento: item.documento ?? "",
+    telefone: item.telefone ?? "",
+    email: item.email ?? "",
+    endereco: item.endereco ?? "",
+    ativo: Boolean(item.ativo),
+    origemPlanilha: Boolean(item.origemPlanilha),
+    fornecedorNota: Boolean(item.fornecedorNota),
+    fornecedorItem: Boolean(item.fornecedorItem),
+  }));
+  const materiaisNormalizados = (materiais as any[]).map(item => ({
+    ...item,
+    categoria: item.categoria ?? "",
+    unidade: item.unidade ?? "",
+    ativo: Boolean(item.ativo),
+    origemPlanilha: Boolean(item.origemPlanilha),
+  }));
+  return {
+    orcamentos,
+    fornecedores: fornecedoresNormalizados,
+    materiais: materiaisNormalizados,
+    historico,
+  } as any;
 }
 
 export async function obterOrcamento(id: number) {

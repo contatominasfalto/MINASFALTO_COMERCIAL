@@ -973,14 +973,32 @@ function Cadastro({
         <button
           className="primary"
           onClick={() => {
+            const payload = {
+              ...form,
+              ativo: Boolean(form.ativo),
+              ...(tipo === "fornecedor"
+                ? {
+                    documento: form.documento ?? "",
+                    telefone: form.telefone ?? "",
+                    email: form.email ?? "",
+                    endereco: form.endereco ?? "",
+                  }
+                : {
+                    categoria: form.categoria ?? "",
+                    unidade: form.unidade ?? "",
+                  }),
+            };
             if (tipo === "fornecedor")
               form.id
-                ? updateF.mutate(form)
+                ? updateF.mutate(payload)
                 : createF.mutate({
-                    ...form,
+                    ...payload,
                     tipoFornecedor: categoriaFornecedor,
                   });
-            else form.id ? updateM.mutate(form) : createM.mutate(form);
+            else
+              form.id
+                ? updateM.mutate(payload)
+                : createM.mutate(payload);
           }}
         >
           <Save size={15} />
@@ -1010,7 +1028,26 @@ function Cadastro({
                   ))}
                 <td>{x.origemPlanilha ? "Planilha" : "Sistema"}</td>
                 <td>
-                  <button onClick={() => setForm(x)}>
+                  <button
+                    onClick={() =>
+                      setForm({
+                        ...blank,
+                        ...x,
+                        ativo: Boolean(x.ativo),
+                        ...(tipo === "fornecedor"
+                          ? {
+                              documento: x.documento ?? "",
+                              telefone: x.telefone ?? "",
+                              email: x.email ?? "",
+                              endereco: x.endereco ?? "",
+                            }
+                          : {
+                              categoria: x.categoria ?? "",
+                              unidade: x.unidade ?? "",
+                            }),
+                      })
+                    }
+                  >
                     <Pencil size={15} />
                   </button>
                   {tipo === "fornecedor" && (
