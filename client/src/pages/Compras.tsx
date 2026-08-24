@@ -1146,10 +1146,32 @@ function RelatoriosCompras({
   const [rascunho, setRascunho] = useState(vazio);
   const [filtros, setFiltros] = useState(vazio);
 
+  const chaveData = (valor: unknown) => {
+    if (!valor) return "";
+    const texto = String(valor).trim();
+    const iso = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+    const brasil = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (brasil) return `${brasil[3]}-${brasil[2]}-${brasil[1]}`;
+    const data = valor instanceof Date ? valor : new Date(texto);
+    if (Number.isNaN(data.getTime())) return "";
+    return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-${String(data.getDate()).padStart(2, "0")}`;
+  };
+
+  const compararCronologicamente = (a: any, b: any) => {
+    const porData = chaveData(a.dataOrcamento).localeCompare(chaveData(b.dataOrcamento));
+    return porData || String(a.numero || "").localeCompare(String(b.numero || ""), "pt-BR", { numeric: true });
+  };
+
+  const formatarData = (valor: unknown) => {
+    const data = chaveData(valor);
+    return data ? data.split("-").reverse().join("/") : "—";
+  };
+
   const registros = useMemo(() => {
     return orcamentos
       .filter(item => {
-        const data = String(item.dataOrcamento || "").slice(0, 10);
+        const data = chaveData(item.dataOrcamento);
         return (
           (!filtros.inicio || data >= filtros.inicio) &&
           (!filtros.fim || data <= filtros.fim) &&
@@ -1161,19 +1183,13 @@ function RelatoriosCompras({
           (!filtros.veiculoId ||
             Number(item.veiculoEquipamentoId) === Number(filtros.veiculoId))
         );
-      })
-      .sort((a, b) => {
-        const porData = String(a.dataOrcamento || "")
-          .slice(0, 10)
-          .localeCompare(String(b.dataOrcamento || "").slice(0, 10));
-        return (
-          porData ||
-          String(a.numero || "").localeCompare(String(b.numero || ""), "pt-BR", {
-            numeric: true,
-          })
-        );
       });
   }, [orcamentos, filtros]);
+
+  const registrosOrdenados = useMemo(
+    () => [...registros].sort(compararCronologicamente),
+    [registros]
+  );
 
   const totais = useMemo(
     () => ({
@@ -1193,15 +1209,15 @@ function RelatoriosCompras({
 
   const evolucaoValorFinal = useMemo(
     () =>
-      [...registros]
+      [...registrosOrdenados]
         .sort((a, b) => {
-          const porData = String(a.dataOrcamento || "").localeCompare(
-            String(b.dataOrcamento || "")
+          const porData = chaveData(a.dataOrcamento).localeCompare(
+            chaveData(b.dataOrcamento)
           );
           return porData || String(a.numero || "").localeCompare(String(b.numero || ""));
         })
         .map(item => {
-          const data = String(item.dataOrcamento || "").slice(0, 10);
+          const data = chaveData(item.dataOrcamento);
           return {
             rotulo: `${data ? data.split("-").reverse().join("/") : "—"} · ${item.numero}`,
             numero: item.numero,
@@ -1210,7 +1226,7 @@ function RelatoriosCompras({
             valorFinal: Number(item.valorPago || 0),
           };
         }),
-    [registros]
+    [registrosOrdenados]
   );
 
   const porStatus = useMemo(() => {
@@ -1253,13 +1269,9 @@ function RelatoriosCompras({
         "Valor do desconto",
         "Valor final",
       ],
-      ...registros.map(item => [
+      ...registrosOrdenados.map(item => [
         item.numero,
-        String(item.dataOrcamento || "")
-          .slice(0, 10)
-          .split("-")
-          .reverse()
-          .join("/"),
+        formatarData(item.dataOrcamento),
         item.titulo,
         item.veiculoEquipamento || "",
         item.fornecedorEscolhido || "",
@@ -1302,18 +1314,15 @@ function RelatoriosCompras({
           ...evolucaoValorFinal.map(x => x.valorFinal),
           1
         );
-        return `<div class="bar-row"><span>${escape(item.rotulo)}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max(2, (item.valorFinal / maximo) * 100)}%"></div></div><b>${escape(money(item.valorFinal))}</b></div>`;
+        const largura = Math.max(2, (item.valorFinal / maximo) * 100);
+        return `<div class="bar-row"><span>${escape(item.rotulo)}</span><div class="bar-track"><svg viewBox="0 0 100 14" preserveAspectRatio="none" aria-hidden="true"><rect x="0" y="0" width="${largura}" height="14" fill="#2f668f" /></svg></div><b>${escape(money(item.valorFinal))}</b></div>`;
       })
       .join("");
-    const linhas = registros
+    const linhas = registrosOrdenados
       .map(
         item =>
           `<tr><td>${escape(item.numero)}</td><td>${escape(
-            String(item.dataOrcamento || "")
-              .slice(0, 10)
-              .split("-")
-              .reverse()
-              .join("/")
+            formatarData(item.dataOrcamento)
           )}</td><td>${escape(item.titulo)}</td><td>${escape(item.veiculoEquipamento || "—")}</td><td>${escape(item.fornecedorEscolhido || "—")}</td><td>${escape(STATUS[item.status] || item.status)}</td><td>${escape(item.itens)}</td><td>${escape(money(item.valorCotado))}</td><td>${escape(money(item.valorNegociado))}</td><td>${escape(money(item.valorPago))}</td></tr>`
       )
       .join("");
@@ -1322,7 +1331,7 @@ function RelatoriosCompras({
       return toast.error("Permita pop-ups para gerar o PDF/Imprimir.");
     janela.document
       .write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de Controle de Compras</title><style>
-      @page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{font:10px Arial,sans-serif;color:#071c32;margin:0;text-transform:uppercase;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}header{display:flex;align-items:center;gap:22px;border-bottom:2px solid #e4a100;padding:0 0 12px;margin-bottom:12px}header img{width:76px;height:52px;object-fit:contain}h1{font-size:22px;margin:0}h1 small{display:block;font-size:11px;color:#40566a;margin-top:5px}.filters{font-size:9px;color:#40566a;margin-bottom:12px}.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px}.metrics div{border:1px solid #9bb2c7;padding:9px}.metrics small{display:block;color:#536b81}.metrics strong{font-size:15px}.chart{border:1px solid #9bb2c7;padding:10px;margin-bottom:14px;break-inside:avoid}.chart h2{font-size:13px}.bar-row{display:grid;grid-template-columns:180px 1fr 95px;align-items:center;gap:8px;margin:7px 0}.bar-track{height:14px;background:#edf2f6;border:1px solid #bdcad5;overflow:hidden}.bar-fill{height:100%;min-width:3px;background-color:#2f668f!important;box-shadow:inset 0 0 0 20px #2f668f;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.bar-row b{text-align:right}table{width:100%;border-collapse:collapse;font-size:8px}th{background:#dbe9f4}th,td{border:1px solid #abc0d2;padding:5px;text-align:left;vertical-align:top}tr{break-inside:avoid}footer{margin-top:12px;border-top:1px solid #e4a100;padding-top:6px;color:#60788d;text-align:right}@media print{button{display:none}.bar-track{background:#edf2f6!important}.bar-fill{background:#2f668f!important;box-shadow:inset 0 0 0 20px #2f668f!important}}
+      @page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{font:10px Arial,sans-serif;color:#071c32;margin:0;text-transform:uppercase;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}header{display:flex;align-items:center;gap:22px;border-bottom:2px solid #e4a100;padding:0 0 12px;margin-bottom:12px}header img{width:76px;height:52px;object-fit:contain}h1{font-size:22px;margin:0}h1 small{display:block;font-size:11px;color:#40566a;margin-top:5px}.filters{font-size:9px;color:#40566a;margin-bottom:12px}.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px}.metrics div{border:1px solid #9bb2c7;padding:9px}.metrics small{display:block;color:#536b81}.metrics strong{font-size:15px}.chart{border:1px solid #9bb2c7;padding:10px;margin-bottom:14px;break-inside:avoid}.chart h2{font-size:13px}.bar-row{display:grid;grid-template-columns:180px 1fr 95px;align-items:center;gap:8px;margin:7px 0}.bar-track{height:14px;background:#edf2f6;border:1px solid #bdcad5;overflow:hidden}.bar-track svg{display:block;width:100%;height:100%}.bar-row b{text-align:right}table{width:100%;border-collapse:collapse;font-size:8px}th{background:#dbe9f4}th,td{border:1px solid #abc0d2;padding:5px;text-align:left;vertical-align:top}tr{break-inside:avoid}footer{margin-top:12px;border-top:1px solid #e4a100;padding-top:6px;color:#60788d;text-align:right}@media print{button{display:none}.bar-track{background:#edf2f6!important}}
     </style></head><body><header><img src="${escape(minasfaltoLogo)}"><h1>Relatório de Controle de Compras<small>Orçamentos e análise de aquisições</small></h1></header><div class="filters">${escape(resumo)}</div><section class="metrics"><div><small>Orçamentos</small><strong>${registros.length}</strong></div><div><small>Itens</small><strong>${totais.itens}</strong></div><div><small>Valor cotado</small><strong>${escape(money(totais.cotado))}</strong></div><div><small>Valor do desconto</small><strong>${escape(money(totais.desconto))}</strong></div><div><small>Valor final</small><strong>${escape(money(totais.final))}</strong></div></section><section class="chart"><h2>Comparativo cronológico por valor final</h2>${barras || "Nenhum dado para o período."}</section><table><thead><tr><th>Número</th><th>Data</th><th>Objeto</th><th>Veículo/Equipamento</th><th>Fornecedor</th><th>Status</th><th>Itens</th><th>Cotado</th><th>Desconto</th><th>Final</th></tr></thead><tbody>${linhas || '<tr><td colspan="10">Nenhum orçamento encontrado.</td></tr>'}</tbody></table><footer>Minasfalto — Relatório emitido em ${new Date().toLocaleString("pt-BR")}</footer><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));<\/script></body></html>`);
     janela.document.close();
   };
@@ -1541,16 +1550,12 @@ function RelatoriosCompras({
               </tr>
             </thead>
             <tbody>
-              {registros.length ? (
-                registros.map(item => (
+              {registrosOrdenados.length ? (
+                registrosOrdenados.map(item => (
                   <tr key={item.id}>
                     <td>{item.numero}</td>
                     <td>
-                      {String(item.dataOrcamento || "")
-                        .slice(0, 10)
-                        .split("-")
-                        .reverse()
-                        .join("/")}
+                      {formatarData(item.dataOrcamento)}
                     </td>
                     <td>{item.titulo}</td>
                     <td>{item.veiculoEquipamento || "—"}</td>
