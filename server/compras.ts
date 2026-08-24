@@ -1,6 +1,10 @@
 import type mysql from "mysql2/promise";
 import { getMysqlPool } from "./db";
 
+export function comprasUppercase(value: unknown) {
+  return String(value ?? "").trim().toLocaleUpperCase("pt-BR");
+}
+
 export async function painel() {
   const pool = await getMysqlPool();
   const [[orcamentos], [fornecedores], [materiais], [historico]] =
@@ -71,6 +75,7 @@ type OrcamentoInput = {
   dataOrcamento: string;
   status: string;
   observacoes?: string;
+  prazoEntregaPadrao?: string;
   fornecedorEscolhidoId?: number | null;
   valorCotado: number;
   valorNegociado: number;
@@ -98,13 +103,14 @@ export async function salvarOrcamento(data: OrcamentoInput, usuario: string) {
     let id = data.id;
     if (id)
       await cx.execute(
-        "UPDATE compras_orcamentos SET numero=?,titulo=?,data_orcamento=?,status=?,observacoes=?,fornecedor_escolhido_id=?,valor_cotado=?,valor_negociado=?,valor_pago=?,atualizado_por=? WHERE id=?",
+        "UPDATE compras_orcamentos SET numero=?,titulo=?,data_orcamento=?,status=?,observacoes=?,prazo_entrega_padrao=?,fornecedor_escolhido_id=?,valor_cotado=?,valor_negociado=?,valor_pago=?,atualizado_por=? WHERE id=?",
         [
-          data.numero,
-          data.titulo,
+          comprasUppercase(data.numero),
+          comprasUppercase(data.titulo),
           data.dataOrcamento,
           data.status,
-          data.observacoes || null,
+          comprasUppercase(data.observacoes) || null,
+          comprasUppercase(data.prazoEntregaPadrao) || null,
           data.fornecedorEscolhidoId || null,
           data.valorCotado,
           data.valorNegociado,
@@ -115,13 +121,14 @@ export async function salvarOrcamento(data: OrcamentoInput, usuario: string) {
       );
     else {
       const [result] = await cx.execute<mysql.ResultSetHeader>(
-        "INSERT INTO compras_orcamentos(numero,titulo,data_orcamento,status,observacoes,fornecedor_escolhido_id,valor_cotado,valor_negociado,valor_pago,criado_por,atualizado_por) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO compras_orcamentos(numero,titulo,data_orcamento,status,observacoes,prazo_entrega_padrao,fornecedor_escolhido_id,valor_cotado,valor_negociado,valor_pago,criado_por,atualizado_por) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
         [
-          data.numero,
-          data.titulo,
+          comprasUppercase(data.numero),
+          comprasUppercase(data.titulo),
           data.dataOrcamento,
           data.status,
-          data.observacoes || null,
+          comprasUppercase(data.observacoes) || null,
+          comprasUppercase(data.prazoEntregaPadrao) || null,
           data.fornecedorEscolhidoId || null,
           data.valorCotado,
           data.valorNegociado,
@@ -147,9 +154,9 @@ export async function salvarOrcamento(data: OrcamentoInput, usuario: string) {
         [
           id,
           item.materialId || null,
-          item.descricao,
+          comprasUppercase(item.descricao),
           item.quantidade,
-          item.unidade || null,
+          comprasUppercase(item.unidade) || null,
           n,
         ]
       );
@@ -162,8 +169,8 @@ export async function salvarOrcamento(data: OrcamentoInput, usuario: string) {
             oferta.fornecedorId,
             oferta.valorUnitario,
             oferta.valorUnitario * item.quantidade,
-            oferta.prazoEntrega || null,
-            oferta.condicaoPagamento || null,
+            comprasUppercase(oferta.prazoEntrega) || null,
+            comprasUppercase(oferta.condicaoPagamento) || null,
             oferta.selecionada,
           ]
         );
@@ -204,11 +211,11 @@ export async function salvarFornecedor(data: any) {
     await pool.execute(
       "UPDATE compras_fornecedores SET nome=?,documento=?,telefone=?,email=?,endereco=?,ativo=? WHERE id=?",
       [
-        data.nome,
-        data.documento || null,
-        data.telefone || null,
-        data.email || null,
-        data.endereco || null,
+        comprasUppercase(data.nome),
+        comprasUppercase(data.documento) || null,
+        comprasUppercase(data.telefone) || null,
+        comprasUppercase(data.email) || null,
+        comprasUppercase(data.endereco) || null,
         data.ativo,
         data.id,
       ]
@@ -217,11 +224,11 @@ export async function salvarFornecedor(data: any) {
     await pool.execute(
       "INSERT INTO compras_fornecedores(nome,documento,telefone,email,endereco,ativo,fornecedor_nota,fornecedor_item) VALUES(?,?,?,?,?,?,?,?)",
       [
-        data.nome,
-        data.documento || null,
-        data.telefone || null,
-        data.email || null,
-        data.endereco || null,
+        comprasUppercase(data.nome),
+        comprasUppercase(data.documento) || null,
+        comprasUppercase(data.telefone) || null,
+        comprasUppercase(data.email) || null,
+        comprasUppercase(data.endereco) || null,
         data.ativo,
         data.tipoFornecedor !== "ITEM",
         data.tipoFornecedor === "ITEM" || data.tipoFornecedor === "AMBOS",
@@ -251,9 +258,9 @@ export async function salvarMaterial(data: any) {
     await pool.execute(
       "UPDATE compras_materiais SET descricao=?,categoria=?,unidade=?,ativo=? WHERE id=?",
       [
-        data.descricao,
-        data.categoria || null,
-        data.unidade || null,
+        comprasUppercase(data.descricao),
+        comprasUppercase(data.categoria) || null,
+        comprasUppercase(data.unidade) || null,
         data.ativo,
         data.id,
       ]
@@ -261,7 +268,12 @@ export async function salvarMaterial(data: any) {
   else
     await pool.execute(
       "INSERT INTO compras_materiais(descricao,categoria,unidade,ativo) VALUES(?,?,?,?)",
-      [data.descricao, data.categoria || null, data.unidade || null, data.ativo]
+      [
+        comprasUppercase(data.descricao),
+        comprasUppercase(data.categoria) || null,
+        comprasUppercase(data.unidade) || null,
+        data.ativo,
+      ]
     );
   return { ok: true };
 }

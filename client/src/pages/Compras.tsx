@@ -39,6 +39,7 @@ const emptyForm = () => ({
   dataOrcamento: new Date().toISOString().slice(0, 10),
   status: "EM_COTACAO",
   observacoes: "",
+  prazoEntregaPadrao: "",
   fornecedorEscolhidoId: null as number | null,
   valorCotado: 0,
   valorNegociado: 0,
@@ -183,12 +184,17 @@ export default function Compras() {
     if (!detail.data) return;
     const o: any = detail.data.orcamento;
     const offers: any[] = detail.data.ofertas as any[];
+    const prazoEntregaPadrao =
+      o.prazo_entrega_padrao ||
+      offers.find(oferta => oferta.prazoEntrega)?.prazoEntrega ||
+      "";
     setForm({
       numero: o.numero,
       titulo: o.titulo,
       dataOrcamento: String(o.data_orcamento).slice(0, 10),
       status: o.status,
       observacoes: o.observacoes || "",
+      prazoEntregaPadrao,
       fornecedorEscolhidoId: o.fornecedor_escolhido_id || null,
       valorCotado: Number(o.valor_cotado || 0),
       valorNegociado: Number(o.valor_negociado || 0),
@@ -201,7 +207,7 @@ export default function Compras() {
           .map(x => ({
             ...x,
             valorUnitario: Number(x.valorUnitario),
-            prazoEntrega: x.prazoEntrega || "",
+            prazoEntrega: x.prazoEntrega || prazoEntregaPadrao,
             condicaoPagamento: x.condicaoPagamento || "",
             selecionada: Boolean(x.selecionada),
           })),
@@ -326,9 +332,25 @@ export default function Compras() {
       );
     }
 
+    const upper = (value: unknown) =>
+      String(value ?? "").trim().toLocaleUpperCase("pt-BR");
     const payload = {
       ...form,
+      numero: upper(form.numero),
+      titulo: upper(form.titulo),
+      observacoes: upper(form.observacoes),
+      prazoEntregaPadrao: upper(form.prazoEntregaPadrao),
       valorCotado: form.valorCotado || suggestedTotal,
+      itens: form.itens.map(item => ({
+        ...item,
+        descricao: upper(item.descricao),
+        unidade: upper(item.unidade),
+        ofertas: item.ofertas.map(oferta => ({
+          ...oferta,
+          prazoEntrega: upper(oferta.prazoEntrega),
+          condicaoPagamento: upper(oferta.condicaoPagamento),
+        })),
+      })),
     };
     editingId
       ? updateQuote.mutate({ ...payload, id: editingId } as any)
@@ -577,7 +599,7 @@ export default function Compras() {
               </p>
             </div>
             <h3 className="compras-section-title">Dados gerais</h3>
-            <div className="form-grid">
+            <div className="form-grid compras-general-grid">
               <label>
                 Número do orçamento
                 <input
@@ -595,7 +617,7 @@ export default function Compras() {
                   }
                 />
               </label>
-              <label className="wide">
+              <label className="compras-object-field">
                 Objeto da cotação
                 <input
                   value={form.titulo}
@@ -625,6 +647,32 @@ export default function Compras() {
                       fornecedorEscolhidoId: value ? Number(value) : null,
                     })
                   }
+                />
+              </label>
+              <label className="compras-deadline-field">
+                Prazo de entrega padrão
+                <input
+                  value={form.prazoEntregaPadrao}
+                  placeholder="EX.: 15 DIAS"
+                  onChange={e => {
+                    const prazoAnterior = form.prazoEntregaPadrao;
+                    const prazoEntregaPadrao = e.target.value;
+                    setForm({
+                      ...form,
+                      prazoEntregaPadrao,
+                      itens: form.itens.map(item => ({
+                        ...item,
+                        ofertas: item.ofertas.map(oferta => ({
+                          ...oferta,
+                          prazoEntrega:
+                            !oferta.prazoEntrega ||
+                            oferta.prazoEntrega === prazoAnterior
+                              ? prazoEntregaPadrao
+                              : oferta.prazoEntrega,
+                        })),
+                      })),
+                    });
+                  }}
                 />
               </label>
               {["valorCotado", "valorNegociado", "valorPago"].map(k => (
@@ -820,7 +868,7 @@ export default function Compras() {
                         {
                           fornecedorId: 0,
                           valorUnitario: 0,
-                          prazoEntrega: "",
+                          prazoEntrega: form.prazoEntregaPadrao,
                           condicaoPagamento: "",
                           selecionada: false,
                         },

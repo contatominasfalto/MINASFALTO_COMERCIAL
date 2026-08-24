@@ -457,6 +457,7 @@ const compraOrcamentoSchema = z.object({
     "CANCELADO",
   ]),
   observacoes: z.string().max(10000).optional(),
+  prazoEntregaPadrao: z.string().max(120).optional(),
   fornecedorEscolhidoId: z.number().int().positive().nullable().optional(),
   valorCotado: z.number().nonnegative(),
   valorNegociado: z.number().nonnegative(),

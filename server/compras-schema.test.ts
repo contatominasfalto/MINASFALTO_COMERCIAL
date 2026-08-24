@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { permissionTargetForProcedure } from "../shared/access-control";
+import { comprasUppercase } from "./compras";
 
 describe("Controle de Compras", () => {
   it("mapeia cada operação para a permissão granular correta", () => {
@@ -29,5 +30,11 @@ describe("Controle de Compras", () => {
     expect(sql).toContain("compras_oferta_fornecedor_fk");
     expect(sql).toContain("`fornecedor_nota` boolean NOT NULL DEFAULT true");
     expect(sql).toContain("`fornecedor_item` boolean NOT NULL DEFAULT false");
+    expect(sql).toContain("`prazo_entrega_padrao` varchar(120) NULL");
+  });
+
+  it("normaliza o conteúdo textual de compras em caixa alta", () => {
+    expect(comprasUppercase("  prazo de 15 dias  ")).toBe("PRAZO DE 15 DIAS");
+    expect(comprasUppercase("material e servico")).toBe("MATERIAL E SERVICO");
   });
 });

@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS `compras_materiais` (
 CREATE TABLE IF NOT EXISTS `compras_orcamentos` (
   `id` int NOT NULL AUTO_INCREMENT, `numero` varchar(40) NOT NULL, `titulo` varchar(220) NOT NULL,
   `data_orcamento` date NOT NULL, `status` enum('EM_COTACAO','AGUARDANDO_DEFINICAO','COMPRADO','CANCELADO') NOT NULL DEFAULT 'EM_COTACAO',
-  `observacoes` text NULL, `fornecedor_escolhido_id` int NULL, `valor_cotado` decimal(15,2) NOT NULL DEFAULT 0,
+  `observacoes` text NULL, `prazo_entrega_padrao` varchar(120) NULL, `fornecedor_escolhido_id` int NULL, `valor_cotado` decimal(15,2) NOT NULL DEFAULT 0,
   `valor_negociado` decimal(15,2) NOT NULL DEFAULT 0, `valor_pago` decimal(15,2) NOT NULL DEFAULT 0,
   `origem_planilha` boolean NOT NULL DEFAULT false, `origem_referencia` varchar(180) NULL,
   `criado_por` varchar(120) NOT NULL, `atualizado_por` varchar(120) NOT NULL,

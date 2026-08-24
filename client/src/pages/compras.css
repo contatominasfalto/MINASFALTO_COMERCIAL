@@ -4,6 +4,13 @@
   color: #071c32;
   font-size: 12px;
   padding: 12px;
+  text-transform: uppercase;
+}
+.compras-page input,
+.compras-page textarea,
+.compras-page button,
+.compras-page select {
+  text-transform: uppercase;
 }
 .compras-page > header {
   height: 70px;
@@ -158,13 +165,26 @@
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
 }
+.compras-general-grid {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: end;
+}
+.compras-general-grid > label {
+  grid-column: span 2;
+}
+.compras-general-grid .compras-object-field {
+  grid-column: span 4;
+}
+.compras-general-grid .compras-deadline-field {
+  grid-column: span 6;
+}
 .form-grid label,
 .cadastro-form label,
 .observacoes {
   display: flex;
   flex-direction: column;
   font-weight: 700;
-  text-transform: capitalize;
+  text-transform: uppercase;
 }
 .form-grid input,
 .form-grid select,
@@ -225,6 +245,10 @@
 @media (max-width: 900px) {
   .form-grid {
     grid-template-columns: 1fr 1fr;
+  }
+  .compras-general-grid .compras-object-field,
+  .compras-general-grid .compras-deadline-field {
+    grid-column: span 2;
   }
   .compras-cards {
     grid-template-columns: 1fr;
