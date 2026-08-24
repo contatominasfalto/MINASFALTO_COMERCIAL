@@ -286,13 +286,24 @@
 }
 .compras-aux-form {
   display: grid;
-  grid-template-columns: minmax(280px, 1fr) auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   gap: 8px;
   align-items: end;
   padding: 14px 18px;
   border-bottom: 1px solid #9bb2c7;
 }
+.compras-aux-form > label:first-child {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.compras-aux-form > label:first-child input {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 6px 9px;
+}
 .compras-active-check {
+  grid-column: 2;
   display: flex !important;
   flex-direction: row !important;
   align-items: center;
