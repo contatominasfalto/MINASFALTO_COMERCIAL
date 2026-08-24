@@ -5,6 +5,24 @@ export function comprasUppercase(value: unknown) {
   return String(value ?? "").trim().toLocaleUpperCase("pt-BR");
 }
 
+export type TipoCadastroCompras =
+  | "FORNECEDOR_NOTA"
+  | "FORNECEDOR_ITEM"
+  | "MATERIAL";
+
+export const destinosTransferenciaCompras: Record<TipoCadastroCompras, TipoCadastroCompras[]> = {
+  FORNECEDOR_NOTA: ["FORNECEDOR_ITEM", "MATERIAL"],
+  FORNECEDOR_ITEM: ["FORNECEDOR_NOTA", "MATERIAL"],
+  MATERIAL: ["FORNECEDOR_NOTA", "FORNECEDOR_ITEM"],
+};
+
+export function validarTransferenciaCompras(origem: TipoCadastroCompras, destino: TipoCadastroCompras) {
+  if (!destinosTransferenciaCompras[origem].includes(destino)) {
+    throw new Error("Destino invalido para o cadastro selecionado.");
+  }
+  return true;
+}
+
 export function comandoExclusaoCadastro(
   tipo: "fornecedor" | "material"
 ) {
@@ -259,6 +277,70 @@ export async function classificarFornecedor(
   );
   if (!result.affectedRows) throw new Error("Fornecedor não encontrado.");
   return { ok: true };
+}
+
+export async function transferirCadastro(
+  id: number,
+  origem: TipoCadastroCompras,
+  destino: TipoCadastroCompras
+) {
+  validarTransferenciaCompras(origem, destino);
+  const pool = await getMysqlPool();
+  const cx = await pool.getConnection();
+  try {
+    await cx.beginTransaction();
+    if (origem === "MATERIAL") {
+      const [rows] = await cx.execute<mysql.RowDataPacket[]>(
+        "SELECT id,descricao,origem_planilha FROM compras_materiais WHERE id=? AND ativo=TRUE FOR UPDATE",
+        [id]
+      );
+      const material = rows[0];
+      if (!material) throw new Error("Material nao encontrado ou inativo.");
+      const paraNota = destino === "FORNECEDOR_NOTA";
+      await cx.execute(
+        `INSERT INTO compras_fornecedores
+          (nome,ativo,origem_planilha,fornecedor_nota,fornecedor_item)
+         VALUES(?,TRUE,?,?,?)
+         ON DUPLICATE KEY UPDATE ativo=TRUE,
+          fornecedor_nota=VALUES(fornecedor_nota), fornecedor_item=VALUES(fornecedor_item)`,
+        [material.descricao, Boolean(material.origem_planilha), paraNota, !paraNota]
+      );
+      await cx.execute("UPDATE compras_materiais SET ativo=FALSE WHERE id=?", [id]);
+    } else {
+      const [rows] = await cx.execute<mysql.RowDataPacket[]>(
+        "SELECT id,nome,origem_planilha FROM compras_fornecedores WHERE id=? AND ativo=TRUE FOR UPDATE",
+        [id]
+      );
+      const fornecedor = rows[0];
+      if (!fornecedor) throw new Error("Fornecedor nao encontrado ou inativo.");
+      if (destino === "MATERIAL") {
+        await cx.execute(
+          `INSERT INTO compras_materiais
+            (descricao,categoria,unidade,ativo,origem_planilha)
+           VALUES(?,'CADASTRO TRANSFERIDO','UN',TRUE,?)
+           ON DUPLICATE KEY UPDATE ativo=TRUE`,
+          [fornecedor.nome, Boolean(fornecedor.origem_planilha)]
+        );
+        await cx.execute(
+          "UPDATE compras_fornecedores SET fornecedor_nota=FALSE,fornecedor_item=FALSE WHERE id=?",
+          [id]
+        );
+      } else {
+        const paraNota = destino === "FORNECEDOR_NOTA";
+        await cx.execute(
+          "UPDATE compras_fornecedores SET fornecedor_nota=?,fornecedor_item=? WHERE id=?",
+          [paraNota, !paraNota, id]
+        );
+      }
+    }
+    await cx.commit();
+    return { ok: true, origem, destino };
+  } catch (error) {
+    await cx.rollback();
+    throw error;
+  } finally {
+    cx.release();
+  }
 }
 export async function salvarMaterial(data: any) {
   const pool = await getMysqlPool();

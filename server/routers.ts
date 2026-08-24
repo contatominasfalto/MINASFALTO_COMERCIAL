@@ -1520,6 +1520,15 @@ export const appRouter = router({
       .mutation(({ input }) =>
         compras.classificarFornecedor(input.id, input.tipoFornecedor)
       ),
+    transferirCadastro: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        origem: z.enum(["FORNECEDOR_NOTA", "FORNECEDOR_ITEM", "MATERIAL"]),
+        destino: z.enum(["FORNECEDOR_NOTA", "FORNECEDOR_ITEM", "MATERIAL"]),
+      }))
+      .mutation(({ input }) =>
+        compras.transferirCadastro(input.id, input.origem, input.destino)
+      ),
     criarMaterial: protectedProcedure
       .input(
         z.object({

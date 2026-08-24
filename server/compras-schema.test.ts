@@ -1,7 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { permissionTargetForProcedure } from "../shared/access-control";
-import { comandoExclusaoCadastro, comprasUppercase } from "./compras";
+import {
+  comandoExclusaoCadastro,
+  comprasUppercase,
+  destinosTransferenciaCompras,
+  validarTransferenciaCompras,
+} from "./compras";
 
 describe("Controle de Compras", () => {
   it("mapeia cada operação para a permissão granular correta", () => {
@@ -9,7 +14,22 @@ describe("Controle de Compras", () => {
     expect(permissionTargetForProcedure("compras.criarOrcamento", "mutation")).toEqual({ resource: "compras", action: "create" });
     expect(permissionTargetForProcedure("compras.atualizarOrcamento", "mutation")).toEqual({ resource: "compras", action: "update" });
     expect(permissionTargetForProcedure("compras.atualizarClassificacaoFornecedor", "mutation")).toEqual({ resource: "compras", action: "update" });
+    expect(permissionTargetForProcedure("compras.transferirCadastro", "mutation")).toEqual({ resource: "compras", action: "update" });
     expect(permissionTargetForProcedure("compras.excluirOrcamento", "mutation")).toEqual({ resource: "compras", action: "delete" });
+  });
+
+  it("permite as seis transferencias entre fornecedores e materiais", () => {
+    expect(destinosTransferenciaCompras).toEqual({
+      FORNECEDOR_NOTA: ["FORNECEDOR_ITEM", "MATERIAL"],
+      FORNECEDOR_ITEM: ["FORNECEDOR_NOTA", "MATERIAL"],
+      MATERIAL: ["FORNECEDOR_NOTA", "FORNECEDOR_ITEM"],
+    });
+    for (const [origem, destinos] of Object.entries(destinosTransferenciaCompras)) {
+      for (const destino of destinos) {
+        expect(() => validarTransferenciaCompras(origem as any, destino)).not.toThrow();
+      }
+      expect(() => validarTransferenciaCompras(origem as any, origem as any)).toThrow();
+    }
   });
 
   it("possui as sete tabelas e relações que preservam o histórico", async () => {

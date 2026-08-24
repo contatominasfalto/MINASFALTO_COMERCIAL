@@ -230,6 +230,7 @@ export function permissionTargetForProcedure(
             leaf.includes("status") ||
             leaf.includes("save") ||
             leaf.includes("vincular") ||
+            leaf.includes("transferir") ||
             leaf.includes("clear") ||
             leaf.includes("reset")
           ? "update"

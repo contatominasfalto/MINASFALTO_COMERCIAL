@@ -537,7 +537,7 @@ export default function Compras() {
           tipo="fornecedor"
           categoriaFornecedor="NOTA"
           items={((data?.fornecedores || []) as any[]).filter(
-            fornecedor => fornecedor.fornecedorNota
+            fornecedor => fornecedor.ativo && fornecedor.fornecedorNota
           )}
           refresh={refresh}
         />
@@ -547,7 +547,7 @@ export default function Compras() {
           tipo="fornecedor"
           categoriaFornecedor="ITEM"
           items={((data?.fornecedores || []) as any[]).filter(
-            fornecedor => fornecedor.fornecedorItem
+            fornecedor => fornecedor.ativo && fornecedor.fornecedorItem
           )}
           refresh={refresh}
         />
@@ -555,7 +555,7 @@ export default function Compras() {
       {tab === "materiais" && (
         <Cadastro
           tipo="material"
-          items={data?.materiais || []}
+          items={((data?.materiais || []) as any[]).filter(material => material.ativo)}
           refresh={refresh}
         />
       )}{" "}
@@ -964,6 +964,8 @@ function Cadastro({
   const [form, setForm] = useState<any>(blank);
   const [target, setTarget] = useState<any>(null);
   const [transferTarget, setTransferTarget] = useState<any>(null);
+  const [transferDestination, setTransferDestination] = useState("");
+  const [transferConfirmOpen, setTransferConfirmOpen] = useState(false);
   const cadastroOptions = {
     onSuccess: () => {
       toast.success("Cadastro salvo.");
@@ -988,14 +990,12 @@ function Cadastro({
     },
     onError: e => toast.error(e.message),
   });
-  const transfer = trpc.compras.atualizarClassificacaoFornecedor.useMutation({
+  const transfer = trpc.compras.transferirCadastro.useMutation({
     onSuccess: () => {
-      toast.success(
-        categoriaFornecedor === "NOTA"
-          ? "Fornecedor movido para Fornecedor Item."
-          : "Fornecedor movido para Fornecedores."
-      );
+      toast.success("Cadastro transferido com sucesso.");
       setTransferTarget(null);
+      setTransferDestination("");
+      setTransferConfirmOpen(false);
       setForm(blank);
       refresh();
     },
@@ -1102,23 +1102,22 @@ function Cadastro({
                   >
                     <Pencil size={15} />
                   </button>
-                  {tipo === "fornecedor" && (
-                    <button
-                      title={
-                        categoriaFornecedor === "NOTA"
-                          ? "Mover para Fornecedor Item"
-                          : "Mover para Fornecedores"
-                      }
-                      aria-label={
-                        categoriaFornecedor === "NOTA"
-                          ? "Mover para Fornecedor Item"
-                          : "Mover para Fornecedores"
-                      }
-                      onClick={() => setTransferTarget(x)}
-                    >
-                      <ArrowRightLeft size={15} />
-                    </button>
-                  )}
+                  <button
+                    title="Transferir cadastro"
+                    aria-label="Transferir cadastro"
+                    onClick={() => {
+                      setTransferTarget(x);
+                      setTransferDestination(
+                        tipo === "material"
+                          ? "FORNECEDOR_NOTA"
+                          : categoriaFornecedor === "NOTA"
+                            ? "FORNECEDOR_ITEM"
+                            : "FORNECEDOR_NOTA"
+                      );
+                    }}
+                  >
+                    <ArrowRightLeft size={15} />
+                  </button>
                   <button onClick={() => setTarget(x)}>
                     <Trash2 size={15} />
                   </button>
@@ -1128,11 +1127,47 @@ function Cadastro({
           </tbody>
         </table>
       </div>
+      {transferTarget && !transferConfirmOpen && (
+        <div className="compras-transfer-overlay" role="presentation">
+          <div className="compras-transfer-dialog" role="dialog" aria-modal="true">
+            <button className="close" aria-label="Fechar" onClick={() => setTransferTarget(null)}>
+              <X size={20} />
+            </button>
+            <h2>Transferir cadastro</h2>
+            <p>Escolha a lista de destino para <strong>{transferTarget.nome || transferTarget.descricao}</strong>.</p>
+            <label>
+              Destino
+              <select value={transferDestination} onChange={e => setTransferDestination(e.target.value)}>
+                {tipo === "material" ? (
+                  <>
+                    <option value="FORNECEDOR_NOTA">Fornecedores</option>
+                    <option value="FORNECEDOR_ITEM">Fornecedor Item</option>
+                  </>
+                ) : categoriaFornecedor === "NOTA" ? (
+                  <>
+                    <option value="FORNECEDOR_ITEM">Fornecedor Item</option>
+                    <option value="MATERIAL">Materiais</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="FORNECEDOR_NOTA">Fornecedores</option>
+                    <option value="MATERIAL">Materiais</option>
+                  </>
+                )}
+              </select>
+            </label>
+            <footer>
+              <button onClick={() => setTransferTarget(null)}>Cancelar</button>
+              <button className="primary" onClick={() => setTransferConfirmOpen(true)}>Continuar</button>
+            </footer>
+          </div>
+        </div>
+      )}
       <SapDoubleConfirmDialog
-        open={Boolean(transferTarget)}
-        onOpenChange={o => !o && setTransferTarget(null)}
-        title="Confirmar transferência de fornecedor"
-        description="O cadastro será movido para a outra lista de fornecedores sem alterar seu histórico."
+        open={Boolean(transferTarget && transferConfirmOpen)}
+        onOpenChange={o => !o && setTransferConfirmOpen(false)}
+        title="Confirmar transferência de cadastro"
+        description="O cadastro será movido para a lista escolhida sem alterar seu histórico."
         finalDescription="Confirma a transferência? Orçamentos já vinculados continuarão preservados."
         details={
           transferTarget
@@ -1140,10 +1175,11 @@ function Cadastro({
                 { label: "Fornecedor", value: transferTarget.nome },
                 {
                   label: "Destino",
-                  value:
-                    categoriaFornecedor === "NOTA"
-                      ? "Fornecedor Item"
-                      : "Fornecedores da nota",
+                  value: ({
+                    FORNECEDOR_NOTA: "Fornecedores",
+                    FORNECEDOR_ITEM: "Fornecedor Item",
+                    MATERIAL: "Materiais",
+                  } as Record<string, string>)[transferDestination],
                 },
               ]
             : []
@@ -1151,8 +1187,13 @@ function Cadastro({
         onConfirm={() =>
           transfer.mutate({
             id: transferTarget.id,
-            tipoFornecedor:
-              categoriaFornecedor === "NOTA" ? "ITEM" : "NOTA",
+            origem:
+              tipo === "material"
+                ? "MATERIAL"
+                : categoriaFornecedor === "NOTA"
+                  ? "FORNECEDOR_NOTA"
+                  : "FORNECEDOR_ITEM",
+            destino: transferDestination as "FORNECEDOR_NOTA" | "FORNECEDOR_ITEM" | "MATERIAL",
           })
         }
         isPending={transfer.isPending}
