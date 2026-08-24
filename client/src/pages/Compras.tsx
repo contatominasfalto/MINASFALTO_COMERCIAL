@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import {
   BarChart3,
+  ChevronDown,
   Download,
   PackageSearch,
   Pencil,
   Plus,
   Save,
+  Search,
   ShoppingCart,
   Trash2,
   Users,
@@ -47,6 +49,95 @@ const money = (v: any) =>
     style: "currency",
     currency: "BRL",
   });
+
+type SearchOption = {
+  value: string;
+  label: string;
+  detail?: string;
+};
+
+function SearchableSelect({
+  value,
+  options,
+  placeholder,
+  searchPlaceholder = "Pesquisar...",
+  onChange,
+}: {
+  value: string;
+  options: SearchOption[];
+  placeholder: string;
+  searchPlaceholder?: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const selected = options.find(option => option.value === value);
+  const normalizedSearch = search.trim().toLocaleLowerCase("pt-BR");
+  const filtered = options.filter(option =>
+    `${option.label} ${option.detail || ""}`
+      .toLocaleLowerCase("pt-BR")
+      .includes(normalizedSearch)
+  );
+
+  return (
+    <div className={`compras-search-select${open ? " open" : ""}`}>
+      <button
+        type="button"
+        className="compras-search-trigger"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => {
+          setOpen(current => !current);
+          setSearch("");
+        }}
+      >
+        <span className={selected ? "" : "placeholder"}>
+          {selected?.label || placeholder}
+        </span>
+        <ChevronDown size={15} />
+      </button>
+      {open && (
+        <div className="compras-search-menu">
+          <div className="compras-search-box">
+            <Search size={14} />
+            <input
+              autoFocus
+              value={search}
+              placeholder={searchPlaceholder}
+              onChange={event => setSearch(event.target.value)}
+              onKeyDown={event => {
+                if (event.key === "Escape") setOpen(false);
+              }}
+            />
+          </div>
+          <div className="compras-search-options" role="listbox">
+            {filtered.length ? (
+              filtered.map(option => (
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={option.value === value}
+                  className={option.value === value ? "selected" : ""}
+                  key={option.value}
+                  onClick={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                    setSearch("");
+                  }}
+                >
+                  <span>{option.label}</span>
+                  {option.detail && <small>{option.detail}</small>}
+                </button>
+              ))
+            ) : (
+              <p>Nenhum resultado encontrado.</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Compras() {
   const [, navigate] = useLocation();
@@ -120,6 +211,42 @@ export default function Compras() {
       }, 0),
     [form.itens]
   );
+  const activeSuppliers = useMemo(
+    () => ((data?.fornecedores as any[]) || []).filter(f => f.ativo),
+    [data?.fornecedores]
+  );
+  const activeMaterials = useMemo(
+    () => ((data?.materiais as any[]) || []).filter(m => m.ativo),
+    [data?.materiais]
+  );
+  const supplierOptions = useMemo<SearchOption[]>(
+    () => [
+      { value: "", label: "Nenhum fornecedor definido" },
+      ...activeSuppliers.map(f => ({
+        value: String(f.id),
+        label: f.nome,
+        detail: f.documento || f.email || undefined,
+      })),
+    ],
+    [activeSuppliers]
+  );
+  const materialOptions = useMemo<SearchOption[]>(
+    () =>
+      activeMaterials.map(m => ({
+        value: String(m.id),
+        label: m.descricao,
+        detail: [m.categoria, m.unidade].filter(Boolean).join(" • "),
+      })),
+    [activeMaterials]
+  );
+  const statusOptions = useMemo<SearchOption[]>(
+    () =>
+      Object.entries(STATUS).map(([value, label]) => ({
+        value,
+        label: String(label),
+      })),
+    []
+  );
   const openNew = () => {
     setEditingId(null);
     setForm(emptyForm());
@@ -133,9 +260,11 @@ export default function Compras() {
     if (
       !form.numero.trim() ||
       !form.titulo.trim() ||
-      form.itens.some(i => !i.descricao.trim())
+      form.itens.some(i => !i.materialId || !i.descricao.trim())
     )
-      return toast.error("Preencha número, título e todos os itens.");
+      return toast.error(
+        "Preencha número, objeto da cotação e selecione o material de todos os itens."
+      );
 
     if (
       form.itens.some(item =>
@@ -386,10 +515,18 @@ export default function Compras() {
             <button className="close" onClick={() => setOpen(false)}>
               <X />
             </button>
-            <h2>{editingId ? "Editar" : "Novo"} orçamento</h2>
+            <div className="compras-modal-heading">
+              <span className="compras-modal-kicker">Controle de Compras</span>
+              <h2>{editingId ? "Editar orçamento" : "Cadastrar orçamento"}</h2>
+              <p>
+                Registre a cotação, selecione os materiais cadastrados e compare
+                as propostas recebidas.
+              </p>
+            </div>
+            <h3 className="compras-section-title">Dados gerais</h3>
             <div className="form-grid">
               <label>
-                Número
+                Número do orçamento
                 <input
                   value={form.numero}
                   onChange={e => setForm({ ...form, numero: e.target.value })}
@@ -414,37 +551,28 @@ export default function Compras() {
               </label>
               <label>
                 Status
-                <select
+                <SearchableSelect
                   value={form.status}
-                  onChange={e => setForm({ ...form, status: e.target.value })}
-                >
-                  {Object.entries(STATUS).map(([k, v]) => (
-                    <option value={k} key={k}>
-                      {v as string}
-                    </option>
-                  ))}
-                </select>
+                  options={statusOptions}
+                  placeholder="Selecione o status"
+                  searchPlaceholder="Pesquisar status..."
+                  onChange={status => setForm({ ...form, status })}
+                />
               </label>
               <label>
                 Fornecedor escolhido
-                <select
-                  value={form.fornecedorEscolhidoId || ""}
-                  onChange={e =>
+                <SearchableSelect
+                  value={String(form.fornecedorEscolhidoId || "")}
+                  options={supplierOptions}
+                  placeholder="Selecione o fornecedor"
+                  searchPlaceholder="Pesquisar fornecedor..."
+                  onChange={value =>
                     setForm({
                       ...form,
-                      fornecedorEscolhidoId: e.target.value
-                        ? Number(e.target.value)
-                        : null,
+                      fornecedorEscolhidoId: value ? Number(value) : null,
                     })
                   }
-                >
-                  <option value="">Selecione</option>
-                  {((data?.fornecedores as any[]) || [])
-                    .filter(f => f.ativo)
-                    .map(f => (
-                      <option value={f.id}>{f.nome}</option>
-                    ))}
-                </select>
+                />
               </label>
               {["valorCotado", "valorNegociado", "valorPago"].map(k => (
                 <label key={k}>
@@ -469,42 +597,77 @@ export default function Compras() {
                 </label>
               ))}
             </div>
-            <h3>Itens e propostas</h3>
+            <h3 className="compras-section-title">
+              Itens e propostas de fornecedores
+            </h3>
+            <p className="compras-section-help">
+              Selecione um material do cadastro, informe a quantidade e registre
+              uma ou mais propostas para comparação.
+            </p>
             {form.itens.map((item, idx) => (
               <div className="compra-item" key={idx}>
+                <div className="compra-item-title">
+                  <strong>Item {idx + 1}</strong>
+                  <span>
+                    Material cadastrado, quantidade e unidade de medida
+                  </span>
+                </div>
                 <div>
-                  <input
-                    placeholder="Material / serviço"
-                    value={item.descricao}
-                    onChange={e => {
-                      const itens = [...form.itens];
-                      itens[idx] = { ...item, descricao: e.target.value };
-                      setForm({ ...form, itens });
-                    }}
-                  />
-                  <input
-                    type="number"
-                    min="0.001"
-                    step="0.001"
-                    value={item.quantidade}
-                    onChange={e => {
-                      const itens = [...form.itens];
-                      itens[idx] = {
-                        ...item,
-                        quantidade: Number(e.target.value),
-                      };
-                      setForm({ ...form, itens });
-                    }}
-                  />
-                  <input
-                    value={item.unidade}
-                    onChange={e => {
-                      const itens = [...form.itens];
-                      itens[idx] = { ...item, unidade: e.target.value };
-                      setForm({ ...form, itens });
-                    }}
-                  />
+                  <label className="compra-control compra-material-control">
+                    <span>Material / serviço</span>
+                    <SearchableSelect
+                      value={String(item.materialId || "")}
+                      options={materialOptions}
+                      placeholder="Selecione um material cadastrado"
+                      searchPlaceholder="Pesquisar material por nome ou categoria..."
+                      onChange={value => {
+                        const material = activeMaterials.find(
+                          candidate => String(candidate.id) === value
+                        );
+                        if (!material) return;
+                        const itens = [...form.itens];
+                        itens[idx] = {
+                          ...item,
+                          materialId: Number(material.id),
+                          descricao: material.descricao,
+                          unidade: material.unidade || item.unidade || "UN",
+                        };
+                        setForm({ ...form, itens });
+                      }}
+                    />
+                  </label>
+                  <label className="compra-control">
+                    <span>Quantidade</span>
+                    <input
+                      aria-label={`Quantidade do item ${idx + 1}`}
+                      type="number"
+                      min="0.001"
+                      step="0.001"
+                      value={item.quantidade}
+                      onChange={e => {
+                        const itens = [...form.itens];
+                        itens[idx] = {
+                          ...item,
+                          quantidade: Number(e.target.value),
+                        };
+                        setForm({ ...form, itens });
+                      }}
+                    />
+                  </label>
+                  <label className="compra-control">
+                    <span>Unidade</span>
+                    <input
+                      aria-label={`Unidade do item ${idx + 1}`}
+                      value={item.unidade}
+                      readOnly
+                      title="Unidade definida no cadastro do material"
+                    />
+                  </label>
                   <button
+                    type="button"
+                    className="compra-remove-item"
+                    title="Excluir item"
+                    aria-label={`Excluir item ${idx + 1}`}
                     onClick={() =>
                       setForm({
                         ...form,
@@ -515,27 +678,31 @@ export default function Compras() {
                     <Trash2 size={15} />
                   </button>
                 </div>
+                {item.ofertas.length > 0 && (
+                  <div className="compra-offer-heading">
+                    <span>Fornecedor</span>
+                    <span>Valor unitário</span>
+                    <span>Prazo de entrega</span>
+                    <span>Ação</span>
+                  </div>
+                )}
                 {item.ofertas.map((oferta: any, oi: number) => (
                   <div className="oferta" key={oi}>
-                    <select
-                      value={oferta.fornecedorId}
-                      onChange={e => {
+                    <SearchableSelect
+                      value={String(oferta.fornecedorId || "")}
+                      options={supplierOptions.filter(option => option.value)}
+                      placeholder="Selecione o fornecedor"
+                      searchPlaceholder="Pesquisar fornecedor..."
+                      onChange={value => {
                         const itens = [...form.itens];
                         item.ofertas[oi] = {
                           ...oferta,
-                          fornecedorId: Number(e.target.value),
+                          fornecedorId: Number(value),
                         };
                         itens[idx] = { ...item };
                         setForm({ ...form, itens });
                       }}
-                    >
-                      <option value="">Fornecedor</option>
-                      {((data?.fornecedores as any[]) || [])
-                        .filter(f => f.ativo)
-                        .map(f => (
-                          <option value={f.id}>{f.nome}</option>
-                        ))}
-                    </select>
+                    />
                     <input
                       type="number"
                       placeholder="Valor unitário"
@@ -576,9 +743,11 @@ export default function Compras() {
                   </div>
                 ))}
                 <button
-                  disabled={!((data?.fornecedores as any[]) || []).some(
-                    fornecedor => fornecedor.ativo
-                  )}
+                  disabled={
+                    !((data?.fornecedores as any[]) || []).some(
+                      fornecedor => fornecedor.ativo
+                    )
+                  }
                   title={
                     ((data?.fornecedores as any[]) || []).some(
                       fornecedor => fornecedor.ativo
@@ -602,7 +771,7 @@ export default function Compras() {
                       ofertas: [
                         ...item.ofertas,
                         {
-                          fornecedorId: Number(primeiroFornecedor.id),
+                          fornecedorId: 0,
                           valorUnitario: 0,
                           prazoEntrega: "",
                           condicaoPagamento: "",
@@ -737,7 +906,8 @@ function Cadastro({
         <button
           className="primary"
           onClick={() => {
-            if (tipo === "fornecedor") form.id ? updateF.mutate(form) : createF.mutate(form);
+            if (tipo === "fornecedor")
+              form.id ? updateF.mutate(form) : createF.mutate(form);
             else form.id ? updateM.mutate(form) : createM.mutate(form);
           }}
         >
