@@ -977,8 +977,12 @@ function Cadastro({
   const createM = trpc.compras.criarMaterial.useMutation(cadastroOptions);
   const updateM = trpc.compras.atualizarMaterial.useMutation(cadastroOptions);
   const del = trpc.compras.excluirCadastro.useMutation({
-    onSuccess: () => {
-      toast.success("Cadastro inativado.");
+    onSuccess: result => {
+      toast.success(
+        result.acao === "EXCLUIDO"
+          ? "Fornecedor excluído com sucesso."
+          : "Cadastro inativado."
+      );
       setTarget(null);
       refresh();
     },
@@ -1156,9 +1160,21 @@ function Cadastro({
       <SapDoubleConfirmDialog
         open={Boolean(target)}
         onOpenChange={o => !o && setTarget(null)}
-        title="Confirmar inativação"
-        description="O cadastro deixará de aparecer em novas cotações."
-        finalDescription="Confirma a inativação? O histórico será mantido."
+        title={
+          tipo === "fornecedor"
+            ? "Confirmar exclusão de fornecedor"
+            : "Confirmar inativação"
+        }
+        description={
+          tipo === "fornecedor"
+            ? "O fornecedor será excluído definitivamente do cadastro."
+            : "O cadastro deixará de aparecer em novas cotações."
+        }
+        finalDescription={
+          tipo === "fornecedor"
+            ? "Confirma a exclusão definitiva? Esta ação não poderá ser desfeita."
+            : "Confirma a inativação? O histórico será mantido."
+        }
         details={
           target
             ? [{ label: "Cadastro", value: target.nome || target.descricao }]
@@ -1168,7 +1184,10 @@ function Cadastro({
           del.mutate({
             tipo,
             id: target.id,
-            motivo: "Inativação confirmada em duas etapas",
+            motivo:
+              tipo === "fornecedor"
+                ? "Exclusão definitiva confirmada em duas etapas"
+                : "Inativação confirmada em duas etapas",
           })
         }
         isPending={del.isPending}

@@ -5,6 +5,14 @@ export function comprasUppercase(value: unknown) {
   return String(value ?? "").trim().toLocaleUpperCase("pt-BR");
 }
 
+export function comandoExclusaoCadastro(
+  tipo: "fornecedor" | "material"
+) {
+  return tipo === "fornecedor"
+    ? "DELETE FROM compras_fornecedores WHERE id=?"
+    : "UPDATE compras_materiais SET ativo=FALSE WHERE id=?";
+}
+
 export async function painel() {
   const pool = await getMysqlPool();
   const [[orcamentos], [fornecedores], [materiais], [historico]] =
@@ -294,8 +302,38 @@ export async function excluirCadastro(
   id: number
 ) {
   const pool = await getMysqlPool();
-  const table =
-    tipo === "fornecedor" ? "compras_fornecedores" : "compras_materiais";
-  await pool.execute(`UPDATE ${table} SET ativo=FALSE WHERE id=?`, [id]);
-  return { ok: true };
+
+  if (tipo === "fornecedor") {
+    try {
+      const [result] = await pool.execute<mysql.ResultSetHeader>(
+        comandoExclusaoCadastro("fornecedor"),
+        [id]
+      );
+
+      if (result.affectedRows === 0) {
+        throw new Error("Fornecedor não encontrado ou já excluído.");
+      }
+
+      return { ok: true, acao: "EXCLUIDO" as const };
+    } catch (error: any) {
+      if (
+        error?.code === "ER_ROW_IS_REFERENCED_2" ||
+        error?.errno === 1451
+      ) {
+        throw new Error(
+          "Este fornecedor possui orçamentos ou propostas vinculadas e não pode ser excluído sem comprometer o histórico."
+        );
+      }
+      throw error;
+    }
+  }
+
+  const [result] = await pool.execute<mysql.ResultSetHeader>(
+    comandoExclusaoCadastro("material"),
+    [id]
+  );
+  if (result.affectedRows === 0) {
+    throw new Error("Material não encontrado.");
+  }
+  return { ok: true, acao: "INATIVADO" as const };
 }

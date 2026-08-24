@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { permissionTargetForProcedure } from "../shared/access-control";
-import { comprasUppercase } from "./compras";
+import { comandoExclusaoCadastro, comprasUppercase } from "./compras";
 
 describe("Controle de Compras", () => {
   it("mapeia cada operação para a permissão granular correta", () => {
@@ -36,5 +36,14 @@ describe("Controle de Compras", () => {
   it("normaliza o conteúdo textual de compras em caixa alta", () => {
     expect(comprasUppercase("  prazo de 15 dias  ")).toBe("PRAZO DE 15 DIAS");
     expect(comprasUppercase("material e servico")).toBe("MATERIAL E SERVICO");
+  });
+
+  it("exclui fornecedores fisicamente em vez de apenas inativá-los", () => {
+    expect(comandoExclusaoCadastro("fornecedor")).toBe(
+      "DELETE FROM compras_fornecedores WHERE id=?"
+    );
+    expect(comandoExclusaoCadastro("material")).toBe(
+      "UPDATE compras_materiais SET ativo=FALSE WHERE id=?"
+    );
   });
 });
