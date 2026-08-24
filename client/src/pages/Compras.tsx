@@ -8,6 +8,7 @@ import {
   PackageSearch,
   Pencil,
   Plus,
+  Printer,
   Save,
   Search,
   ShoppingCart,
@@ -15,7 +16,17 @@ import {
   Users,
   X,
 } from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { trpc } from "@/lib/trpc";
+import minasfaltoLogo from "@/assets/minasfalto-logo.jpg";
 import { toast } from "sonner";
 import SapDoubleConfirmDialog from "@/components/SapDoubleConfirmDialog";
 import "./compras.css";
@@ -170,6 +181,7 @@ export default function Compras() {
     | "fornecedores"
     | "fornecedor_item"
     | "materiais"
+    | "relatorios"
   >("orcamentos");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
@@ -265,7 +277,8 @@ export default function Compras() {
     [data?.objetosCotacao]
   );
   const activeVehicles = useMemo(
-    () => ((data?.veiculosEquipamentos as any[]) || []).filter(item => item.ativo),
+    () =>
+      ((data?.veiculosEquipamentos as any[]) || []).filter(item => item.ativo),
     [data?.veiculosEquipamentos]
   );
   const filteredQuotes = useMemo(
@@ -276,7 +289,10 @@ export default function Compras() {
           money(quote.valorCotado),
           money(quote.valorNegociado),
           money(quote.valorPago),
-          String(quote.dataOrcamento || "").split("-").reverse().join("/"),
+          String(quote.dataOrcamento || "")
+            .split("-")
+            .reverse()
+            .join("/"),
         ])
       ),
     [data?.orcamentos, tableSearch]
@@ -304,8 +320,7 @@ export default function Compras() {
   const filteredMaterials = useMemo(
     () =>
       ((data?.materiais || []) as any[]).filter(
-        material =>
-          material.ativo && matchesTableSearch(material, tableSearch)
+        material => material.ativo && matchesTableSearch(material, tableSearch)
       ),
     [data?.materiais, tableSearch]
   );
@@ -427,7 +442,9 @@ export default function Compras() {
     }
 
     const upper = (value: unknown) =>
-      String(value ?? "").trim().toLocaleUpperCase("pt-BR");
+      String(value ?? "")
+        .trim()
+        .toLocaleUpperCase("pt-BR");
     const payload = {
       ...form,
       numero: form.numero ? upper(form.numero) : undefined,
@@ -508,6 +525,7 @@ export default function Compras() {
           ["fornecedores", "Fornecedores", Users],
           ["fornecedor_item", "Fornecedor Item", Users],
           ["materiais", "Materiais", PackageSearch],
+          ["relatorios", "RelatÃ³rios", BarChart3],
         ].map(([key, label, Icon]: any) => (
           <button
             className={tab === key ? "active" : ""}
@@ -660,10 +678,14 @@ export default function Compras() {
         />
       )}{" "}
       {tab === "materiais" && (
-        <Cadastro
-          tipo="material"
-          items={filteredMaterials}
-          refresh={refresh}
+        <Cadastro tipo="material" items={filteredMaterials} refresh={refresh} />
+      )}{" "}
+      {tab === "relatorios" && (
+        <RelatoriosCompras
+          orcamentos={(data?.orcamentos || []) as any[]}
+          fornecedores={activeSuppliers.filter(f => f.fornecedorNota)}
+          objetos={activeQuoteObjects}
+          veiculos={activeVehicles}
         />
       )}{" "}
       {open && (
@@ -686,9 +708,7 @@ export default function Compras() {
                 Número do orçamento
                 <input
                   value={
-                    editingId
-                      ? form.numero
-                      : "GERADO AUTOMATICAMENTE AO SALVAR"
+                    editingId ? form.numero : "GERADO AUTOMATICAMENTE AO SALVAR"
                   }
                   readOnly
                   aria-readonly="true"
@@ -958,9 +978,7 @@ export default function Compras() {
                   </div>
                 ))}
                 <button
-                  disabled={
-                    itemSupplierOptions.length === 0
-                  }
+                  disabled={itemSupplierOptions.length === 0}
                   title={
                     itemSupplierOptions.length > 0
                       ? "Adicionar proposta de fornecedor"
@@ -1032,8 +1050,8 @@ export default function Compras() {
           tipo={auxModal}
           items={
             auxModal === "objeto"
-              ? ((data?.objetosCotacao as any[]) || [])
-              : ((data?.veiculosEquipamentos as any[]) || [])
+              ? (data?.objetosCotacao as any[]) || []
+              : (data?.veiculosEquipamentos as any[]) || []
           }
           refresh={refresh}
           onClose={() => setAuxModal(null)}
@@ -1065,6 +1083,425 @@ export default function Compras() {
   );
 }
 
+function RelatoriosCompras({
+  orcamentos,
+  fornecedores,
+  objetos,
+  veiculos,
+}: {
+  orcamentos: any[];
+  fornecedores: any[];
+  objetos: any[];
+  veiculos: any[];
+}) {
+  const vazio = {
+    inicio: "",
+    fim: "",
+    objetoId: "",
+    fornecedorId: "",
+    veiculoId: "",
+  };
+  const [rascunho, setRascunho] = useState(vazio);
+  const [filtros, setFiltros] = useState(vazio);
+
+  const registros = useMemo(() => {
+    return orcamentos.filter(item => {
+      const data = String(item.dataOrcamento || "").slice(0, 10);
+      return (
+        (!filtros.inicio || data >= filtros.inicio) &&
+        (!filtros.fim || data <= filtros.fim) &&
+        (!filtros.objetoId ||
+          Number(item.objetoCotacaoId) === Number(filtros.objetoId)) &&
+        (!filtros.fornecedorId ||
+          Number(item.fornecedorEscolhidoId) ===
+            Number(filtros.fornecedorId)) &&
+        (!filtros.veiculoId ||
+          Number(item.veiculoEquipamentoId) === Number(filtros.veiculoId))
+      );
+    });
+  }, [orcamentos, filtros]);
+
+  const totais = useMemo(
+    () => ({
+      itens: registros.reduce((s, item) => s + Number(item.itens || 0), 0),
+      cotado: registros.reduce(
+        (s, item) => s + Number(item.valorCotado || 0),
+        0
+      ),
+      desconto: registros.reduce(
+        (s, item) => s + Number(item.valorNegociado || 0),
+        0
+      ),
+      final: registros.reduce((s, item) => s + Number(item.valorPago || 0), 0),
+    }),
+    [registros]
+  );
+
+  const porObjeto = useMemo(() => {
+    const mapa = new Map<
+      string,
+      { nome: string; cotado: number; final: number }
+    >();
+    registros.forEach(item => {
+      const nome = item.titulo || "NÃ£o informado";
+      const atual = mapa.get(nome) || { nome, cotado: 0, final: 0 };
+      atual.cotado += Number(item.valorCotado || 0);
+      atual.final += Number(item.valorPago || 0);
+      mapa.set(nome, atual);
+    });
+    return Array.from(mapa.values()).sort((a, b) => b.cotado - a.cotado);
+  }, [registros]);
+
+  const porStatus = useMemo(() => {
+    const mapa = new Map<string, number>();
+    registros.forEach(item => {
+      const nome = STATUS[item.status] || item.status || "NÃ£o informado";
+      mapa.set(nome, (mapa.get(nome) || 0) + 1);
+    });
+    return Array.from(mapa.entries()).map(([nome, quantidade]) => ({
+      nome,
+      quantidade,
+    }));
+  }, [registros]);
+
+  const aplicar = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (rascunho.inicio && rascunho.fim && rascunho.inicio > rascunho.fim) {
+      toast.error("A data inicial nÃ£o pode ser posterior Ã  data final.");
+      return;
+    }
+    setFiltros({ ...rascunho });
+  };
+
+  const nomeSelecionado = (lista: any[], id: string, campo = "nome") =>
+    lista.find(item => Number(item.id) === Number(id))?.[campo] || "Todos";
+  const periodo = `${filtros.inicio ? filtros.inicio.split("-").reverse().join("/") : "InÃ­cio"} a ${filtros.fim ? filtros.fim.split("-").reverse().join("/") : "Hoje"}`;
+  const resumo = `PerÃ­odo: ${periodo} | Objeto: ${nomeSelecionado(objetos, filtros.objetoId)} | Fornecedor: ${nomeSelecionado(fornecedores, filtros.fornecedorId)} | VeÃ­culo/Equipamento: ${nomeSelecionado(veiculos, filtros.veiculoId)}`;
+
+  const exportarExcel = () => {
+    const linhas = [
+      [
+        "NÃºmero",
+        "Data",
+        "Objeto da cotaÃ§Ã£o",
+        "VeÃ­culo/Equipamento",
+        "Fornecedor da nota",
+        "Status",
+        "Itens",
+        "Valor cotado",
+        "Valor do desconto",
+        "Valor final",
+      ],
+      ...registros.map(item => [
+        item.numero,
+        String(item.dataOrcamento || "")
+          .slice(0, 10)
+          .split("-")
+          .reverse()
+          .join("/"),
+        item.titulo,
+        item.veiculoEquipamento || "",
+        item.fornecedorEscolhido || "",
+        STATUS[item.status] || item.status,
+        item.itens,
+        item.valorCotado,
+        item.valorNegociado,
+        item.valorPago,
+      ]),
+    ];
+    const conteudo =
+      "\ufeff" +
+      linhas
+        .map(linha =>
+          linha
+            .map(valor => `"${String(valor ?? "").replaceAll('"', '""')}"`)
+            .join(";")
+        )
+        .join("\r\n");
+    const url = URL.createObjectURL(
+      new Blob([conteudo], { type: "text/csv;charset=utf-8" })
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "relatorio-controle-compras.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const imprimir = () => {
+    const escape = (valor: unknown) =>
+      String(valor ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    const barras = porObjeto
+      .map(item => {
+        const maximo = Math.max(...porObjeto.map(x => x.cotado), 1);
+        return `<div class="bar-row"><span>${escape(item.nome)}</span><i style="width:${Math.max(2, (item.cotado / maximo) * 100)}%"></i><b>${escape(money(item.cotado))}</b></div>`;
+      })
+      .join("");
+    const linhas = registros
+      .map(
+        item =>
+          `<tr><td>${escape(item.numero)}</td><td>${escape(
+            String(item.dataOrcamento || "")
+              .slice(0, 10)
+              .split("-")
+              .reverse()
+              .join("/")
+          )}</td><td>${escape(item.titulo)}</td><td>${escape(item.veiculoEquipamento || "â€”")}</td><td>${escape(item.fornecedorEscolhido || "â€”")}</td><td>${escape(STATUS[item.status] || item.status)}</td><td>${escape(item.itens)}</td><td>${escape(money(item.valorCotado))}</td><td>${escape(money(item.valorNegociado))}</td><td>${escape(money(item.valorPago))}</td></tr>`
+      )
+      .join("");
+    const janela = window.open("", "_blank");
+    if (!janela)
+      return toast.error("Permita pop-ups para gerar o PDF/Imprimir.");
+    janela.document
+      .write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>RelatÃ³rio de Controle de Compras</title><style>
+      @page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{font:10px Arial,sans-serif;color:#071c32;margin:0;text-transform:uppercase}header{display:flex;align-items:center;gap:22px;border-bottom:2px solid #e4a100;padding:0 0 12px;margin-bottom:12px}header img{width:76px;height:52px;object-fit:contain}h1{font-size:22px;margin:0}h1 small{display:block;font-size:11px;color:#40566a;margin-top:5px}.filters{font-size:9px;color:#40566a;margin-bottom:12px}.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px}.metrics div{border:1px solid #9bb2c7;padding:9px}.metrics small{display:block;color:#536b81}.metrics strong{font-size:15px}.chart{border:1px solid #9bb2c7;padding:10px;margin-bottom:14px;break-inside:avoid}.chart h2{font-size:13px}.bar-row{display:grid;grid-template-columns:180px 1fr 95px;align-items:center;gap:8px;margin:5px 0}.bar-row i{display:block;height:13px;background:#dfa000}.bar-row b{text-align:right}table{width:100%;border-collapse:collapse;font-size:8px}th{background:#dbe9f4}th,td{border:1px solid #abc0d2;padding:5px;text-align:left;vertical-align:top}tr{break-inside:avoid}footer{margin-top:12px;border-top:1px solid #e4a100;padding-top:6px;color:#60788d;text-align:right}@media print{button{display:none}}
+    </style></head><body><header><img src="${escape(minasfaltoLogo)}"><h1>RelatÃ³rio de Controle de Compras<small>OrÃ§amentos e anÃ¡lise de aquisiÃ§Ãµes</small></h1></header><div class="filters">${escape(resumo)}</div><section class="metrics"><div><small>OrÃ§amentos</small><strong>${registros.length}</strong></div><div><small>Itens</small><strong>${totais.itens}</strong></div><div><small>Valor cotado</small><strong>${escape(money(totais.cotado))}</strong></div><div><small>Valor do desconto</small><strong>${escape(money(totais.desconto))}</strong></div><div><small>Valor final</small><strong>${escape(money(totais.final))}</strong></div></section><section class="chart"><h2>Comparativo financeiro por objeto da cotaÃ§Ã£o</h2>${barras || "Nenhum dado para o perÃ­odo."}</section><table><thead><tr><th>NÃºmero</th><th>Data</th><th>Objeto</th><th>VeÃ­culo/Equipamento</th><th>Fornecedor</th><th>Status</th><th>Itens</th><th>Cotado</th><th>Desconto</th><th>Final</th></tr></thead><tbody>${linhas || '<tr><td colspan="10">Nenhum orÃ§amento encontrado.</td></tr>'}</tbody></table><footer>Minasfalto â€” RelatÃ³rio emitido em ${new Date().toLocaleString("pt-BR")}</footer><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));<\/script></body></html>`);
+    janela.document.close();
+  };
+
+  return (
+    <section className="compras-reports">
+      <form className="compras-report-filters" onSubmit={aplicar}>
+        <h2>RelatÃ³rio de OrÃ§amentos / Controle de Compras</h2>
+        <p>
+          Defina os critÃ©rios para analisar as cotaÃ§Ãµes e os valores de
+          compra.
+        </p>
+        <div className="compras-report-filter-grid">
+          <label>
+            Data inicial
+            <input
+              type="date"
+              value={rascunho.inicio}
+              onChange={e =>
+                setRascunho({ ...rascunho, inicio: e.target.value })
+              }
+            />
+          </label>
+          <label>
+            Data final
+            <input
+              type="date"
+              value={rascunho.fim}
+              onChange={e => setRascunho({ ...rascunho, fim: e.target.value })}
+            />
+          </label>
+          <label>
+            Objeto da cotaÃ§Ã£o
+            <select
+              value={rascunho.objetoId}
+              onChange={e =>
+                setRascunho({ ...rascunho, objetoId: e.target.value })
+              }
+            >
+              <option value="">Todos</option>
+              {objetos.map(item => (
+                <option key={item.id} value={item.id}>
+                  {item.nome}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Fornecedor da nota
+            <select
+              value={rascunho.fornecedorId}
+              onChange={e =>
+                setRascunho({ ...rascunho, fornecedorId: e.target.value })
+              }
+            >
+              <option value="">Todos</option>
+              {fornecedores.map(item => (
+                <option key={item.id} value={item.id}>
+                  {item.nome}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            VeÃ­culo/Equipamento
+            <select
+              value={rascunho.veiculoId}
+              onChange={e =>
+                setRascunho({ ...rascunho, veiculoId: e.target.value })
+              }
+            >
+              <option value="">Todos</option>
+              {veiculos.map(item => (
+                <option key={item.id} value={item.id}>
+                  {item.nome}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="compras-report-actions">
+          <button className="primary" type="submit">
+            <BarChart3 size={15} />
+            Gerar relatÃ³rio
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setRascunho(vazio);
+              setFiltros(vazio);
+            }}
+          >
+            Limpar
+          </button>
+          <button type="button" onClick={exportarExcel}>
+            <Download size={15} />
+            Excel
+          </button>
+          <button type="button" onClick={imprimir}>
+            <Printer size={15} />
+            PDF/Imprimir
+          </button>
+        </div>
+      </form>
+      <div className="compras-report-summary">{resumo}</div>
+      <div className="compras-report-metrics">
+        <article>
+          <small>OrÃ§amentos</small>
+          <strong>{registros.length}</strong>
+        </article>
+        <article>
+          <small>Itens cotados</small>
+          <strong>{totais.itens.toLocaleString("pt-BR")}</strong>
+        </article>
+        <article>
+          <small>Valor cotado</small>
+          <strong>{money(totais.cotado)}</strong>
+        </article>
+        <article>
+          <small>Valor do desconto</small>
+          <strong>{money(totais.desconto)}</strong>
+        </article>
+        <article>
+          <small>Valor final</small>
+          <strong>{money(totais.final)}</strong>
+        </article>
+      </div>
+      <div className="compras-report-charts">
+        <article>
+          <h2>Comparativo financeiro por objeto</h2>
+          <div className="compras-chart-scroll">
+            <div
+              style={{
+                width: Math.max(650, porObjeto.length * 105),
+                height: 270,
+              }}
+            >
+              <ResponsiveContainer>
+                <BarChart
+                  data={porObjeto}
+                  margin={{ top: 12, right: 15, left: 15, bottom: 70 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="nome"
+                    angle={-35}
+                    textAnchor="end"
+                    interval={0}
+                    height={78}
+                  />
+                  <YAxis
+                    width={76}
+                    tickFormatter={v =>
+                      `R$ ${Number(v).toLocaleString("pt-BR")}`
+                    }
+                  />
+                  <Tooltip formatter={(v: any) => money(v)} />
+                  <Bar dataKey="cotado" name="Valor cotado" fill="#d99b00" />
+                  <Bar dataKey="final" name="Valor final" fill="#2f668f" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </article>
+        <article>
+          <h2>OrÃ§amentos por status</h2>
+          <div style={{ height: 270 }}>
+            <ResponsiveContainer>
+              <BarChart
+                data={porStatus}
+                margin={{ top: 12, right: 15, left: 5, bottom: 55 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="nome"
+                  angle={-28}
+                  textAnchor="end"
+                  interval={0}
+                  height={65}
+                />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="quantidade" name="OrÃ§amentos" fill="#d99b00" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </article>
+      </div>
+      <section className="compras-report-data">
+        <h2>Dados do relatÃ³rio</h2>
+        <div className="compras-table">
+          <table>
+            <thead>
+              <tr>
+                <th>NÃºmero</th>
+                <th>Data</th>
+                <th>Objeto da cotaÃ§Ã£o</th>
+                <th>VeÃ­culo/Equipamento</th>
+                <th>Fornecedor da nota</th>
+                <th>Status</th>
+                <th>Itens</th>
+                <th>Cotado</th>
+                <th>Valor do desconto</th>
+                <th>Valor final</th>
+              </tr>
+            </thead>
+            <tbody>
+              {registros.length ? (
+                registros.map(item => (
+                  <tr key={item.id}>
+                    <td>{item.numero}</td>
+                    <td>
+                      {String(item.dataOrcamento || "")
+                        .slice(0, 10)
+                        .split("-")
+                        .reverse()
+                        .join("/")}
+                    </td>
+                    <td>{item.titulo}</td>
+                    <td>{item.veiculoEquipamento || "â€”"}</td>
+                    <td>{item.fornecedorEscolhido || "â€”"}</td>
+                    <td>{STATUS[item.status] || item.status}</td>
+                    <td>{item.itens}</td>
+                    <td>{money(item.valorCotado)}</td>
+                    <td>{money(item.valorNegociado)}</td>
+                    <td>{money(item.valorPago)}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={10} className="compras-empty">
+                    Nenhum orÃ§amento encontrado para os filtros informados.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  );
+}
+
 function CadastroAuxiliarModal({
   tipo,
   items,
@@ -1077,7 +1514,11 @@ function CadastroAuxiliarModal({
   onClose: () => void;
 }) {
   const label = tipo === "objeto" ? "Objeto da Cotação" : "Veículo/Equipamento";
-  const [form, setForm] = useState({ id: undefined as number | undefined, nome: "", ativo: true });
+  const [form, setForm] = useState({
+    id: undefined as number | undefined,
+    nome: "",
+    ativo: true,
+  });
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const save = trpc.compras.salvarCadastroAuxiliar.useMutation({
     onSuccess: () => {
@@ -1122,7 +1563,9 @@ function CadastroAuxiliarModal({
             <input
               type="checkbox"
               checked={form.ativo}
-              onChange={event => setForm({ ...form, ativo: event.target.checked })}
+              onChange={event =>
+                setForm({ ...form, ativo: event.target.checked })
+              }
             />
             Cadastro ativo
           </label>
@@ -1130,7 +1573,10 @@ function CadastroAuxiliarModal({
             className="primary"
             disabled={save.isPending}
             onClick={() => {
-              if (!form.nome.trim()) return toast.error(`Informe o ${label.toLocaleLowerCase("pt-BR")}.`);
+              if (!form.nome.trim())
+                return toast.error(
+                  `Informe o ${label.toLocaleLowerCase("pt-BR")}.`
+                );
               save.mutate({ tipo, ...form });
             }}
           >
@@ -1138,34 +1584,63 @@ function CadastroAuxiliarModal({
             Salvar
           </button>
           {form.id && (
-            <button onClick={() => setForm({ id: undefined, nome: "", ativo: true })}>
+            <button
+              onClick={() => setForm({ id: undefined, nome: "", ativo: true })}
+            >
               Cancelar edição
             </button>
           )}
         </div>
         <div className="compras-table compras-aux-table">
           <table>
-            <thead><tr><th>Nome</th><th>Status</th><th>Ações</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
             <tbody>
               {items.length === 0 ? (
-                <tr><td colSpan={3} className="compras-empty">Nenhum cadastro encontrado.</td></tr>
-              ) : items.map(item => (
-                <tr key={item.id}>
-                  <td>{item.nome}</td>
-                  <td>{item.ativo ? "ATIVO" : "INATIVO"}</td>
-                  <td>
-                    <button
-                      title="Editar"
-                      onClick={() => setForm({ id: Number(item.id), nome: item.nome, ativo: Boolean(item.ativo) })}
-                    ><Pencil size={15} /></button>
-                    <button title="Excluir" onClick={() => setDeleteTarget(item)}><Trash2 size={15} /></button>
+                <tr>
+                  <td colSpan={3} className="compras-empty">
+                    Nenhum cadastro encontrado.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                items.map(item => (
+                  <tr key={item.id}>
+                    <td>{item.nome}</td>
+                    <td>{item.ativo ? "ATIVO" : "INATIVO"}</td>
+                    <td>
+                      <button
+                        title="Editar"
+                        onClick={() =>
+                          setForm({
+                            id: Number(item.id),
+                            nome: item.nome,
+                            ativo: Boolean(item.ativo),
+                          })
+                        }
+                      >
+                        <Pencil size={15} />
+                      </button>
+                      <button
+                        title="Excluir"
+                        onClick={() => setDeleteTarget(item)}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
-        <footer><button onClick={onClose}>Fechar</button></footer>
+        <footer>
+          <button onClick={onClose}>Fechar</button>
+        </footer>
       </div>
       <SapDoubleConfirmDialog
         open={Boolean(deleteTarget)}
@@ -1295,10 +1770,7 @@ function Cadastro({
                     ...payload,
                     tipoFornecedor: categoriaFornecedor,
                   });
-            else
-              form.id
-                ? updateM.mutate(payload)
-                : createM.mutate(payload);
+            else form.id ? updateM.mutate(payload) : createM.mutate(payload);
           }}
         >
           <Save size={15} />
@@ -1377,15 +1849,30 @@ function Cadastro({
       </div>
       {transferTarget && !transferConfirmOpen && (
         <div className="compras-transfer-overlay" role="presentation">
-          <div className="compras-transfer-dialog" role="dialog" aria-modal="true">
-            <button className="close" aria-label="Fechar" onClick={() => setTransferTarget(null)}>
+          <div
+            className="compras-transfer-dialog"
+            role="dialog"
+            aria-modal="true"
+          >
+            <button
+              className="close"
+              aria-label="Fechar"
+              onClick={() => setTransferTarget(null)}
+            >
               <X size={20} />
             </button>
             <h2>Transferir cadastro</h2>
-            <p>Escolha a lista de destino para <strong>{transferTarget.nome || transferTarget.descricao}</strong>.</p>
+            <p>
+              Escolha a lista de destino para{" "}
+              <strong>{transferTarget.nome || transferTarget.descricao}</strong>
+              .
+            </p>
             <label>
               Destino
-              <select value={transferDestination} onChange={e => setTransferDestination(e.target.value)}>
+              <select
+                value={transferDestination}
+                onChange={e => setTransferDestination(e.target.value)}
+              >
                 {tipo === "material" ? (
                   <>
                     <option value="FORNECEDOR_NOTA">Fornecedores</option>
@@ -1406,7 +1893,12 @@ function Cadastro({
             </label>
             <footer>
               <button onClick={() => setTransferTarget(null)}>Cancelar</button>
-              <button className="primary" onClick={() => setTransferConfirmOpen(true)}>Continuar</button>
+              <button
+                className="primary"
+                onClick={() => setTransferConfirmOpen(true)}
+              >
+                Continuar
+              </button>
             </footer>
           </div>
         </div>
@@ -1423,11 +1915,13 @@ function Cadastro({
                 { label: "Fornecedor", value: transferTarget.nome },
                 {
                   label: "Destino",
-                  value: ({
-                    FORNECEDOR_NOTA: "Fornecedores",
-                    FORNECEDOR_ITEM: "Fornecedor Item",
-                    MATERIAL: "Materiais",
-                  } as Record<string, string>)[transferDestination],
+                  value: (
+                    {
+                      FORNECEDOR_NOTA: "Fornecedores",
+                      FORNECEDOR_ITEM: "Fornecedor Item",
+                      MATERIAL: "Materiais",
+                    } as Record<string, string>
+                  )[transferDestination],
                 },
               ]
             : []
@@ -1441,7 +1935,10 @@ function Cadastro({
                 : categoriaFornecedor === "NOTA"
                   ? "FORNECEDOR_NOTA"
                   : "FORNECEDOR_ITEM",
-            destino: transferDestination as "FORNECEDOR_NOTA" | "FORNECEDOR_ITEM" | "MATERIAL",
+            destino: transferDestination as
+              | "FORNECEDOR_NOTA"
+              | "FORNECEDOR_ITEM"
+              | "MATERIAL",
           })
         }
         isPending={transfer.isPending}

@@ -319,6 +319,121 @@
   justify-content: flex-end;
   padding: 10px 18px 14px;
 }
+
+.compras-reports {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.compras-report-filters,
+.compras-report-charts article,
+.compras-report-data {
+  border: 1px solid #9bb2c7;
+  background: #f7fafc;
+  padding: 12px;
+}
+.compras-report-filters h2,
+.compras-report-charts h2,
+.compras-report-data h2 {
+  margin: 0 0 5px;
+  color: #071c32;
+  font-size: 14px;
+  text-transform: uppercase;
+}
+.compras-report-filters p {
+  margin: 0 0 12px;
+  color: #536b81;
+}
+.compras-report-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(145px, 1fr));
+  gap: 9px;
+}
+.compras-report-filter-grid label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  font-weight: 700;
+}
+.compras-report-filter-grid input,
+.compras-report-filter-grid select {
+  width: 100%;
+  height: 34px;
+  min-width: 0;
+  border: 1px solid #8ca8c0;
+  background: #fff;
+  padding: 5px 8px;
+}
+.compras-report-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+.compras-report-summary {
+  border: 1px solid #9bb2c7;
+  background: #e3eef7;
+  padding: 9px 12px;
+  color: #40566a;
+  line-height: 1.5;
+}
+.compras-report-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
+  gap: 9px;
+}
+.compras-report-metrics article {
+  min-width: 0;
+  border: 1px solid #9bb2c7;
+  border-top: 3px solid #d99b00;
+  background: #fff;
+  padding: 10px 12px;
+}
+.compras-report-metrics small,
+.compras-report-metrics strong {
+  display: block;
+}
+.compras-report-metrics small {
+  color: #536b81;
+  margin-bottom: 5px;
+}
+.compras-report-metrics strong {
+  color: #071c32;
+  font-size: 17px;
+}
+.compras-report-charts {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(340px, 0.8fr);
+  gap: 12px;
+  min-width: 0;
+}
+.compras-report-charts article {
+  min-width: 0;
+  background: #fff;
+  overflow: hidden;
+}
+.compras-chart-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.compras-report-data {
+  min-width: 0;
+  background: #fff;
+}
+.compras-report-data .compras-table {
+  max-height: 330px;
+  overflow: auto;
+}
+.compras-report-data table {
+  min-width: 1180px;
+}
+.compras-report-data th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
 @media (max-width: 900px) {
   .form-grid {
     grid-template-columns: 1fr 1fr;
@@ -355,12 +470,36 @@
   box-shadow: 0 16px 38px rgba(0, 0, 0, 0.3);
   padding: 20px;
 }
-.compras-transfer-dialog h2 { margin: 0 42px 14px 0; }
-.compras-transfer-dialog p { margin: 0 0 18px; }
-.compras-transfer-dialog label { display: grid; gap: 6px; font-weight: 700; }
-.compras-transfer-dialog select { min-height: 36px; border: 1px solid #8da8c0; background: #fff; padding: 6px 8px; }
-.compras-transfer-dialog .close { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; }
-.compras-transfer-dialog footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.compras-transfer-dialog h2 {
+  margin: 0 42px 14px 0;
+}
+.compras-transfer-dialog p {
+  margin: 0 0 18px;
+}
+.compras-transfer-dialog label {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+}
+.compras-transfer-dialog select {
+  min-height: 36px;
+  border: 1px solid #8da8c0;
+  background: #fff;
+  padding: 6px 8px;
+}
+.compras-transfer-dialog .close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+}
+.compras-transfer-dialog footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
 
 .compras-modal-heading {
   margin: -22px -22px 18px;
@@ -557,6 +696,11 @@
     display: none !important;
   }
   .compras-aux-form {
+    grid-template-columns: 1fr;
+  }
+  .compras-report-filter-grid,
+  .compras-report-metrics,
+  .compras-report-charts {
     grid-template-columns: 1fr;
   }
 }
