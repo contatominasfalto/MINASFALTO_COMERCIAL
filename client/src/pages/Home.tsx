@@ -13,6 +13,7 @@ import {
   Utensils,
   UserCog,
   ShieldCheck,
+  ShoppingCart,
 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -129,6 +130,12 @@ export default function Home({ view = "welcome" }: { view?: HomeView }) {
             <button type="button" className="home-menu-trigger" onClick={() => navigate("/alimentacao")} title="Controle de Alimentação">
               <Utensils size={22} />
               {!collapsed && <span>Alimentação</span>}
+            </button>
+          )}
+          {permissions.can("compras", "access") && (
+            <button type="button" className="home-menu-trigger" onClick={() => navigate("/compras")} title="Controle de Compras">
+              <ShoppingCart size={22} />
+              {!collapsed && <span>Controle de Compras</span>}
             </button>
           )}
           {permissions.can("usuarios", "access") && (

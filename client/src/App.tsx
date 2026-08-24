@@ -10,6 +10,7 @@ import Licitacoes from "@/pages/Licitacoes";
 import Alimentacao from "@/pages/Alimentacao";
 import ControleUsuarios from "@/pages/ControleUsuarios";
 import Rastreabilidade from "@/pages/Rastreabilidade";
+import Compras from "@/pages/Compras";
 import { Route, Router as WouterRouter, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -117,6 +118,7 @@ function Router() {
           <StockPage />
         </StockProvider> : denied}
       </Route>
+      <Route path={"/compras"}>{permissions.can("compras", "access") ? <Compras /> : denied}</Route>
       <Route path={"/controle-usuarios"}>{permissions.can("usuarios", "access") ? <ControleUsuarios /> : denied}</Route>
       <Route path={"/rastreabilidade"}>{isAdmfull ? <Rastreabilidade /> : denied}</Route>
       <Route path={"/login"}>

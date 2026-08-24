@@ -1,12 +1,18 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router, protectedProcedure, masterProcedure } from "./_core/trpc";
+import {
+  publicProcedure,
+  router,
+  protectedProcedure,
+  masterProcedure,
+} from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
 import * as crtiSync from "./crti-sync";
 import * as csvImport from "./csv-import";
 import * as alimentacao from "./alimentacao";
+import * as compras from "./compras";
 import { TIPOS_REFEICAO } from "./alimentacao-rules";
 import { buildAlimentacaoPdf } from "./alimentacao-pdf";
 import { buildLicitacaoPdf } from "./licitacao-pdf";
@@ -15,7 +21,11 @@ import { ONE_YEAR_MS } from "@shared/const";
 import { ENV } from "./_core/env";
 import { sdk, LOCAL_LOGIN_OPEN_ID_PREFIX } from "./_core/sdk";
 import * as accessDb from "./access-control-db";
-import { ACCESS_CATALOG, ACCESS_EFFECTS, USER_STATUSES } from "../shared/access-control";
+import {
+  ACCESS_CATALOG,
+  ACCESS_EFFECTS,
+  USER_STATUSES,
+} from "../shared/access-control";
 import { verifyPassword } from "./password-security";
 import { isLegacyEnvironmentUser } from "./local-login-users";
 import { listAudit } from "./system-audit";
@@ -31,7 +41,11 @@ import {
 } from "./licitacao-documentos";
 
 const STATUS_SAIDA_OK = "SA\u00cdDA OK";
-const pedidoAtividadeDescricaoSchema = z.string().trim().min(1, "Informe a atividade.").max(2000, "A atividade deve ter no máximo 2.000 caracteres.");
+const pedidoAtividadeDescricaoSchema = z
+  .string()
+  .trim()
+  .min(1, "Informe a atividade.")
+  .max(2000, "A atividade deve ter no máximo 2.000 caracteres.");
 
 function normalizeStatus(value: unknown) {
   const text = String(value || "").toUpperCase();
@@ -45,7 +59,9 @@ function normalizePrioridade(value: unknown) {
 }
 
 function isTruthy(value: string | undefined) {
-  return ["1", "true", "yes", "sim", "on"].includes(String(value || "").toLowerCase());
+  return ["1", "true", "yes", "sim", "on"].includes(
+    String(value || "").toLowerCase()
+  );
 }
 
 function getLocalLoginCredentials() {
@@ -59,18 +75,29 @@ function getLocalLoginCredentials() {
 }
 
 function isLocalLoginEnabled() {
-  return Boolean(ENV.databaseUrl) || Object.values(getLocalLoginCredentials()).some(Boolean);
+  return (
+    Boolean(ENV.databaseUrl) ||
+    Object.values(getLocalLoginCredentials()).some(Boolean)
+  );
 }
 
 function isOAuthEnabled() {
-  return Boolean(ENV.appId && ENV.oAuthServerUrl && process.env.VITE_OAUTH_PORTAL_URL);
+  return Boolean(
+    ENV.appId && ENV.oAuthServerUrl && process.env.VITE_OAUTH_PORTAL_URL
+  );
 }
 
-const HIDDEN_COST_PROFILES = new Set(["comercial", "subcomercial", "semicomercial"]);
+const HIDDEN_COST_PROFILES = new Set([
+  "comercial",
+  "subcomercial",
+  "semicomercial",
+]);
 let costPanelLoginAutomationRunning = false;
 
 function normalizeUserKey(value: unknown) {
-  return String(value || "").trim().toLowerCase();
+  return String(value || "")
+    .trim()
+    .toLowerCase();
 }
 
 function canAccessCostPanel(value: unknown) {
@@ -82,7 +109,11 @@ const costAccessProcedure = protectedProcedure;
 
 async function assertLicitacaoDocumentPermission(user: any, write = false) {
   await accessDb.assertPermission(user, "licitacoes", "access");
-  const effect = await accessDb.getEffectivePermission(user, "licitacoes", "documents");
+  const effect = await accessDb.getEffectivePermission(
+    user,
+    "licitacoes",
+    "documents"
+  );
   if (effect === "deny" || (write && effect !== "allow")) {
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -96,15 +127,20 @@ async function assertLicitacaoDocumentPermission(user: any, write = false) {
 const alimentacaoAccessProcedure = costAccessProcedure;
 const dataIsoSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida");
 const alimentacaoFiltrosSchema = z.object({
-  inicio: dataIsoSchema.optional(), fim: dataIsoSchema.optional(),
-  fornecedorId: z.number().int().positive().optional(), funcionarioId: z.number().int().positive().optional(),
-  setor: z.string().max(120).optional(), tipo: z.enum(TIPOS_REFEICAO).optional(),
+  inicio: dataIsoSchema.optional(),
+  fim: dataIsoSchema.optional(),
+  fornecedorId: z.number().int().positive().optional(),
+  funcionarioId: z.number().int().positive().optional(),
+  setor: z.string().max(120).optional(),
+  tipo: z.enum(TIPOS_REFEICAO).optional(),
 });
 
 function triggerCostPanelLoginAutomation(username: string) {
   if (!canAccessCostPanel(username)) return;
   if (costPanelLoginAutomationRunning) {
-    console.log(`[CustoObras] Automacao pos-login ignorada para ${username}: execucao em andamento`);
+    console.log(
+      `[CustoObras] Automacao pos-login ignorada para ${username}: execucao em andamento`
+    );
     return;
   }
 
@@ -114,11 +150,11 @@ function triggerCostPanelLoginAutomation(username: string) {
       console.log(`[CustoObras] Automacao pos-login iniciada por ${username}`);
       const sync = await crtiSync.sincronizacaoCustosObras();
       console.log(
-        `[CustoObras] CRTI pos-login: obras=${sync.obras.pedidosImportados}/${sync.obras.pedidosAtualizados}, despesas=${sync.despesas.pedidosAtualizados}, custos=${sync.custos.pedidosAtualizados}`,
+        `[CustoObras] CRTI pos-login: obras=${sync.obras.pedidosImportados}/${sync.obras.pedidosAtualizados}, despesas=${sync.despesas.pedidosAtualizados}, custos=${sync.custos.pedidosAtualizados}`
       );
       const vinculos = await db.vincularSaidasAutomaticasObras(username);
       console.log(
-        `[CustoObras] Vinculo automatico pos-login: ${vinculos.vinculadas} vinculada(s), ${vinculos.semPedido} sem pedido`,
+        `[CustoObras] Vinculo automatico pos-login: ${vinculos.vinculadas} vinculada(s), ${vinculos.semPedido} sem pedido`
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -130,32 +166,46 @@ function triggerCostPanelLoginAutomation(username: string) {
 }
 
 // Schema de validação
-const pedidoSchema = z.object({
-  dataPedido: z.string().optional(),
-  cliente: z.string().min(1, "Cliente é obrigatório"),
-  pedido: z.string().min(1, "Número do pedido é obrigatório"),
-  situacao: z.string().optional(),
-  qtde: z.coerce.number().optional(),
-  valorUnit: z.coerce.number().optional(),
-  totalPedido: z.coerce.number().optional(),
-  saldo: z.coerce.number().optional(),
-  percentual: z.coerce.number().optional(),
-  prioridade: z.preprocess(normalizePrioridade, z.enum(["NORMAL", "PRIORIDADE"])).optional(),
-  qtdeGranel: z.coerce.number().optional(),
-  qtdeTapFacil: z.coerce.number().optional(),
-  status: z.enum(["PENDENTE", "SAÍDA OK", "CANCELADO"]).optional(),
-  dataEntrega: z.string().optional(),
-  observacoes: z.string().optional(),
-}).extend({
-  status: z.preprocess(normalizeStatus, z.enum(["PENDENTE", STATUS_SAIDA_OK, "CANCELADO"])).optional(),
-});
+const pedidoSchema = z
+  .object({
+    dataPedido: z.string().optional(),
+    cliente: z.string().min(1, "Cliente é obrigatório"),
+    pedido: z.string().min(1, "Número do pedido é obrigatório"),
+    situacao: z.string().optional(),
+    qtde: z.coerce.number().optional(),
+    valorUnit: z.coerce.number().optional(),
+    totalPedido: z.coerce.number().optional(),
+    saldo: z.coerce.number().optional(),
+    percentual: z.coerce.number().optional(),
+    prioridade: z
+      .preprocess(normalizePrioridade, z.enum(["NORMAL", "PRIORIDADE"]))
+      .optional(),
+    qtdeGranel: z.coerce.number().optional(),
+    qtdeTapFacil: z.coerce.number().optional(),
+    status: z.enum(["PENDENTE", "SAÍDA OK", "CANCELADO"]).optional(),
+    dataEntrega: z.string().optional(),
+    observacoes: z.string().optional(),
+  })
+  .extend({
+    status: z
+      .preprocess(
+        normalizeStatus,
+        z.enum(["PENDENTE", STATUS_SAIDA_OK, "CANCELADO"])
+      )
+      .optional(),
+  });
 
 const contatoSchema = z.object({
   pedidoId: z.number(),
   pedidoNum: z.string(),
   tipo: z.enum(["Ligação", "E-mail", "WhatsApp", "Visita", "Outro"]),
   descricao: z.string(),
-  novoStatus: z.preprocess(normalizeStatus, z.enum(["PENDENTE", STATUS_SAIDA_OK, "CANCELADO"])).optional(),
+  novoStatus: z
+    .preprocess(
+      normalizeStatus,
+      z.enum(["PENDENTE", STATUS_SAIDA_OK, "CANCELADO"])
+    )
+    .optional(),
 });
 
 const estoqueMovimentacaoSchema = z.object({
@@ -185,20 +235,22 @@ const pedidoObraFinanceiroSchema = z.object({
   porcentagemImposto: z.coerce.number().min(0).max(100),
 });
 
-const pedidoObraDespesaBaseSchema = z.object({
-  pedidoObraId: z.number().int().positive(),
-  pedidoNum: z.string().min(1),
-  categoria: pedidoObraCategoriaSchema,
-  justificativaOutros: z.string().max(1000).optional(),
-}).superRefine((data, ctx) => {
-  if (data.categoria === "Outros" && !data.justificativaOutros?.trim()) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["justificativaOutros"],
-      message: "Justificativa obrigatoria para Outros",
-    });
-  }
-});
+const pedidoObraDespesaBaseSchema = z
+  .object({
+    pedidoObraId: z.number().int().positive(),
+    pedidoNum: z.string().min(1),
+    categoria: pedidoObraCategoriaSchema,
+    justificativaOutros: z.string().max(1000).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.categoria === "Outros" && !data.justificativaOutros?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["justificativaOutros"],
+        message: "Justificativa obrigatoria para Outros",
+      });
+    }
+  });
 
 const pedidoObraDespesaFieldsSchema = z.object({
   codigoFornecedorCliente: z.string().max(50).optional(),
@@ -213,82 +265,96 @@ const pedidoObraDespesaFieldsSchema = z.object({
   observacoesAprovacao: z.string().max(5000).optional(),
 });
 
-const pedidoObraDespesaUpdateSchema = z.object({
-  id: z.number().int().positive(),
-  pedidoObraId: z.number().int().positive(),
-  categoria: pedidoObraCategoriaSchema,
-  justificativaOutros: z.string().max(1000).optional(),
-}).and(pedidoObraDespesaFieldsSchema).superRefine((data, ctx) => {
-  if (data.categoria === "Outros" && !data.justificativaOutros?.trim()) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["justificativaOutros"],
-      message: "Justificativa obrigatoria para Outros",
-    });
-  }
-});
+const pedidoObraDespesaUpdateSchema = z
+  .object({
+    id: z.number().int().positive(),
+    pedidoObraId: z.number().int().positive(),
+    categoria: pedidoObraCategoriaSchema,
+    justificativaOutros: z.string().max(1000).optional(),
+  })
+  .and(pedidoObraDespesaFieldsSchema)
+  .superRefine((data, ctx) => {
+    if (data.categoria === "Outros" && !data.justificativaOutros?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["justificativaOutros"],
+        message: "Justificativa obrigatoria para Outros",
+      });
+    }
+  });
 
-const pedidoObraReceitaSchema = z.object({
-  pedidoObraId: z.number().int().positive(),
-  pedidoNum: z.string().min(1),
-  codigoFornecedorCliente: z.string().max(50).optional(),
-  fornecedorCliente: z.string().max(255).optional(),
-  numeroDocumento: z.string().max(80).optional(),
-  status: z.enum(["Nfe", "Faturamento Direto", "Outros"]),
-  tipoReceitaOutros: z.string().max(1000).optional(),
-  tipoConta: z.string().max(50).optional(),
-  tipoDocumento: z.string().max(100).optional(),
-  dataEmissao: z.string().max(10).optional(),
-  dataVencimento: z.string().max(10).optional(),
-  valorTotalDocumento: z.coerce.number().nonnegative(),
-  data: z.string().max(10).optional(),
-  valor: z.coerce.number().nonnegative().optional(),
-  descricao: z.string().max(5000).optional(),
-}).superRefine((data, ctx) => {
-  if (data.status === "Outros" && !data.tipoReceitaOutros?.trim()) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["tipoReceitaOutros"],
-      message: "Tipo de receita obrigatorio para Outros",
-    });
-  }
-});
+const pedidoObraReceitaSchema = z
+  .object({
+    pedidoObraId: z.number().int().positive(),
+    pedidoNum: z.string().min(1),
+    codigoFornecedorCliente: z.string().max(50).optional(),
+    fornecedorCliente: z.string().max(255).optional(),
+    numeroDocumento: z.string().max(80).optional(),
+    status: z.enum(["Nfe", "Faturamento Direto", "Outros"]),
+    tipoReceitaOutros: z.string().max(1000).optional(),
+    tipoConta: z.string().max(50).optional(),
+    tipoDocumento: z.string().max(100).optional(),
+    dataEmissao: z.string().max(10).optional(),
+    dataVencimento: z.string().max(10).optional(),
+    valorTotalDocumento: z.coerce.number().nonnegative(),
+    data: z.string().max(10).optional(),
+    valor: z.coerce.number().nonnegative().optional(),
+    descricao: z.string().max(5000).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.status === "Outros" && !data.tipoReceitaOutros?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["tipoReceitaOutros"],
+        message: "Tipo de receita obrigatorio para Outros",
+      });
+    }
+  });
 
-const pedidoObraReceitaUpdateSchema = z.object({
-  id: z.number().int().positive(),
-  pedidoObraId: z.number().int().positive(),
-  codigoFornecedorCliente: z.string().max(50).optional(),
-  fornecedorCliente: z.string().max(255).optional(),
-  numeroDocumento: z.string().max(80).optional(),
-  status: z.enum(["Nfe", "Faturamento Direto", "Outros"]),
-  tipoReceitaOutros: z.string().max(1000).optional(),
-  tipoConta: z.string().max(50).optional(),
-  tipoDocumento: z.string().max(100).optional(),
-  dataEmissao: z.string().max(10).optional(),
-  dataVencimento: z.string().max(10).optional(),
-  valorTotalDocumento: z.coerce.number().nonnegative(),
-  data: z.string().max(10).optional(),
-  valor: z.coerce.number().nonnegative().optional(),
-  descricao: z.string().max(5000).optional(),
-}).superRefine((data, ctx) => {
-  if (data.status === "Outros" && !data.tipoReceitaOutros?.trim()) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["tipoReceitaOutros"],
-      message: "Tipo de receita obrigatorio para Outros",
-    });
-  }
-});
+const pedidoObraReceitaUpdateSchema = z
+  .object({
+    id: z.number().int().positive(),
+    pedidoObraId: z.number().int().positive(),
+    codigoFornecedorCliente: z.string().max(50).optional(),
+    fornecedorCliente: z.string().max(255).optional(),
+    numeroDocumento: z.string().max(80).optional(),
+    status: z.enum(["Nfe", "Faturamento Direto", "Outros"]),
+    tipoReceitaOutros: z.string().max(1000).optional(),
+    tipoConta: z.string().max(50).optional(),
+    tipoDocumento: z.string().max(100).optional(),
+    dataEmissao: z.string().max(10).optional(),
+    dataVencimento: z.string().max(10).optional(),
+    valorTotalDocumento: z.coerce.number().nonnegative(),
+    data: z.string().max(10).optional(),
+    valor: z.coerce.number().nonnegative().optional(),
+    descricao: z.string().max(5000).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.status === "Outros" && !data.tipoReceitaOutros?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["tipoReceitaOutros"],
+        message: "Tipo de receita obrigatorio para Outros",
+      });
+    }
+  });
 
 const pedidoObraResultadoAlocacoesSchema = z.object({
   pedidoObraId: z.number().int().positive(),
   pedidoNum: z.string().min(1),
-  alocacoes: z.array(z.object({
-    itemTipo: z.enum(["receita", "despesa", "custo"]),
-    itemId: z.number().int().positive(),
-    mesReferencia: z.string().regex(/^\d{4}-\d{2}(-\d{2})?$/),
-    dataReferencia: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  })).min(1),
+  alocacoes: z
+    .array(
+      z.object({
+        itemTipo: z.enum(["receita", "despesa", "custo"]),
+        itemId: z.number().int().positive(),
+        mesReferencia: z.string().regex(/^\d{4}-\d{2}(-\d{2})?$/),
+        dataReferencia: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+      })
+    )
+    .min(1),
 });
 
 const licitacaoStatusSchema = z.object({
@@ -304,7 +370,7 @@ const licitacaoVendedorSchema = z.object({
   nome: z.string().min(1).max(180),
 });
 
-const licitacaoBooleanSchema = z.preprocess((value) => {
+const licitacaoBooleanSchema = z.preprocess(value => {
   if (value === 1 || value === "1" || value === "true") return true;
   if (value === 0 || value === "0" || value === "false") return false;
   return value;
@@ -365,6 +431,38 @@ const licitacaoPedidoCrtiSchema = z.object({
   valorTotal: z.coerce.number().nonnegative().optional(),
   observacoes: z.string().max(5000).optional(),
 });
+const compraOfertaSchema = z.object({
+  fornecedorId: z.number().int().positive(),
+  valorUnitario: z.number().nonnegative(),
+  prazoEntrega: z.string().max(120).optional(),
+  condicaoPagamento: z.string().max(180).optional(),
+  selecionada: z.boolean(),
+});
+const compraItemSchema = z.object({
+  materialId: z.number().int().positive().nullable().optional(),
+  descricao: z.string().trim().min(2).max(300),
+  quantidade: z.number().positive(),
+  unidade: z.string().max(30).optional(),
+  ofertas: z.array(compraOfertaSchema).max(30),
+});
+const compraOrcamentoSchema = z.object({
+  id: z.number().int().positive().optional(),
+  numero: z.string().trim().min(1).max(40),
+  titulo: z.string().trim().min(2).max(220),
+  dataOrcamento: dataIsoSchema,
+  status: z.enum([
+    "EM_COTACAO",
+    "AGUARDANDO_DEFINICAO",
+    "COMPRADO",
+    "CANCELADO",
+  ]),
+  observacoes: z.string().max(10000).optional(),
+  fornecedorEscolhidoId: z.number().int().positive().nullable().optional(),
+  valorCotado: z.number().nonnegative(),
+  valorNegociado: z.number().nonnegative(),
+  valorPago: z.number().nonnegative(),
+  itens: z.array(compraItemSchema).min(1).max(200),
+});
 
 const licitacaoPedidoManualSchema = z.object({
   licitacaoId: z.number().int().positive(),
@@ -377,17 +475,44 @@ const licitacaoPedidoManualSchema = z.object({
   observacoes: z.string().max(5000).optional(),
 });
 
-const managedProfileSchema = z.enum(["comercial", "subcomercial", "gerencia", "diretoria"]);
+const managedProfileSchema = z.enum([
+  "comercial",
+  "subcomercial",
+  "gerencia",
+  "diretoria",
+]);
 const managedUserSchema = z.object({
-  username: z.string().trim().min(3, "Informe um login com ao menos 3 caracteres.").max(64).regex(/^[a-zA-Z0-9._-]+$/, "Use apenas letras, números, ponto, hífen ou sublinhado."),
+  username: z
+    .string()
+    .trim()
+    .min(3, "Informe um login com ao menos 3 caracteres.")
+    .max(64)
+    .regex(
+      /^[a-zA-Z0-9._-]+$/,
+      "Use apenas letras, números, ponto, hífen ou sublinhado."
+    ),
   name: z.string().trim().min(2, "Informe o nome do usuário.").max(180),
-  email: z.string().trim().email("E-mail inválido.").max(320).nullable().optional().or(z.literal("")),
+  email: z
+    .string()
+    .trim()
+    .email("E-mail inválido.")
+    .max(320)
+    .nullable()
+    .optional()
+    .or(z.literal("")),
   profile: managedProfileSchema,
   status: z.enum(USER_STATUSES),
 });
-const managedPasswordSchema = z.string().min(8, "A senha deve ter pelo menos 8 caracteres.").max(128, "A senha deve ter no máximo 128 caracteres.");
-const createManagedUserSchema = managedUserSchema.extend({ password: managedPasswordSchema });
-const updateManagedUserSchema = managedUserSchema.extend({ password: managedPasswordSchema.optional() });
+const managedPasswordSchema = z
+  .string()
+  .min(8, "A senha deve ter pelo menos 8 caracteres.")
+  .max(128, "A senha deve ter no máximo 128 caracteres.");
+const createManagedUserSchema = managedUserSchema.extend({
+  password: managedPasswordSchema,
+});
+const updateManagedUserSchema = managedUserSchema.extend({
+  password: managedPasswordSchema.optional(),
+});
 
 const permissionEntrySchema = z.object({
   resourceKey: z.string().trim().min(1).max(80),
@@ -398,15 +523,25 @@ const permissionEntrySchema = z.object({
 export const appRouter = router({
   system: systemRouter,
   rastreabilidade: router({
-    list: masterProcedure.input(z.object({
-      search: z.string().trim().max(200).optional(),
-      module: z.string().trim().max(80).optional(),
-      result: z.enum(["success", "error"]).optional(),
-      start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-      end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-      page: z.number().int().positive().default(1),
-      pageSize: z.number().int().min(10).max(100).default(50),
-    })).query(({ input }) => listAudit(input)),
+    list: masterProcedure
+      .input(
+        z.object({
+          search: z.string().trim().max(200).optional(),
+          module: z.string().trim().max(80).optional(),
+          result: z.enum(["success", "error"]).optional(),
+          start: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/)
+            .optional(),
+          end: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/)
+            .optional(),
+          page: z.number().int().positive().default(1),
+          pageSize: z.number().int().min(10).max(100).default(50),
+        })
+      )
+      .query(({ input }) => listAudit(input)),
   }),
   auth: router({
     me: publicProcedure.query(opts => {
@@ -421,30 +556,51 @@ export const appRouter = router({
       bypassEnabled: isTruthy(process.env.LOCAL_AUTH_BYPASS),
     })),
     localLogin: publicProcedure
-      .input(z.object({
-        username: z.string().min(1),
-        password: z.string().min(1),
-      }))
+      .input(
+        z.object({
+          username: z.string().min(1),
+          password: z.string().min(1),
+        })
+      )
       .mutation(async ({ input, ctx }) => {
         if (!isLocalLoginEnabled()) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Login local não configurado" });
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Login local não configurado",
+          });
         }
 
         const username = input.username.trim().toLowerCase();
         const credentials = getLocalLoginCredentials();
-        const expectedPassword = credentials[username as keyof typeof credentials];
-        const persistedUser = await db.getUserByUsername(username)
-          ?? await db.getUserByOpenId(`${LOCAL_LOGIN_OPEN_ID_PREFIX}${username}`);
-        const validCredentials = Boolean(persistedUser) && (isLegacyEnvironmentUser(persistedUser)
-          ? Boolean(expectedPassword) && input.password === expectedPassword
-          : Boolean(persistedUser.passwordHash) && await verifyPassword(input.password, persistedUser.passwordHash));
+        const expectedPassword =
+          credentials[username as keyof typeof credentials];
+        const persistedUser =
+          (await db.getUserByUsername(username)) ??
+          (await db.getUserByOpenId(
+            `${LOCAL_LOGIN_OPEN_ID_PREFIX}${username}`
+          ));
+        const validCredentials =
+          Boolean(persistedUser) &&
+          (isLegacyEnvironmentUser(persistedUser)
+            ? Boolean(expectedPassword) && input.password === expectedPassword
+            : Boolean(persistedUser.passwordHash) &&
+              (await verifyPassword(
+                input.password,
+                persistedUser.passwordHash
+              )));
 
         if (!validCredentials) {
-          throw new TRPCError({ code: "UNAUTHORIZED", message: "Usuário ou senha inválidos" });
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Usuário ou senha inválidos",
+          });
         }
 
         if (persistedUser && persistedUser.status !== "active") {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Usuário desativado. Procure o administrador do sistema." });
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Usuário desativado. Procure o administrador do sistema.",
+          });
         }
 
         const sessionToken = await sdk.createSessionToken(
@@ -452,7 +608,7 @@ export const appRouter = router({
           {
             name: username,
             expiresInMs: ONE_YEAR_MS,
-          },
+          }
         );
         const cookieOptions = getSessionCookieOptions(ctx.req);
         ctx.res.cookie(COOKIE_NAME, sessionToken, cookieOptions);
@@ -468,25 +624,92 @@ export const appRouter = router({
       } as const;
     }),
     permissions: protectedProcedure.query(async ({ ctx }) => {
-      const rows = await Promise.all(ACCESS_CATALOG.flatMap((resource) => resource.actions.map(async (action) => ({
-        resourceKey: resource.key,
-        actionKey: action.key,
-        effect: await accessDb.getEffectivePermission(ctx.user, resource.key, action.key),
-      }))));
+      const rows = await Promise.all(
+        ACCESS_CATALOG.flatMap(resource =>
+          resource.actions.map(async action => ({
+            resourceKey: resource.key,
+            actionKey: action.key,
+            effect: await accessDb.getEffectivePermission(
+              ctx.user,
+              resource.key,
+              action.key
+            ),
+          }))
+        )
+      );
       return { catalog: ACCESS_CATALOG, permissions: rows };
     }),
   }),
 
   userManagement: router({
     list: protectedProcedure.query(() => accessDb.listManagedUsers()),
-    getById: protectedProcedure.input(z.number().int().positive()).query(({ input }) => accessDb.getManagedUser(input)),
-    create: protectedProcedure.input(createManagedUserSchema).mutation(({ input, ctx }) => accessDb.createManagedUser({ ...input, email: input.email || null }, ctx.user!.id)),
-    update: protectedProcedure.input(z.object({ id: z.number().int().positive(), data: updateManagedUserSchema })).mutation(({ input, ctx }) => accessDb.updateManagedUser(input.id, { ...input.data, email: input.data.email || null }, ctx.user!.id)),
-    setStatusOrDeactivate: protectedProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(USER_STATUSES), reason: z.string().trim().min(3).max(500) })).mutation(({ input, ctx }) => accessDb.setManagedUserStatus(input.id, input.status, ctx.user!.id, input.reason)),
-    deleteOrArchive: protectedProcedure.input(z.object({ id: z.number().int().positive(), reason: z.string().trim().min(3).max(500) })).mutation(({ input }) => accessDb.deleteManagedUser(input.id)),
+    getById: protectedProcedure
+      .input(z.number().int().positive())
+      .query(({ input }) => accessDb.getManagedUser(input)),
+    create: protectedProcedure
+      .input(createManagedUserSchema)
+      .mutation(({ input, ctx }) =>
+        accessDb.createManagedUser(
+          { ...input, email: input.email || null },
+          ctx.user!.id
+        )
+      ),
+    update: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          data: updateManagedUserSchema,
+        })
+      )
+      .mutation(({ input, ctx }) =>
+        accessDb.updateManagedUser(
+          input.id,
+          { ...input.data, email: input.data.email || null },
+          ctx.user!.id
+        )
+      ),
+    setStatusOrDeactivate: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          status: z.enum(USER_STATUSES),
+          reason: z.string().trim().min(3).max(500),
+        })
+      )
+      .mutation(({ input, ctx }) =>
+        accessDb.setManagedUserStatus(
+          input.id,
+          input.status,
+          ctx.user!.id,
+          input.reason
+        )
+      ),
+    deleteOrArchive: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          reason: z.string().trim().min(3).max(500),
+        })
+      )
+      .mutation(({ input }) => accessDb.deleteManagedUser(input.id)),
     getPermissionCatalog: protectedProcedure.query(() => ACCESS_CATALOG),
-    getUserPermissions: protectedProcedure.input(z.number().int().positive()).query(({ input }) => accessDb.getUserPermissionRows(input)),
-    replaceUserPermissions: protectedProcedure.input(z.object({ userId: z.number().int().positive(), permissions: z.array(permissionEntrySchema).max(500) })).mutation(({ input, ctx }) => accessDb.replaceUserPermissionRows(input.userId, input.permissions, ctx.user!.id)),
+    getUserPermissions: protectedProcedure
+      .input(z.number().int().positive())
+      .query(({ input }) => accessDb.getUserPermissionRows(input)),
+    replaceUserPermissions: protectedProcedure
+      .input(
+        z.object({
+          userId: z.number().int().positive(),
+          permissions: z.array(permissionEntrySchema).max(500),
+        })
+      )
+      .mutation(({ input, ctx }) =>
+        accessDb.replaceUserPermissionRows(
+          input.userId,
+          input.permissions,
+          ctx.user!.id
+        )
+      ),
   }),
 
   // ─────────────────────────────────────────────
@@ -494,24 +717,26 @@ export const appRouter = router({
   // ─────────────────────────────────────────────
   pedidos: router({
     list: protectedProcedure
-      .input(z.object({
-        status: z.string().optional(),
-        prioridade: z.string().optional(),
-        cliente: z.string().optional(),
-        pedido: z.string().optional(),
-        search: z.string().optional(),
-      }).optional())
+      .input(
+        z
+          .object({
+            status: z.string().optional(),
+            prioridade: z.string().optional(),
+            cliente: z.string().optional(),
+            pedido: z.string().optional(),
+            search: z.string().optional(),
+          })
+          .optional()
+      )
       .query(async ({ input }) => {
         return db.listPedidos(input);
       }),
 
-    getById: protectedProcedure
-      .input(z.number())
-      .query(async ({ input }) => {
-        const pedido = await db.getPedidoById(input);
-        if (!pedido) throw new TRPCError({ code: "NOT_FOUND" });
-        return pedido;
-      }),
+    getById: protectedProcedure.input(z.number()).query(async ({ input }) => {
+      const pedido = await db.getPedidoById(input);
+      if (!pedido) throw new TRPCError({ code: "NOT_FOUND" });
+      return pedido;
+    }),
 
     create: protectedProcedure
       .input(pedidoSchema)
@@ -519,14 +744,14 @@ export const appRouter = router({
         // Verificar se pedido já existe
         const existing = await db.getPedidoByNumber(input.pedido);
         if (existing) {
-          throw new TRPCError({ 
-            code: "CONFLICT", 
-            message: "Número de pedido já existe" 
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Número de pedido já existe",
           });
         }
 
         const result = await db.createPedido(input);
-        
+
         // Registrar no histórico
         if ((result as any)?.insertId) {
           await db.listHistoricoByPedido((result as any).insertId);
@@ -536,45 +761,50 @@ export const appRouter = router({
       }),
 
     update: protectedProcedure
-      .input(z.object({
-        id: z.number(),
-        data: pedidoSchema,
-      }))
+      .input(
+        z.object({
+          id: z.number(),
+          data: pedidoSchema,
+        })
+      )
       .mutation(async ({ input, ctx }) => {
         const usuario = ctx.user?.name || "Sistema";
         return db.updatePedido(input.id, input.data, usuario);
       }),
 
-    delete: protectedProcedure
-      .input(z.number())
-      .mutation(async ({ input }) => {
-        return db.deletePedido(input);
-      }),
+    delete: protectedProcedure.input(z.number()).mutation(async ({ input }) => {
+      return db.deletePedido(input);
+    }),
 
     importCSV: protectedProcedure
-      .input(z.object({
-        csv: z.string(),
-      }))
+      .input(
+        z.object({
+          csv: z.string(),
+        })
+      )
       .mutation(async ({ input }) => {
         return csvImport.importarCSV(input.csv);
       }),
 
     atividades: router({
-      list: protectedProcedure
-        .query(() => db.listPedidoAtividades()),
+      list: protectedProcedure.query(() => db.listPedidoAtividades()),
 
       create: protectedProcedure
         .input(z.object({ descricao: pedidoAtividadeDescricaoSchema }))
-        .mutation(({ input, ctx }) => db.createPedidoAtividade({
-          ...input,
-          criadoPor: ctx.user?.name || "Sistema",
-        })),
+        .mutation(({ input, ctx }) =>
+          db.createPedidoAtividade({
+            ...input,
+            criadoPor: ctx.user?.name || "Sistema",
+          })
+        ),
 
       update: protectedProcedure
-        .input(z.object({
-          id: z.number().int().positive(),
-          descricao: pedidoAtividadeDescricaoSchema,
-        }))
+        .input(
+          z.object({
+            id: z.number().int().positive(),
+            descricao: pedidoAtividadeDescricaoSchema,
+          })
+        )
         .mutation(({ input }) => db.updatePedidoAtividade(input)),
 
       delete: protectedProcedure
@@ -620,21 +850,27 @@ export const appRouter = router({
 
     create: protectedProcedure
       .input(estoqueMovimentacaoSchema)
-      .mutation(({ input, ctx }) => db.createEstoqueMovimentacao({
-        ...input,
-        usuario: ctx.user?.name || "Sistema",
-      })),
+      .mutation(({ input, ctx }) =>
+        db.createEstoqueMovimentacao({
+          ...input,
+          usuario: ctx.user?.name || "Sistema",
+        })
+      ),
 
     update: protectedProcedure
-      .input(z.object({
-        id: z.number().int().positive(),
-        data: estoqueMovimentacaoSchema.partial(),
-      }))
-      .mutation(({ input, ctx }) => db.updateEstoqueMovimentacao(
-        input.id,
-        input.data,
-        ctx.user?.name || "Sistema",
-      )),
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          data: estoqueMovimentacaoSchema.partial(),
+        })
+      )
+      .mutation(({ input, ctx }) =>
+        db.updateEstoqueMovimentacao(
+          input.id,
+          input.data,
+          ctx.user?.name || "Sistema"
+        )
+      ),
 
     delete: protectedProcedure
       .input(z.number().int().positive())
@@ -643,21 +879,29 @@ export const appRouter = router({
 
   pedidosObras: router({
     list: protectedProcedure
-      .input(z.object({
-        status: z.string().optional(),
-        prioridade: z.string().optional(),
-        search: z.string().optional(),
-        page: z.number().int().positive().optional(),
-        pageSize: z.number().int().min(10).max(200).optional(),
-      }).optional())
+      .input(
+        z
+          .object({
+            status: z.string().optional(),
+            prioridade: z.string().optional(),
+            search: z.string().optional(),
+            page: z.number().int().positive().optional(),
+            pageSize: z.number().int().min(10).max(200).optional(),
+          })
+          .optional()
+      )
       .query(({ input }) => db.listPedidosObras(input)),
 
     updateObservacoes: protectedProcedure
-      .input(z.object({
-        id: z.number().int().positive(),
-        data: pedidoObraObservacoesSchema,
-      }))
-      .mutation(({ input }) => db.updatePedidoObraObservacoes(input.id, input.data)),
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          data: pedidoObraObservacoesSchema,
+        })
+      )
+      .mutation(({ input }) =>
+        db.updatePedidoObraObservacoes(input.id, input.data)
+      ),
 
     modal: protectedProcedure
       .input(z.object({ pedidoObraId: z.number().int().positive() }))
@@ -668,122 +912,167 @@ export const appRouter = router({
       .mutation(({ input }) => db.savePedidoObraFinanceiro(input)),
 
     clearFinanceiro: protectedProcedure
-      .input(z.object({
-        pedidoObraId: z.number().int().positive(),
-        pedidoNum: z.string().min(1),
-      }))
-      .mutation(({ input }) => db.clearPedidoObraFinanceiro(input.pedidoObraId, input.pedidoNum)),
+      .input(
+        z.object({
+          pedidoObraId: z.number().int().positive(),
+          pedidoNum: z.string().min(1),
+        })
+      )
+      .mutation(({ input }) =>
+        db.clearPedidoObraFinanceiro(input.pedidoObraId, input.pedidoNum)
+      ),
 
     createReceita: protectedProcedure
       .input(pedidoObraReceitaSchema)
-      .mutation(({ input, ctx }) => db.createPedidoObraReceita({
-        ...input,
-        criadoPor: ctx.user?.name || "Sistema",
-      })),
+      .mutation(({ input, ctx }) =>
+        db.createPedidoObraReceita({
+          ...input,
+          criadoPor: ctx.user?.name || "Sistema",
+        })
+      ),
 
     updateReceita: protectedProcedure
       .input(pedidoObraReceitaUpdateSchema)
       .mutation(({ input }) => db.updatePedidoObraReceita(input)),
 
     deleteReceita: protectedProcedure
-      .input(z.object({
-        id: z.number().int().positive(),
-        pedidoObraId: z.number().int().positive(),
-      }))
-      .mutation(({ input }) => db.deletePedidoObraReceita(input.id, input.pedidoObraId)),
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          pedidoObraId: z.number().int().positive(),
+        })
+      )
+      .mutation(({ input }) =>
+        db.deletePedidoObraReceita(input.id, input.pedidoObraId)
+      ),
 
     saveResultadoAlocacoes: protectedProcedure
       .input(pedidoObraResultadoAlocacoesSchema)
-      .mutation(({ input, ctx }) => db.savePedidoObraResultadoAlocacoes({
-        ...input,
-        criadoPor: ctx.user?.name || "Sistema",
-      })),
+      .mutation(({ input, ctx }) =>
+        db.savePedidoObraResultadoAlocacoes({
+          ...input,
+          criadoPor: ctx.user?.name || "Sistema",
+        })
+      ),
 
     resetResultadoAlocacoes: protectedProcedure
-      .input(z.object({
-        pedidoObraId: z.number().int().positive(),
-      }))
-      .mutation(({ input }) => db.resetPedidoObraResultadoAlocacoes(input.pedidoObraId)),
+      .input(
+        z.object({
+          pedidoObraId: z.number().int().positive(),
+        })
+      )
+      .mutation(({ input }) =>
+        db.resetPedidoObraResultadoAlocacoes(input.pedidoObraId)
+      ),
 
     createDespesaManual: protectedProcedure
       .input(pedidoObraDespesaBaseSchema.and(pedidoObraDespesaFieldsSchema))
-      .mutation(({ input, ctx }) => db.createPedidoObraDespesaManual({
-        ...input,
-        criadoPor: ctx.user?.name || "Sistema",
-      })),
+      .mutation(({ input, ctx }) =>
+        db.createPedidoObraDespesaManual({
+          ...input,
+          criadoPor: ctx.user?.name || "Sistema",
+        })
+      ),
 
     updateDespesa: protectedProcedure
       .input(pedidoObraDespesaUpdateSchema)
       .mutation(({ input }) => db.updatePedidoObraDespesa(input)),
 
     deleteDespesa: protectedProcedure
-      .input(z.object({
-        id: z.number().int().positive(),
-        pedidoObraId: z.number().int().positive(),
-      }))
-      .mutation(({ input }) => db.deletePedidoObraDespesa(input.id, input.pedidoObraId)),
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          pedidoObraId: z.number().int().positive(),
+        })
+      )
+      .mutation(({ input }) =>
+        db.deletePedidoObraDespesa(input.id, input.pedidoObraId)
+      ),
 
     despesasDisponiveis: protectedProcedure
-      .input(z.object({
-        pedidoObraId: z.number().int().positive(),
-        tipoConta: z.string().optional(),
-        search: z.string().optional(),
-        page: z.number().int().positive().optional(),
-        pageSize: z.number().int().min(10).max(100).optional(),
-      }))
+      .input(
+        z.object({
+          pedidoObraId: z.number().int().positive(),
+          tipoConta: z.string().optional(),
+          search: z.string().optional(),
+          page: z.number().int().positive().optional(),
+          pageSize: z.number().int().min(10).max(100).optional(),
+        })
+      )
       .query(({ input }) => db.listDespesasTabelaGeralDisponiveis(input)),
 
     vincularDespesa: protectedProcedure
-      .input(pedidoObraDespesaBaseSchema.and(z.object({
-        despesaTabelaGeralId: z.number().int().positive(),
-      })))
-      .mutation(({ input, ctx }) => db.vincularDespesaTabelaGeralAoPedidoObra({
-        ...input,
-        criadoPor: ctx.user?.name || "Sistema",
-      })),
+      .input(
+        pedidoObraDespesaBaseSchema.and(
+          z.object({
+            despesaTabelaGeralId: z.number().int().positive(),
+          })
+        )
+      )
+      .mutation(({ input, ctx }) =>
+        db.vincularDespesaTabelaGeralAoPedidoObra({
+          ...input,
+          criadoPor: ctx.user?.name || "Sistema",
+        })
+      ),
 
-    vincularSaidasAutomaticas: protectedProcedure
-      .mutation(({ ctx }) => db.vincularSaidasAutomaticasObras(ctx.user?.name || "Sistema")),
+    vincularSaidasAutomaticas: protectedProcedure.mutation(({ ctx }) =>
+      db.vincularSaidasAutomaticasObras(ctx.user?.name || "Sistema")
+    ),
   }),
 
   despesasTabelaGeral: router({
     list: protectedProcedure
-      .input(z.object({
-        tipoConta: z.string().optional(),
-        search: z.string().optional(),
-        somenteNaoVinculados: z.boolean().optional(),
-        page: z.number().int().positive().optional(),
-        pageSize: z.number().int().min(10).max(200).optional(),
-        sortBy: z.enum([
-          "id",
-          "codigoFornecedorCliente",
-          "fornecedorCliente",
-          "numeroDocumento",
-          "tipoConta",
-          "tipoDocumento",
-          "dataEmissao",
-          "dataVencimento",
-          "valorTotalDocumento",
-          "complemento",
-          "observacoesAprovacao",
-          "vinculado",
-        ]).optional(),
-        sortDirection: z.enum(["asc", "desc"]).optional(),
-      }).optional())
+      .input(
+        z
+          .object({
+            tipoConta: z.string().optional(),
+            search: z.string().optional(),
+            somenteNaoVinculados: z.boolean().optional(),
+            page: z.number().int().positive().optional(),
+            pageSize: z.number().int().min(10).max(200).optional(),
+            sortBy: z
+              .enum([
+                "id",
+                "codigoFornecedorCliente",
+                "fornecedorCliente",
+                "numeroDocumento",
+                "tipoConta",
+                "tipoDocumento",
+                "dataEmissao",
+                "dataVencimento",
+                "valorTotalDocumento",
+                "complemento",
+                "observacoesAprovacao",
+                "vinculado",
+              ])
+              .optional(),
+            sortDirection: z.enum(["asc", "desc"]).optional(),
+          })
+          .optional()
+      )
       .query(({ input }) => db.listDespesasTabelaGeral(input)),
 
     exportExcel: protectedProcedure
-      .input(z.object({
-        despesas: z.object({
-          tipoConta: z.string().optional(),
-          search: z.string().optional(),
-          somenteNaoVinculados: z.boolean().optional(),
-        }).optional(),
-        pedidos: z.object({
-          status: z.string().optional(),
-          search: z.string().optional(),
-        }).optional(),
-      }).optional())
+      .input(
+        z
+          .object({
+            despesas: z
+              .object({
+                tipoConta: z.string().optional(),
+                search: z.string().optional(),
+                somenteNaoVinculados: z.boolean().optional(),
+              })
+              .optional(),
+            pedidos: z
+              .object({
+                status: z.string().optional(),
+                search: z.string().optional(),
+              })
+              .optional(),
+          })
+          .optional()
+      )
       .mutation(async ({ input }) => {
         const [despesas, pedidos] = await Promise.all([
           db.exportDespesasTabelaGeral(input?.despesas),
@@ -798,79 +1087,176 @@ export const appRouter = router({
   licitacoes: router({
     opcoes: costAccessProcedure.query(() => db.listLicitacaoOpcoes()),
     list: costAccessProcedure
-      .input(z.object({
-        search: z.string().optional(),
-        adjudicadas: z.boolean().optional(),
-      }).optional())
+      .input(
+        z
+          .object({
+            search: z.string().optional(),
+            adjudicadas: z.boolean().optional(),
+          })
+          .optional()
+      )
       .query(({ input }) => db.listLicitacoes(input)),
     alertasPregao: costAccessProcedure.query(async ({ ctx }) => {
       await accessDb.assertPermission(ctx.user, "licitacoes", "alerts");
       return db.listLicitacaoAlertasPregao();
     }),
     exportarPdf: costAccessProcedure
-      .input(z.object({
-        tipoRelatorio: z.enum(["status", "cidade", "vendedor", "adesoes_vendedor", "entregas"]),
-        filtros: z.object({ inicio: z.string().max(10).optional(), fim: z.string().max(10).optional() }),
-      }))
+      .input(
+        z.object({
+          tipoRelatorio: z.enum([
+            "status",
+            "cidade",
+            "vendedor",
+            "adesoes_vendedor",
+            "entregas",
+          ]),
+          filtros: z.object({
+            inicio: z.string().max(10).optional(),
+            fim: z.string().max(10).optional(),
+          }),
+        })
+      )
       .mutation(async ({ input }) => {
         const pdf = await buildLicitacaoPdf(input.tipoRelatorio, input.filtros);
-        return { filename: pdf.filename, base64: pdf.buffer.toString("base64") };
+        return {
+          filename: pdf.filename,
+          base64: pdf.buffer.toString("base64"),
+        };
       }),
     documentos: router({
       sugerirCaminho: costAccessProcedure
-        .input(z.object({ data: z.string().min(1).max(10), cidade: z.string().min(1).max(120) }))
+        .input(
+          z.object({
+            data: z.string().min(1).max(10),
+            cidade: z.string().min(1).max(120),
+          })
+        )
         .query(async ({ input, ctx }) => {
           await assertLicitacaoDocumentPermission(ctx.user, true);
-          return { pastaDocumentos: buildLicitacaoDocumentPath(input.data, input.cidade) };
+          return {
+            pastaDocumentos: buildLicitacaoDocumentPath(
+              input.data,
+              input.cidade
+            ),
+          };
         }),
       inspecionar: costAccessProcedure
-        .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024), caminhoRelativo: z.string().max(1024).optional() }))
+        .input(
+          z.object({
+            pastaDocumentos: z.string().trim().min(1).max(1024),
+            caminhoRelativo: z.string().max(1024).optional(),
+          })
+        )
         .query(async ({ input, ctx }) => {
           await assertLicitacaoDocumentPermission(ctx.user);
-          return inspectLicitacaoDocumentFolder(input.pastaDocumentos, input.caminhoRelativo);
+          return inspectLicitacaoDocumentFolder(
+            input.pastaDocumentos,
+            input.caminhoRelativo
+          );
         }),
       criarPasta: costAccessProcedure
-        .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024), caminhoRelativo: z.string().max(1024).default(""), nome: z.string().trim().min(1).max(180) }))
+        .input(
+          z.object({
+            pastaDocumentos: z.string().trim().min(1).max(1024),
+            caminhoRelativo: z.string().max(1024).default(""),
+            nome: z.string().trim().min(1).max(180),
+          })
+        )
         .mutation(async ({ input, ctx }) => {
           await assertLicitacaoDocumentPermission(ctx.user, true);
-          return createLicitacaoDocumentFolder(input.pastaDocumentos, input.caminhoRelativo, input.nome);
+          return createLicitacaoDocumentFolder(
+            input.pastaDocumentos,
+            input.caminhoRelativo,
+            input.nome
+          );
         }),
       enviarArquivo: costAccessProcedure
-        .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024), caminhoRelativo: z.string().max(1024).default(""), nome: z.string().trim().min(1).max(255), base64: z.string().min(1).max(36_000_000) }))
+        .input(
+          z.object({
+            pastaDocumentos: z.string().trim().min(1).max(1024),
+            caminhoRelativo: z.string().max(1024).default(""),
+            nome: z.string().trim().min(1).max(255),
+            base64: z.string().min(1).max(36_000_000),
+          })
+        )
         .mutation(async ({ input, ctx }) => {
           await assertLicitacaoDocumentPermission(ctx.user, true);
-          return uploadLicitacaoDocument(input.pastaDocumentos, input.caminhoRelativo, input.nome, input.base64);
+          return uploadLicitacaoDocument(
+            input.pastaDocumentos,
+            input.caminhoRelativo,
+            input.nome,
+            input.base64
+          );
         }),
       baixarArquivo: costAccessProcedure
-        .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024), caminhoRelativo: z.string().max(1024).default(""), nome: z.string().trim().min(1).max(255) }))
+        .input(
+          z.object({
+            pastaDocumentos: z.string().trim().min(1).max(1024),
+            caminhoRelativo: z.string().max(1024).default(""),
+            nome: z.string().trim().min(1).max(255),
+          })
+        )
         .mutation(async ({ input, ctx }) => {
           await assertLicitacaoDocumentPermission(ctx.user);
-          return downloadLicitacaoDocument(input.pastaDocumentos, input.caminhoRelativo, input.nome);
+          return downloadLicitacaoDocument(
+            input.pastaDocumentos,
+            input.caminhoRelativo,
+            input.nome
+          );
         }),
       renomear: costAccessProcedure
-        .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024), caminhoRelativo: z.string().max(1024).default(""), nomeAtual: z.string().trim().min(1).max(255), novoNome: z.string().trim().min(1).max(255) }))
+        .input(
+          z.object({
+            pastaDocumentos: z.string().trim().min(1).max(1024),
+            caminhoRelativo: z.string().max(1024).default(""),
+            nomeAtual: z.string().trim().min(1).max(255),
+            novoNome: z.string().trim().min(1).max(255),
+          })
+        )
         .mutation(async ({ input, ctx }) => {
           await assertLicitacaoDocumentPermission(ctx.user, true);
-          return renameLicitacaoDocument(input.pastaDocumentos, input.caminhoRelativo, input.nomeAtual, input.novoNome);
+          return renameLicitacaoDocument(
+            input.pastaDocumentos,
+            input.caminhoRelativo,
+            input.nomeAtual,
+            input.novoNome
+          );
         }),
       excluir: costAccessProcedure
-        .input(z.object({ pastaDocumentos: z.string().trim().min(1).max(1024), caminhoRelativo: z.string().max(1024).default(""), nome: z.string().trim().min(1).max(255) }))
+        .input(
+          z.object({
+            pastaDocumentos: z.string().trim().min(1).max(1024),
+            caminhoRelativo: z.string().max(1024).default(""),
+            nome: z.string().trim().min(1).max(255),
+          })
+        )
         .mutation(async ({ input, ctx }) => {
           await assertLicitacaoDocumentPermission(ctx.user, true);
-          return deleteLicitacaoDocument(input.pastaDocumentos, input.caminhoRelativo, input.nome);
+          return deleteLicitacaoDocument(
+            input.pastaDocumentos,
+            input.caminhoRelativo,
+            input.nome
+          );
         }),
     }),
     create: costAccessProcedure
       .input(licitacaoSchema)
       .mutation(async ({ input, ctx }) => {
-        if (input.pastaDocumentos) await assertLicitacaoDocumentPermission(ctx.user, true);
+        if (input.pastaDocumentos)
+          await assertLicitacaoDocumentPermission(ctx.user, true);
         const pastaDocumentos = input.pastaDocumentos
           ? await ensureLicitacaoDocumentFolder(input.pastaDocumentos)
           : "";
-        return db.createLicitacao({ ...input, pastaDocumentos, criadoPor: ctx.user?.name || "Sistema" });
+        return db.createLicitacao({
+          ...input,
+          pastaDocumentos,
+          criadoPor: ctx.user?.name || "Sistema",
+        });
       }),
     update: costAccessProcedure
-      .input(z.object({ id: z.number().int().positive(), data: licitacaoSchema }))
+      .input(
+        z.object({ id: z.number().int().positive(), data: licitacaoSchema })
+      )
       .mutation(async ({ input, ctx }) => {
         const pastaAtual = await db.getLicitacaoDocumentPath(input.id);
         if (String(input.data.pastaDocumentos || "") !== pastaAtual) {
@@ -886,34 +1272,71 @@ export const appRouter = router({
       .mutation(({ input }) => db.deleteLicitacao(input)),
     status: router({
       list: costAccessProcedure.query(() => db.listLicitacaoStatus()),
-      create: costAccessProcedure.input(licitacaoStatusSchema).mutation(({ input }) => db.createLicitacaoStatus(input)),
+      create: costAccessProcedure
+        .input(licitacaoStatusSchema)
+        .mutation(({ input }) => db.createLicitacaoStatus(input)),
       update: costAccessProcedure
-        .input(z.object({ id: z.number().int().positive(), data: licitacaoStatusSchema }))
-        .mutation(({ input }) => db.updateLicitacaoStatus(input.id, input.data)),
-      delete: costAccessProcedure.input(z.number().int().positive()).mutation(({ input }) => db.deleteLicitacaoStatus(input)),
+        .input(
+          z.object({
+            id: z.number().int().positive(),
+            data: licitacaoStatusSchema,
+          })
+        )
+        .mutation(({ input }) =>
+          db.updateLicitacaoStatus(input.id, input.data)
+        ),
+      delete: costAccessProcedure
+        .input(z.number().int().positive())
+        .mutation(({ input }) => db.deleteLicitacaoStatus(input)),
     }),
     plataformas: router({
       list: costAccessProcedure.query(() => db.listLicitacaoPlataformas()),
-      create: costAccessProcedure.input(licitacaoPlataformaSchema).mutation(({ input }) => db.createLicitacaoPlataforma(input)),
+      create: costAccessProcedure
+        .input(licitacaoPlataformaSchema)
+        .mutation(({ input }) => db.createLicitacaoPlataforma(input)),
       update: costAccessProcedure
-        .input(z.object({ id: z.number().int().positive(), data: licitacaoPlataformaSchema }))
-        .mutation(({ input }) => db.updateLicitacaoPlataforma(input.id, input.data)),
-      delete: costAccessProcedure.input(z.number().int().positive()).mutation(({ input }) => db.deleteLicitacaoPlataforma(input)),
+        .input(
+          z.object({
+            id: z.number().int().positive(),
+            data: licitacaoPlataformaSchema,
+          })
+        )
+        .mutation(({ input }) =>
+          db.updateLicitacaoPlataforma(input.id, input.data)
+        ),
+      delete: costAccessProcedure
+        .input(z.number().int().positive())
+        .mutation(({ input }) => db.deleteLicitacaoPlataforma(input)),
     }),
     vendedores: router({
       list: costAccessProcedure.query(() => db.listLicitacaoVendedores()),
-      create: costAccessProcedure.input(licitacaoVendedorSchema).mutation(({ input }) => db.createLicitacaoVendedor(input)),
+      create: costAccessProcedure
+        .input(licitacaoVendedorSchema)
+        .mutation(({ input }) => db.createLicitacaoVendedor(input)),
       update: costAccessProcedure
-        .input(z.object({ id: z.number().int().positive(), data: licitacaoVendedorSchema }))
-        .mutation(({ input }) => db.updateLicitacaoVendedor(input.id, input.data)),
-      delete: costAccessProcedure.input(z.number().int().positive()).mutation(({ input }) => db.deleteLicitacaoVendedor(input)),
+        .input(
+          z.object({
+            id: z.number().int().positive(),
+            data: licitacaoVendedorSchema,
+          })
+        )
+        .mutation(({ input }) =>
+          db.updateLicitacaoVendedor(input.id, input.data)
+        ),
+      delete: costAccessProcedure
+        .input(z.number().int().positive())
+        .mutation(({ input }) => db.deleteLicitacaoVendedor(input)),
     }),
     ata: router({
-      alertasVencimento: costAccessProcedure.query(() => db.listLicitacaoAtasVencendo()),
+      alertasVencimento: costAccessProcedure.query(() =>
+        db.listLicitacaoAtasVencendo()
+      ),
       get: costAccessProcedure
         .input(z.object({ licitacaoId: z.number().int().positive() }))
         .query(({ input }) => db.getLicitacaoAta(input.licitacaoId)),
-      save: costAccessProcedure.input(licitacaoAtaSchema).mutation(({ input }) => db.saveLicitacaoAta(input)),
+      save: costAccessProcedure
+        .input(licitacaoAtaSchema)
+        .mutation(({ input }) => db.saveLicitacaoAta(input)),
     }),
     adesoes: router({
       list: costAccessProcedure
@@ -921,102 +1344,400 @@ export const appRouter = router({
         .query(({ input }) => db.listLicitacaoAdesoes(input.licitacaoId)),
       create: costAccessProcedure
         .input(licitacaoAdesaoSchema)
-        .mutation(({ input, ctx }) => db.createLicitacaoAdesao({
-          ...input,
-          criadoPor: ctx.user?.name || "Sistema",
-        })),
+        .mutation(({ input, ctx }) =>
+          db.createLicitacaoAdesao({
+            ...input,
+            criadoPor: ctx.user?.name || "Sistema",
+          })
+        ),
       update: costAccessProcedure
-        .input(z.object({ id: z.number().int().positive(), data: licitacaoAdesaoSchema }))
-        .mutation(({ input }) => db.updateLicitacaoAdesao(input.id, input.data)),
+        .input(
+          z.object({
+            id: z.number().int().positive(),
+            data: licitacaoAdesaoSchema,
+          })
+        )
+        .mutation(({ input }) =>
+          db.updateLicitacaoAdesao(input.id, input.data)
+        ),
       delete: costAccessProcedure
-        .input(z.object({ id: z.number().int().positive(), licitacaoId: z.number().int().positive() }))
-        .mutation(({ input }) => db.deleteLicitacaoAdesao(input.id, input.licitacaoId)),
+        .input(
+          z.object({
+            id: z.number().int().positive(),
+            licitacaoId: z.number().int().positive(),
+          })
+        )
+        .mutation(({ input }) =>
+          db.deleteLicitacaoAdesao(input.id, input.licitacaoId)
+        ),
       pedidosCrti: router({
         list: costAccessProcedure
           .input(z.object({ adesaoId: z.number().int().positive() }))
-          .query(({ input }) => db.listLicitacaoAdesaoPedidosCrti(input.adesaoId)),
+          .query(({ input }) =>
+            db.listLicitacaoAdesaoPedidosCrti(input.adesaoId)
+          ),
         create: costAccessProcedure
-          .input(z.object({
-            adesaoId: z.number().int().positive(),
-            licitacaoId: z.number().int().positive(),
-            pedidoCrti: z.string().trim().min(1).max(50),
-          }))
-          .mutation(({ input, ctx }) => db.createLicitacaoAdesaoPedidoCrti({
-            ...input,
-            criadoPor: ctx.user?.name || "Sistema",
-          })),
+          .input(
+            z.object({
+              adesaoId: z.number().int().positive(),
+              licitacaoId: z.number().int().positive(),
+              pedidoCrti: z.string().trim().min(1).max(50),
+            })
+          )
+          .mutation(({ input, ctx }) =>
+            db.createLicitacaoAdesaoPedidoCrti({
+              ...input,
+              criadoPor: ctx.user?.name || "Sistema",
+            })
+          ),
         delete: costAccessProcedure
-          .input(z.object({ id: z.number().int().positive(), adesaoId: z.number().int().positive() }))
-          .mutation(({ input }) => db.deleteLicitacaoAdesaoPedidoCrti(input.id, input.adesaoId)),
+          .input(
+            z.object({
+              id: z.number().int().positive(),
+              adesaoId: z.number().int().positive(),
+            })
+          )
+          .mutation(({ input }) =>
+            db.deleteLicitacaoAdesaoPedidoCrti(input.id, input.adesaoId)
+          ),
       }),
     }),
     pedidosCrti: router({
       buscar: costAccessProcedure
         .input(z.object({ pedidoCrti: z.string().min(1).max(50) }))
-        .mutation(({ input }) => db.buscarPedidoCrtiLicitacao(input.pedidoCrti)),
+        .mutation(({ input }) =>
+          db.buscarPedidoCrtiLicitacao(input.pedidoCrti)
+        ),
       list: costAccessProcedure
         .input(z.object({ licitacaoId: z.number().int().positive() }))
         .query(({ input }) => db.listLicitacaoPedidosCrti(input.licitacaoId)),
-      create: costAccessProcedure.input(licitacaoPedidoCrtiSchema).mutation(({ input, ctx }) => db.createLicitacaoPedidoCrti({
-        ...input,
-        criadoPor: ctx.user?.name || "Sistema",
-      })),
-      createManual: costAccessProcedure.input(licitacaoPedidoManualSchema).mutation(({ input, ctx }) => db.createLicitacaoPedidoManual({
-        ...input,
-        criadoPor: ctx.user?.name || "Sistema",
-      })),
+      create: costAccessProcedure
+        .input(licitacaoPedidoCrtiSchema)
+        .mutation(({ input, ctx }) =>
+          db.createLicitacaoPedidoCrti({
+            ...input,
+            criadoPor: ctx.user?.name || "Sistema",
+          })
+        ),
+      createManual: costAccessProcedure
+        .input(licitacaoPedidoManualSchema)
+        .mutation(({ input, ctx }) =>
+          db.createLicitacaoPedidoManual({
+            ...input,
+            criadoPor: ctx.user?.name || "Sistema",
+          })
+        ),
       updateManual: costAccessProcedure
-        .input(z.object({ id: z.number().int().positive(), data: licitacaoPedidoManualSchema }))
-        .mutation(({ input }) => db.updateLicitacaoPedidoManual(input.id, input.data)),
+        .input(
+          z.object({
+            id: z.number().int().positive(),
+            data: licitacaoPedidoManualSchema,
+          })
+        )
+        .mutation(({ input }) =>
+          db.updateLicitacaoPedidoManual(input.id, input.data)
+        ),
       update: costAccessProcedure
-        .input(z.object({ id: z.number().int().positive(), data: licitacaoPedidoCrtiSchema }))
-        .mutation(({ input }) => db.updateLicitacaoPedidoCrti(input.id, input.data)),
+        .input(
+          z.object({
+            id: z.number().int().positive(),
+            data: licitacaoPedidoCrtiSchema,
+          })
+        )
+        .mutation(({ input }) =>
+          db.updateLicitacaoPedidoCrti(input.id, input.data)
+        ),
       delete: costAccessProcedure
-        .input(z.object({ id: z.number().int().positive(), licitacaoId: z.number().int().positive() }))
-        .mutation(({ input }) => db.deleteLicitacaoPedidoCrti(input.id, input.licitacaoId)),
+        .input(
+          z.object({
+            id: z.number().int().positive(),
+            licitacaoId: z.number().int().positive(),
+          })
+        )
+        .mutation(({ input }) =>
+          db.deleteLicitacaoPedidoCrti(input.id, input.licitacaoId)
+        ),
     }),
+  }),
+
+  compras: router({
+    painel: protectedProcedure.query(() => compras.painel()),
+    obterOrcamento: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .query(({ input }) => compras.obterOrcamento(input.id)),
+    criarOrcamento: protectedProcedure
+      .input(compraOrcamentoSchema.omit({ id: true }))
+      .mutation(({ input, ctx }) =>
+        compras.criarOrcamento(input, ctx.user.name || "Sistema")
+      ),
+    atualizarOrcamento: protectedProcedure
+      .input(compraOrcamentoSchema.required({ id: true }))
+      .mutation(({ input, ctx }) =>
+        compras.atualizarOrcamento(input, ctx.user.name || "Sistema")
+      ),
+    excluirOrcamento: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          motivo: z.string().trim().min(3).max(500),
+        })
+      )
+      .mutation(({ input }) => compras.excluirOrcamento(input.id)),
+    criarFornecedor: protectedProcedure
+      .input(
+        z.object({
+          nome: z.string().trim().min(2).max(180),
+          documento: z.string().max(30).optional(),
+          telefone: z.string().max(80).optional(),
+          email: z.string().email().or(z.literal("")).optional(),
+          endereco: z.string().max(500).optional(),
+          ativo: z.boolean(),
+        })
+      )
+      .mutation(({ input }) => compras.criarFornecedor(input)),
+    atualizarFornecedor: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          nome: z.string().trim().min(2).max(180),
+          documento: z.string().max(30).optional(),
+          telefone: z.string().max(80).optional(),
+          email: z.string().email().or(z.literal("")).optional(),
+          endereco: z.string().max(500).optional(),
+          ativo: z.boolean(),
+        })
+      )
+      .mutation(({ input }) => compras.atualizarFornecedor(input)),
+    criarMaterial: protectedProcedure
+      .input(
+        z.object({
+          descricao: z.string().trim().min(2).max(300),
+          categoria: z.string().max(120).optional(),
+          unidade: z.string().max(30).optional(),
+          ativo: z.boolean(),
+        })
+      )
+      .mutation(({ input }) => compras.criarMaterial(input)),
+    atualizarMaterial: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          descricao: z.string().trim().min(2).max(300),
+          categoria: z.string().max(120).optional(),
+          unidade: z.string().max(30).optional(),
+          ativo: z.boolean(),
+        })
+      )
+      .mutation(({ input }) => compras.atualizarMaterial(input)),
+    excluirCadastro: protectedProcedure
+      .input(
+        z.object({
+          tipo: z.enum(["fornecedor", "material"]),
+          id: z.number().int().positive(),
+          motivo: z.string().trim().min(3).max(500),
+        })
+      )
+      .mutation(({ input }) => compras.excluirCadastro(input.tipo, input.id)),
   }),
 
   alimentacao: router({
     cadastros: alimentacaoAccessProcedure.query(() => alimentacao.cadastros()),
     painel: alimentacaoAccessProcedure.query(() => alimentacao.painel()),
-    relatorio: alimentacaoAccessProcedure.input(alimentacaoFiltrosSchema.optional()).query(({ input }) => alimentacao.relatorio(input)),
-    exportarPdf: alimentacaoAccessProcedure.input(z.object({ filtros: alimentacaoFiltrosSchema, tipoRelatorio: z.enum(["funcionario", "fornecedor", "mensal", "setor", "tipo"]) })).mutation(async ({ input }) => {
-      const pdf = await buildAlimentacaoPdf(input.filtros, input.tipoRelatorio);
-      return { filename: pdf.filename, base64: pdf.buffer.toString("base64") };
-    }),
-    salvarFuncionario: alimentacaoAccessProcedure.input(z.object({ id:z.number().int().positive().optional(),nome:z.string().trim().min(2).max(180),setor:z.string().trim().min(2).max(120),ativo:z.boolean() })).mutation(({input})=>alimentacao.salvarFuncionario(input)),
-    excluirFuncionario: alimentacaoAccessProcedure.input(z.object({ id:z.number().int().positive(),motivo:z.string().trim().min(3).max(500) })).mutation(({input,ctx})=>alimentacao.excluirFuncionario(input.id,input.motivo,ctx.user.name||"Sistema")),
-    salvarFornecedor: alimentacaoAccessProcedure.input(z.object({ id:z.number().int().positive().optional(),nome:z.string().trim().min(2).max(180),valorRefeicao:z.number().nonnegative().max(9999999999),ativo:z.boolean() })).mutation(({input})=>alimentacao.salvarFornecedor(input)),
-    excluirFornecedor: alimentacaoAccessProcedure.input(z.object({ id:z.number().int().positive(),motivo:z.string().trim().min(3).max(500) })).mutation(({input,ctx})=>alimentacao.excluirFornecedor(input.id,input.motivo,ctx.user.name||"Sistema")),
-    salvarCusto: alimentacaoAccessProcedure.input(z.object({ id:z.number().int().positive().optional(),descricao:z.string().trim().min(2).max(220),categoria:z.string().trim().min(2).max(100),valor:z.number().positive(),dataCusto:dataIsoSchema })).mutation(({input,ctx})=>alimentacao.salvarCusto(input,ctx.user.name||"Sistema")),
-    excluirCusto: alimentacaoAccessProcedure.input(z.object({ id:z.number().int().positive(),motivo:z.string().trim().min(3).max(500) })).mutation(({input,ctx})=>alimentacao.excluirCusto(input.id,input.motivo,ctx.user.name||"Sistema")),
-    criarLancamento: alimentacaoAccessProcedure.input(z.object({ fornecedorId:z.number().int().positive(),numeroNota:z.string().trim().max(80).optional(),tipo:z.enum(TIPOS_REFEICAO),dataRefeicao:dataIsoSchema,valorExtra:z.number().nonnegative(),observacao:z.string().max(5000).optional(),token:z.string().uuid(),itens:z.array(z.object({funcionarioId:z.number().int().positive(),quantidade:z.number().int().positive(),valorUnitario:z.number().nonnegative()})).min(1).max(100) })).mutation(({input,ctx})=>alimentacao.criarLancamento(input,ctx.user.name||"Sistema")),
-    obterLancamento: alimentacaoAccessProcedure.input(z.object({id:z.number().int().positive()})).query(({input})=>alimentacao.obterLancamento(input.id)),
-    atualizarLancamento: alimentacaoAccessProcedure.input(z.object({id:z.number().int().positive(),data:z.object({fornecedorId:z.number().int().positive(),numeroNota:z.string().trim().max(80).optional(),tipo:z.enum(TIPOS_REFEICAO),dataRefeicao:dataIsoSchema,valorExtra:z.number().nonnegative(),observacao:z.string().max(5000).optional(),itens:z.array(z.object({funcionarioId:z.number().int().positive(),quantidade:z.number().int().positive(),valorUnitario:z.number().nonnegative()})).min(1).max(100)})})).mutation(({input,ctx})=>alimentacao.atualizarLancamento(input.id,input.data,ctx.user.name||"Sistema")),
-    excluirLancamento: alimentacaoAccessProcedure.input(z.object({id:z.number().int().positive(),motivo:z.string().trim().min(3).max(500)})).mutation(({input,ctx})=>alimentacao.excluirLancamento(input.id,input.motivo,ctx.user.name||"Sistema")),
+    relatorio: alimentacaoAccessProcedure
+      .input(alimentacaoFiltrosSchema.optional())
+      .query(({ input }) => alimentacao.relatorio(input)),
+    exportarPdf: alimentacaoAccessProcedure
+      .input(
+        z.object({
+          filtros: alimentacaoFiltrosSchema,
+          tipoRelatorio: z.enum([
+            "funcionario",
+            "fornecedor",
+            "mensal",
+            "setor",
+            "tipo",
+          ]),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const pdf = await buildAlimentacaoPdf(
+          input.filtros,
+          input.tipoRelatorio
+        );
+        return {
+          filename: pdf.filename,
+          base64: pdf.buffer.toString("base64"),
+        };
+      }),
+    salvarFuncionario: alimentacaoAccessProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive().optional(),
+          nome: z.string().trim().min(2).max(180),
+          setor: z.string().trim().min(2).max(120),
+          ativo: z.boolean(),
+        })
+      )
+      .mutation(({ input }) => alimentacao.salvarFuncionario(input)),
+    excluirFuncionario: alimentacaoAccessProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          motivo: z.string().trim().min(3).max(500),
+        })
+      )
+      .mutation(({ input, ctx }) =>
+        alimentacao.excluirFuncionario(
+          input.id,
+          input.motivo,
+          ctx.user.name || "Sistema"
+        )
+      ),
+    salvarFornecedor: alimentacaoAccessProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive().optional(),
+          nome: z.string().trim().min(2).max(180),
+          valorRefeicao: z.number().nonnegative().max(9999999999),
+          ativo: z.boolean(),
+        })
+      )
+      .mutation(({ input }) => alimentacao.salvarFornecedor(input)),
+    excluirFornecedor: alimentacaoAccessProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          motivo: z.string().trim().min(3).max(500),
+        })
+      )
+      .mutation(({ input, ctx }) =>
+        alimentacao.excluirFornecedor(
+          input.id,
+          input.motivo,
+          ctx.user.name || "Sistema"
+        )
+      ),
+    salvarCusto: alimentacaoAccessProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive().optional(),
+          descricao: z.string().trim().min(2).max(220),
+          categoria: z.string().trim().min(2).max(100),
+          valor: z.number().positive(),
+          dataCusto: dataIsoSchema,
+        })
+      )
+      .mutation(({ input, ctx }) =>
+        alimentacao.salvarCusto(input, ctx.user.name || "Sistema")
+      ),
+    excluirCusto: alimentacaoAccessProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          motivo: z.string().trim().min(3).max(500),
+        })
+      )
+      .mutation(({ input, ctx }) =>
+        alimentacao.excluirCusto(
+          input.id,
+          input.motivo,
+          ctx.user.name || "Sistema"
+        )
+      ),
+    criarLancamento: alimentacaoAccessProcedure
+      .input(
+        z.object({
+          fornecedorId: z.number().int().positive(),
+          numeroNota: z.string().trim().max(80).optional(),
+          tipo: z.enum(TIPOS_REFEICAO),
+          dataRefeicao: dataIsoSchema,
+          valorExtra: z.number().nonnegative(),
+          observacao: z.string().max(5000).optional(),
+          token: z.string().uuid(),
+          itens: z
+            .array(
+              z.object({
+                funcionarioId: z.number().int().positive(),
+                quantidade: z.number().int().positive(),
+                valorUnitario: z.number().nonnegative(),
+              })
+            )
+            .min(1)
+            .max(100),
+        })
+      )
+      .mutation(({ input, ctx }) =>
+        alimentacao.criarLancamento(input, ctx.user.name || "Sistema")
+      ),
+    obterLancamento: alimentacaoAccessProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .query(({ input }) => alimentacao.obterLancamento(input.id)),
+    atualizarLancamento: alimentacaoAccessProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          data: z.object({
+            fornecedorId: z.number().int().positive(),
+            numeroNota: z.string().trim().max(80).optional(),
+            tipo: z.enum(TIPOS_REFEICAO),
+            dataRefeicao: dataIsoSchema,
+            valorExtra: z.number().nonnegative(),
+            observacao: z.string().max(5000).optional(),
+            itens: z
+              .array(
+                z.object({
+                  funcionarioId: z.number().int().positive(),
+                  quantidade: z.number().int().positive(),
+                  valorUnitario: z.number().nonnegative(),
+                })
+              )
+              .min(1)
+              .max(100),
+          }),
+        })
+      )
+      .mutation(({ input, ctx }) =>
+        alimentacao.atualizarLancamento(
+          input.id,
+          input.data,
+          ctx.user.name || "Sistema"
+        )
+      ),
+    excluirLancamento: alimentacaoAccessProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          motivo: z.string().trim().min(3).max(500),
+        })
+      )
+      .mutation(({ input, ctx }) =>
+        alimentacao.excluirLancamento(
+          input.id,
+          input.motivo,
+          ctx.user.name || "Sistema"
+        )
+      ),
   }),
 
   // INDICADORES
   // ─────────────────────────────────────────────
   indicadores: router({
-    get: protectedProcedure
-      .query(async () => {
-        return db.getIndicadores();
-      }),
+    get: protectedProcedure.query(async () => {
+      return db.getIndicadores();
+    }),
   }),
 
   // ─────────────────────────────────────────────
   // SINCRONIZAÇÃO CRTI
   // ─────────────────────────────────────────────
   crti: router({
-    ultimaAtualizacao: protectedProcedure
-      .query(() => db.getUltimaSincronizacao()),
+    ultimaAtualizacao: protectedProcedure.query(() =>
+      db.getUltimaSincronizacao()
+    ),
 
-    testarConexao: protectedProcedure
-      .query(async () => {
-        return crtiSync.testarConexaoCrti();
-      }),
+    testarConexao: protectedProcedure.query(async () => {
+      return crtiSync.testarConexaoCrti();
+    }),
 
     importarAprovados: protectedProcedure
       .input(z.object({ dias: z.number().optional() }).optional())
@@ -1036,20 +1757,18 @@ export const appRouter = router({
         return crtiSync.sincronizacaoCompleta(input?.dias);
       }),
 
-    ultimaAtualizacaoObras: protectedProcedure
-      .query(() => db.getUltimaSincronizacaoObras()),
+    ultimaAtualizacaoObras: protectedProcedure.query(() =>
+      db.getUltimaSincronizacaoObras()
+    ),
 
-    sincronizarPedidosObras: protectedProcedure
-      .mutation(async () => {
-        return crtiSync.sincronizarPedidosObras();
-      }),
+    sincronizarPedidosObras: protectedProcedure.mutation(async () => {
+      return crtiSync.sincronizarPedidosObras();
+    }),
 
-    sincronizacaoCustosObras: protectedProcedure
-      .mutation(async () => {
-        return crtiSync.sincronizacaoCustosObras();
-      }),
+    sincronizacaoCustosObras: protectedProcedure.mutation(async () => {
+      return crtiSync.sincronizacaoCustosObras();
+    }),
   }),
 });
 
 export type AppRouter = typeof appRouter;
-

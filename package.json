@@ -29,7 +29,9 @@
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
     "alimentacao:migrate": "node scripts/migrate-alimentacao.mjs",
     "alimentacao:schema": "node scripts/create-alimentacao-schema.mjs",
-    "usuarios:schema": "node scripts/create-user-access-schema.mjs"
+    "usuarios:schema": "node scripts/create-user-access-schema.mjs",
+    "compras:schema": "node scripts/create-compras-schema.mjs",
+    "compras:migrate": "node scripts/migrate-compras-planilha.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",
@@ -74,6 +76,7 @@
     "dotenv": "^17.2.2",
     "drizzle-orm": "^0.44.5",
     "embla-carousel-react": "^8.6.0",
+    "exceljs": "^4.4.0",
     "express": "^4.21.2",
     "framer-motion": "^12.23.22",
     "input-otp": "^1.4.2",
