@@ -18,6 +18,20 @@ try {
   console.log(`Estruturas previstas: ${statements.length}`);
   {
     for (const statement of statements) await connection.query(statement);
+    const [supplierColumns] = await connection.query(
+      "SELECT column_name FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='compras_fornecedores' AND column_name IN ('fornecedor_nota','fornecedor_item')"
+    );
+    const existingSupplierColumns = new Set(
+      supplierColumns.map(row => row.COLUMN_NAME ?? row.column_name)
+    );
+    if (!existingSupplierColumns.has("fornecedor_nota"))
+      await connection.query(
+        "ALTER TABLE compras_fornecedores ADD COLUMN fornecedor_nota boolean NOT NULL DEFAULT true AFTER origem_planilha"
+      );
+    if (!existingSupplierColumns.has("fornecedor_item"))
+      await connection.query(
+        "ALTER TABLE compras_fornecedores ADD COLUMN fornecedor_item boolean NOT NULL DEFAULT false AFTER fornecedor_nota"
+      );
     const [tables] = await connection.query("SELECT table_name FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name LIKE 'compras_%' ORDER BY table_name");
     console.log("Estrutura criada e validada:");
     tables.forEach(row => console.log(`- ${row.TABLE_NAME ?? row.table_name}`));

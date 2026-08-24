@@ -1492,6 +1492,7 @@ export const appRouter = router({
           email: z.string().email().or(z.literal("")).optional(),
           endereco: z.string().max(500).optional(),
           ativo: z.boolean(),
+          tipoFornecedor: z.enum(["NOTA", "ITEM", "AMBOS"]).optional(),
         })
       )
       .mutation(({ input }) => compras.criarFornecedor(input)),
@@ -1508,6 +1509,16 @@ export const appRouter = router({
         })
       )
       .mutation(({ input }) => compras.atualizarFornecedor(input)),
+    atualizarClassificacaoFornecedor: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          tipoFornecedor: z.enum(["NOTA", "ITEM", "AMBOS"]),
+        })
+      )
+      .mutation(({ input }) =>
+        compras.classificarFornecedor(input.id, input.tipoFornecedor)
+      ),
     criarMaterial: protectedProcedure
       .input(
         z.object({

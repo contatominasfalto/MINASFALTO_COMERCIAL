@@ -7,6 +7,7 @@ describe("Controle de Compras", () => {
     expect(permissionTargetForProcedure("compras.painel", "query")).toEqual({ resource: "compras", action: "read" });
     expect(permissionTargetForProcedure("compras.criarOrcamento", "mutation")).toEqual({ resource: "compras", action: "create" });
     expect(permissionTargetForProcedure("compras.atualizarOrcamento", "mutation")).toEqual({ resource: "compras", action: "update" });
+    expect(permissionTargetForProcedure("compras.atualizarClassificacaoFornecedor", "mutation")).toEqual({ resource: "compras", action: "update" });
     expect(permissionTargetForProcedure("compras.excluirOrcamento", "mutation")).toEqual({ resource: "compras", action: "delete" });
   });
 
@@ -26,5 +27,7 @@ describe("Controle de Compras", () => {
     expect(sql).toContain("compras_importacao_hash_uq");
     expect(sql).toContain("ON DELETE CASCADE");
     expect(sql).toContain("compras_oferta_fornecedor_fk");
+    expect(sql).toContain("`fornecedor_nota` boolean NOT NULL DEFAULT true");
+    expect(sql).toContain("`fornecedor_item` boolean NOT NULL DEFAULT false");
   });
 });

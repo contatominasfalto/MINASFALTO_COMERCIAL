@@ -9,7 +9,7 @@ export async function painel() {
         `SELECT o.id,o.numero,o.titulo,DATE_FORMAT(o.data_orcamento,'%Y-%m-%d') dataOrcamento,o.status,o.observacoes,o.valor_cotado valorCotado,o.valor_negociado valorNegociado,o.valor_pago valorPago,o.fornecedor_escolhido_id fornecedorEscolhidoId,f.nome fornecedorEscolhido,(SELECT COUNT(*) FROM compras_orcamento_itens i WHERE i.orcamento_id=o.id) itens FROM compras_orcamentos o LEFT JOIN compras_fornecedores f ON f.id=o.fornecedor_escolhido_id ORDER BY o.data_orcamento DESC,o.id DESC`
       ),
       pool.query(
-        "SELECT id,nome,documento,telefone,email,endereco,ativo,origem_planilha origemPlanilha FROM compras_fornecedores ORDER BY ativo DESC,nome"
+        "SELECT id,nome,documento,telefone,email,endereco,ativo,origem_planilha origemPlanilha,fornecedor_nota fornecedorNota,fornecedor_item fornecedorItem FROM compras_fornecedores ORDER BY ativo DESC,nome"
       ),
       pool.query(
         "SELECT id,descricao,categoria,unidade,ativo,origem_planilha origemPlanilha FROM compras_materiais ORDER BY ativo DESC,descricao"
@@ -192,7 +192,7 @@ export async function salvarFornecedor(data: any) {
     );
   else
     await pool.execute(
-      "INSERT INTO compras_fornecedores(nome,documento,telefone,email,endereco,ativo) VALUES(?,?,?,?,?,?)",
+      "INSERT INTO compras_fornecedores(nome,documento,telefone,email,endereco,ativo,fornecedor_nota,fornecedor_item) VALUES(?,?,?,?,?,?,?,?)",
       [
         data.nome,
         data.documento || null,
@@ -200,8 +200,26 @@ export async function salvarFornecedor(data: any) {
         data.email || null,
         data.endereco || null,
         data.ativo,
+        data.tipoFornecedor !== "ITEM",
+        data.tipoFornecedor === "ITEM" || data.tipoFornecedor === "AMBOS",
       ]
     );
+  return { ok: true };
+}
+export async function classificarFornecedor(
+  id: number,
+  tipoFornecedor: "NOTA" | "ITEM" | "AMBOS"
+) {
+  const pool = await getMysqlPool();
+  const [result] = await pool.execute<mysql.ResultSetHeader>(
+    "UPDATE compras_fornecedores SET fornecedor_nota=?,fornecedor_item=? WHERE id=?",
+    [
+      tipoFornecedor === "NOTA" || tipoFornecedor === "AMBOS",
+      tipoFornecedor === "ITEM" || tipoFornecedor === "AMBOS",
+      id,
+    ]
+  );
+  if (!result.affectedRows) throw new Error("Fornecedor não encontrado.");
   return { ok: true };
 }
 export async function salvarMaterial(data: any) {

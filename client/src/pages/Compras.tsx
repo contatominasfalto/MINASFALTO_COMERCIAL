@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import {
+  ArrowRightLeft,
   BarChart3,
   ChevronDown,
   Download,
@@ -144,7 +145,11 @@ export default function Compras() {
   const utils = trpc.useUtils();
   const { data, isLoading } = trpc.compras.painel.useQuery();
   const [tab, setTab] = useState<
-    "orcamentos" | "fornecedores" | "materiais" | "historico"
+    | "orcamentos"
+    | "fornecedores"
+    | "fornecedor_item"
+    | "materiais"
+    | "historico"
   >("orcamentos");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
@@ -221,16 +226,48 @@ export default function Compras() {
     () => ((data?.materiais as any[]) || []).filter(m => m.ativo),
     [data?.materiais]
   );
-  const supplierOptions = useMemo<SearchOption[]>(
+  const selectedItemSupplierIds = useMemo(
+    () =>
+      new Set(
+        form.itens.flatMap(item =>
+          item.ofertas
+            .map(oferta => Number(oferta.fornecedorId))
+            .filter(Boolean)
+        )
+      ),
+    [form.itens]
+  );
+  const noteSupplierOptions = useMemo<SearchOption[]>(
     () => [
       { value: "", label: "Nenhum fornecedor definido" },
-      ...activeSuppliers.map(f => ({
-        value: String(f.id),
-        label: f.nome,
-        detail: f.documento || f.email || undefined,
-      })),
+      ...activeSuppliers
+        .filter(
+          f =>
+            Boolean(f.fornecedorNota) ||
+            Number(f.id) === Number(form.fornecedorEscolhidoId)
+        )
+        .map(f => ({
+          value: String(f.id),
+          label: f.nome,
+          detail: f.documento || f.email || undefined,
+        })),
     ],
-    [activeSuppliers]
+    [activeSuppliers, form.fornecedorEscolhidoId]
+  );
+  const itemSupplierOptions = useMemo<SearchOption[]>(
+    () =>
+      activeSuppliers
+        .filter(
+          f =>
+            Boolean(f.fornecedorItem) ||
+            selectedItemSupplierIds.has(Number(f.id))
+        )
+        .map(f => ({
+          value: String(f.id),
+          label: f.nome,
+          detail: f.documento || f.email || undefined,
+        })),
+    [activeSuppliers, selectedItemSupplierIds]
   );
   const materialOptions = useMemo<SearchOption[]>(
     () =>
@@ -353,6 +390,7 @@ export default function Compras() {
         {[
           ["orcamentos", "Orçamentos", BarChart3],
           ["fornecedores", "Fornecedores", Users],
+          ["fornecedor_item", "Fornecedor Item", Users],
           ["materiais", "Materiais", PackageSearch],
           ["historico", "Carga histórica", Download],
         ].map(([key, label, Icon]: any) => (
@@ -475,7 +513,20 @@ export default function Compras() {
       {tab === "fornecedores" && (
         <Cadastro
           tipo="fornecedor"
-          items={data?.fornecedores || []}
+          categoriaFornecedor="NOTA"
+          items={((data?.fornecedores || []) as any[]).filter(
+            fornecedor => fornecedor.fornecedorNota
+          )}
+          refresh={refresh}
+        />
+      )}{" "}
+      {tab === "fornecedor_item" && (
+        <Cadastro
+          tipo="fornecedor"
+          categoriaFornecedor="ITEM"
+          items={((data?.fornecedores || []) as any[]).filter(
+            fornecedor => fornecedor.fornecedorItem
+          )}
           refresh={refresh}
         />
       )}{" "}
@@ -562,10 +613,10 @@ export default function Compras() {
                 />
               </label>
               <label>
-                Fornecedor escolhido
+                Fornecedor da nota
                 <SearchableSelect
                   value={String(form.fornecedorEscolhidoId || "")}
-                  options={supplierOptions}
+                  options={noteSupplierOptions}
                   placeholder="Selecione o fornecedor"
                   searchPlaceholder="Pesquisar fornecedor..."
                   onChange={value =>
@@ -682,7 +733,7 @@ export default function Compras() {
                 </div>
                 {item.ofertas.length > 0 && (
                   <div className="compra-offer-heading">
-                    <span>Fornecedor</span>
+                    <span>Fornecedor do item</span>
                     <span>Valor unitário</span>
                     <span>Prazo de entrega</span>
                     <span>Ação</span>
@@ -692,7 +743,7 @@ export default function Compras() {
                   <div className="oferta" key={oi}>
                     <SearchableSelect
                       value={String(oferta.fornecedorId || "")}
-                      options={supplierOptions.filter(option => option.value)}
+                      options={itemSupplierOptions}
                       placeholder="Selecione o fornecedor"
                       searchPlaceholder="Pesquisar fornecedor..."
                       onChange={value => {
@@ -746,21 +797,15 @@ export default function Compras() {
                 ))}
                 <button
                   disabled={
-                    !((data?.fornecedores as any[]) || []).some(
-                      fornecedor => fornecedor.ativo
-                    )
+                    itemSupplierOptions.length === 0
                   }
                   title={
-                    ((data?.fornecedores as any[]) || []).some(
-                      fornecedor => fornecedor.ativo
-                    )
+                    itemSupplierOptions.length > 0
                       ? "Adicionar proposta de fornecedor"
                       : "Cadastre ou importe ao menos um fornecedor"
                   }
                   onClick={() => {
-                    const primeiroFornecedor = (
-                      (data?.fornecedores as any[]) || []
-                    ).find(fornecedor => fornecedor.ativo);
+                    const primeiroFornecedor = itemSupplierOptions[0];
                     if (!primeiroFornecedor) {
                       toast.error(
                         "Cadastre um fornecedor ou aplique a carga histórica antes de adicionar propostas."
@@ -850,10 +895,12 @@ function Cadastro({
   tipo,
   items,
   refresh,
+  categoriaFornecedor = "NOTA",
 }: {
   tipo: "fornecedor" | "material";
   items: any[];
   refresh: () => void;
+  categoriaFornecedor?: "NOTA" | "ITEM";
 }) {
   const blank =
     tipo === "fornecedor"
@@ -868,6 +915,7 @@ function Cadastro({
       : { descricao: "", categoria: "", unidade: "UN", ativo: true };
   const [form, setForm] = useState<any>(blank);
   const [target, setTarget] = useState<any>(null);
+  const [transferTarget, setTransferTarget] = useState<any>(null);
   const cadastroOptions = {
     onSuccess: () => {
       toast.success("Cadastro salvo.");
@@ -888,10 +936,27 @@ function Cadastro({
     },
     onError: e => toast.error(e.message),
   });
+  const transfer = trpc.compras.atualizarClassificacaoFornecedor.useMutation({
+    onSuccess: () => {
+      toast.success(
+        categoriaFornecedor === "NOTA"
+          ? "Fornecedor movido para Fornecedor Item."
+          : "Fornecedor movido para Fornecedores."
+      );
+      setTransferTarget(null);
+      setForm(blank);
+      refresh();
+    },
+    onError: e => toast.error(e.message),
+  });
   return (
     <section className="cadastro">
       <h2>
-        Cadastro de {tipo === "fornecedor" ? "fornecedores" : "materiais"}
+        {tipo === "fornecedor"
+          ? categoriaFornecedor === "ITEM"
+            ? "Cadastro de fornecedores do item"
+            : "Cadastro de fornecedores da nota"
+          : "Cadastro de materiais"}
       </h2>
       <div className="cadastro-form">
         {Object.keys(blank)
@@ -909,7 +974,12 @@ function Cadastro({
           className="primary"
           onClick={() => {
             if (tipo === "fornecedor")
-              form.id ? updateF.mutate(form) : createF.mutate(form);
+              form.id
+                ? updateF.mutate(form)
+                : createF.mutate({
+                    ...form,
+                    tipoFornecedor: categoriaFornecedor,
+                  });
             else form.id ? updateM.mutate(form) : createM.mutate(form);
           }}
         >
@@ -943,6 +1013,23 @@ function Cadastro({
                   <button onClick={() => setForm(x)}>
                     <Pencil size={15} />
                   </button>
+                  {tipo === "fornecedor" && (
+                    <button
+                      title={
+                        categoriaFornecedor === "NOTA"
+                          ? "Mover para Fornecedor Item"
+                          : "Mover para Fornecedores"
+                      }
+                      aria-label={
+                        categoriaFornecedor === "NOTA"
+                          ? "Mover para Fornecedor Item"
+                          : "Mover para Fornecedores"
+                      }
+                      onClick={() => setTransferTarget(x)}
+                    >
+                      <ArrowRightLeft size={15} />
+                    </button>
+                  )}
                   <button onClick={() => setTarget(x)}>
                     <Trash2 size={15} />
                   </button>
@@ -952,6 +1039,35 @@ function Cadastro({
           </tbody>
         </table>
       </div>
+      <SapDoubleConfirmDialog
+        open={Boolean(transferTarget)}
+        onOpenChange={o => !o && setTransferTarget(null)}
+        title="Confirmar transferência de fornecedor"
+        description="O cadastro será movido para a outra lista de fornecedores sem alterar seu histórico."
+        finalDescription="Confirma a transferência? Orçamentos já vinculados continuarão preservados."
+        details={
+          transferTarget
+            ? [
+                { label: "Fornecedor", value: transferTarget.nome },
+                {
+                  label: "Destino",
+                  value:
+                    categoriaFornecedor === "NOTA"
+                      ? "Fornecedor Item"
+                      : "Fornecedores da nota",
+                },
+              ]
+            : []
+        }
+        onConfirm={() =>
+          transfer.mutate({
+            id: transferTarget.id,
+            tipoFornecedor:
+              categoriaFornecedor === "NOTA" ? "ITEM" : "NOTA",
+          })
+        }
+        isPending={transfer.isPending}
+      />
       <SapDoubleConfirmDialog
         open={Boolean(target)}
         onOpenChange={o => !o && setTarget(null)}

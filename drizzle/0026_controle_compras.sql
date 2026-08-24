@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS `compras_fornecedores` (
   `id` int NOT NULL AUTO_INCREMENT, `nome` varchar(180) NOT NULL, `documento` varchar(30) NULL,
   `telefone` varchar(80) NULL, `email` varchar(180) NULL, `endereco` varchar(500) NULL,
   `ativo` boolean NOT NULL DEFAULT true, `origem_planilha` boolean NOT NULL DEFAULT false,
+  `fornecedor_nota` boolean NOT NULL DEFAULT true, `fornecedor_item` boolean NOT NULL DEFAULT false,
   `criado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, `atualizado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`), UNIQUE KEY `compras_fornecedor_nome_uq` (`nome`)
 );
