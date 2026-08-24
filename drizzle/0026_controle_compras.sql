@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS `compras_orcamentos` (
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS `compras_orcamento_itens` (
   `id` int NOT NULL AUTO_INCREMENT, `orcamento_id` int NOT NULL, `material_id` int NULL, `descricao` varchar(300) NOT NULL,
-  `quantidade` decimal(15,3) NOT NULL DEFAULT 1, `unidade` varchar(30) NULL, `ordem` int NOT NULL DEFAULT 0,
+  `quantidade` decimal(15,3) NOT NULL DEFAULT 1, `unidade` varchar(30) NULL, `incluido_calculo` boolean NOT NULL DEFAULT true, `ordem` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`), KEY `compras_item_orcamento_idx` (`orcamento_id`),
   CONSTRAINT `compras_item_orcamento_fk` FOREIGN KEY (`orcamento_id`) REFERENCES `compras_orcamentos` (`id`) ON DELETE CASCADE,
   CONSTRAINT `compras_item_material_fk` FOREIGN KEY (`material_id`) REFERENCES `compras_materiais` (`id`) ON DELETE SET NULL

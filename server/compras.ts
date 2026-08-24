@@ -36,6 +36,13 @@ export async function ensureComprasSchema(pool: mysql.Pool) {
         "SELECT column_name FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='compras_orcamentos' AND column_name='prazo_entrega_padrao'"
       );
       if (!columns.length) await pool.query(comprasPrazoEntregaPadraoMigration);
+      const [itemColumns] = await pool.query<mysql.RowDataPacket[]>(
+        "SELECT column_name FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='compras_orcamento_itens' AND column_name='incluido_calculo'"
+      );
+      if (!itemColumns.length)
+        await pool.query(
+          "ALTER TABLE compras_orcamento_itens ADD COLUMN incluido_calculo boolean NOT NULL DEFAULT true AFTER unidade"
+        );
       await pool.query(comprasCadastrosOrcamentoMigration);
       await pool.query(comprasVeiculosMigration);
       const [relationColumns] = await pool.query<mysql.RowDataPacket[]>(
@@ -187,7 +194,7 @@ export async function obterOrcamento(id: number) {
       [id]
     ),
     pool.query(
-      "SELECT id,material_id materialId,descricao,quantidade,unidade,ordem FROM compras_orcamento_itens WHERE orcamento_id=? ORDER BY ordem,id",
+      "SELECT id,material_id materialId,descricao,quantidade,unidade,incluido_calculo incluidoCalculo,ordem FROM compras_orcamento_itens WHERE orcamento_id=? ORDER BY ordem,id",
       [id]
     ),
     pool.query(
@@ -196,7 +203,14 @@ export async function obterOrcamento(id: number) {
     ),
   ]);
   if (!(rows as any[])[0]) throw new Error("Orçamento não encontrado.");
-  return { orcamento: (rows as any[])[0], itens, ofertas } as any;
+  return {
+    orcamento: (rows as any[])[0],
+    itens: (itens as any[]).map(item => ({
+      ...item,
+      incluidoCalculo: Boolean(item.incluidoCalculo),
+    })),
+    ofertas,
+  } as any;
 }
 
 type OrcamentoInput = {
@@ -215,6 +229,7 @@ type OrcamentoInput = {
   valorPago: number;
   itens: Array<{
     id?: number;
+    incluidoCalculo: boolean;
     materialId?: number | null;
     descricao: string;
     quantidade: number;
@@ -228,6 +243,28 @@ type OrcamentoInput = {
     }>;
   }>;
 };
+
+export function calcularTotaisOrcamento(
+  itens: OrcamentoInput["itens"],
+  valorDesconto: number
+) {
+  const valorCotado = itens.reduce((total, item) => {
+    if (!item.incluidoCalculo) return total;
+    const totais = item.ofertas
+      .map(oferta => Number(oferta.valorUnitario) * Number(item.quantidade))
+      .filter(valor => Number.isFinite(valor) && valor > 0);
+    return total + (totais.length ? Math.min(...totais) : 0);
+  }, 0);
+  const cotado = Math.round((valorCotado + Number.EPSILON) * 100) / 100;
+  const desconto = Math.round((Number(valorDesconto || 0) + Number.EPSILON) * 100) / 100;
+  if (desconto > cotado)
+    throw new Error("O valor do desconto nao pode ser maior que o valor cotado.");
+  return {
+    valorCotado: cotado,
+    valorFinal: Math.round((cotado - desconto + Number.EPSILON) * 100) / 100,
+  };
+}
+
 export async function salvarOrcamento(data: OrcamentoInput, usuario: string) {
   const pool = await getMysqlPool();
   await ensureComprasSchema(pool);
@@ -247,6 +284,7 @@ export async function salvarOrcamento(data: OrcamentoInput, usuario: string) {
       if (!veiculos[0]) throw new Error("Veiculo/equipamento nao encontrado ou inativo.");
     }
     const titulo = comprasUppercase(objetos[0].nome);
+    const totais = calcularTotaisOrcamento(data.itens, data.valorNegociado);
     let id = data.id;
     let numero = data.numero || "";
     if (id)
@@ -261,9 +299,9 @@ export async function salvarOrcamento(data: OrcamentoInput, usuario: string) {
           comprasUppercase(data.observacoes) || null,
           comprasUppercase(data.prazoEntregaPadrao) || null,
           data.fornecedorEscolhidoId || null,
-          data.valorCotado,
+          totais.valorCotado,
           data.valorNegociado,
-          data.valorPago,
+          totais.valorFinal,
           usuario,
           id,
         ]
@@ -282,9 +320,9 @@ export async function salvarOrcamento(data: OrcamentoInput, usuario: string) {
           comprasUppercase(data.observacoes) || null,
           comprasUppercase(data.prazoEntregaPadrao) || null,
           data.fornecedorEscolhidoId || null,
-          data.valorCotado,
+          totais.valorCotado,
           data.valorNegociado,
-          data.valorPago,
+          totais.valorFinal,
           usuario,
           usuario,
         ]
@@ -302,13 +340,14 @@ export async function salvarOrcamento(data: OrcamentoInput, usuario: string) {
     for (let n = 0; n < data.itens.length; n++) {
       const item = data.itens[n];
       const [r] = await cx.execute<mysql.ResultSetHeader>(
-        "INSERT INTO compras_orcamento_itens(orcamento_id,material_id,descricao,quantidade,unidade,ordem) VALUES(?,?,?,?,?,?)",
+        "INSERT INTO compras_orcamento_itens(orcamento_id,material_id,descricao,quantidade,unidade,incluido_calculo,ordem) VALUES(?,?,?,?,?,?,?)",
         [
           id,
           item.materialId || null,
           comprasUppercase(item.descricao),
           item.quantidade,
           comprasUppercase(item.unidade) || null,
+          item.incluidoCalculo,
           n,
         ]
       );

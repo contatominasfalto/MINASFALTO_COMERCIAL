@@ -439,6 +439,7 @@ const compraOfertaSchema = z.object({
   selecionada: z.boolean(),
 });
 const compraItemSchema = z.object({
+  incluidoCalculo: z.boolean().default(true),
   materialId: z.number().int().positive().nullable().optional(),
   descricao: z.string().trim().min(2).max(300),
   quantidade: z.number().positive(),

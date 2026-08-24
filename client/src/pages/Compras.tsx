@@ -38,6 +38,7 @@ const STATUS: any = {
   CANCELADO: "Cancelado",
 };
 const emptyItem = () => ({
+  incluidoCalculo: true,
   descricao: "",
   materialId: null as number | null,
   quantidade: 1,
@@ -241,6 +242,7 @@ export default function Compras() {
       valorPago: Number(o.valor_pago || 0),
       itens: (detail.data.itens as any[]).map(i => ({
         ...i,
+        incluidoCalculo: i.incluidoCalculo !== false,
         quantidade: Number(i.quantidade),
         ofertas: offers
           .filter(x => x.itemId === i.id)
@@ -257,12 +259,17 @@ export default function Compras() {
   const suggestedTotal = useMemo(
     () =>
       form.itens.reduce((sum, item) => {
+        if (item.incluidoCalculo === false) return sum;
         const values = item.ofertas
           .map(o => Number(o.valorUnitario || 0) * Number(item.quantidade || 0))
           .filter(v => v > 0);
         return sum + (values.length ? Math.min(...values) : 0);
       }, 0),
     [form.itens]
+  );
+  const finalTotal = Math.max(
+    0,
+    suggestedTotal - Number(form.valorNegociado || 0)
   );
   const activeSuppliers = useMemo(
     () => ((data?.fornecedores as any[]) || []).filter(f => f.ativo),
@@ -441,6 +448,12 @@ export default function Compras() {
       );
     }
 
+    if (Number(form.valorNegociado || 0) > suggestedTotal) {
+      return toast.error(
+        "O valor do desconto não pode ser maior que o valor cotado."
+      );
+    }
+
     const upper = (value: unknown) =>
       String(value ?? "")
         .trim()
@@ -451,7 +464,8 @@ export default function Compras() {
       titulo: upper(form.titulo),
       observacoes: upper(form.observacoes),
       prazoEntregaPadrao: upper(form.prazoEntregaPadrao),
-      valorCotado: form.valorCotado || suggestedTotal,
+      valorCotado: suggestedTotal,
+      valorPago: finalTotal,
       itens: form.itens.map(item => ({
         ...item,
         descricao: upper(item.descricao),
@@ -824,9 +838,20 @@ export default function Compras() {
                     type="number"
                     min="0"
                     step="0.01"
-                    value={(form as any)[k]}
+                    className={
+                      k === "valorNegociado" ? "" : "compra-total-calculado"
+                    }
+                    readOnly={k !== "valorNegociado"}
+                    value={
+                      k === "valorCotado"
+                        ? suggestedTotal
+                        : k === "valorPago"
+                          ? finalTotal
+                          : form.valorNegociado
+                    }
                     onChange={e =>
-                      setForm({ ...form, [k]: Number(e.target.value) })
+                      k === "valorNegociado" &&
+                      setForm({ ...form, valorNegociado: Number(e.target.value) })
                     }
                   />
                 </label>
@@ -842,7 +867,24 @@ export default function Compras() {
             {form.itens.map((item, idx) => (
               <div className="compra-item" key={idx}>
                 <div className="compra-item-title">
-                  <strong>Item {idx + 1}</strong>
+                  <div className="compra-item-title-main">
+                    <strong>Item {idx + 1}</strong>
+                    <label className="compra-item-calculo-toggle">
+                      <input
+                        type="checkbox"
+                        checked={item.incluidoCalculo !== false}
+                        onChange={event => {
+                          const itens = [...form.itens];
+                          itens[idx] = {
+                            ...item,
+                            incluidoCalculo: event.target.checked,
+                          };
+                          setForm({ ...form, itens });
+                        }}
+                      />
+                      Incluir no valor cotado
+                    </label>
+                  </div>
                   <span>
                     Material cadastrado, quantidade e unidade de medida
                   </span>

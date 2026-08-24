@@ -575,6 +575,30 @@
   padding-bottom: 5px;
   border-bottom: 1px solid #b7c9d8;
 }
+.compra-item-title-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.compra-item-calculo-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  color: #17324a;
+  cursor: pointer;
+}
+.compra-item-calculo-toggle input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+}
+.compra-total-calculado {
+  background: #e6edf3;
+  color: #17324a;
+  font-weight: 700;
+  cursor: not-allowed;
+}
 .compra-item-title strong {
   font-size: 12px;
 }
