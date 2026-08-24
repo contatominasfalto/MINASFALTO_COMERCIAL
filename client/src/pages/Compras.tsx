@@ -52,6 +52,24 @@ const money = (v: any) =>
     currency: "BRL",
   });
 
+const normalizeTableSearch = (value: unknown) =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleUpperCase("pt-BR");
+
+const matchesTableSearch = (
+  row: Record<string, unknown>,
+  search: string,
+  formattedValues: unknown[] = []
+) => {
+  const query = normalizeTableSearch(search).trim();
+  if (!query) return true;
+  return [...Object.values(row), ...formattedValues].some(value =>
+    normalizeTableSearch(value).includes(query)
+  );
+};
+
 type SearchOption = {
   value: string;
   label: string;
@@ -156,6 +174,7 @@ export default function Compras() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm());
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [tableSearch, setTableSearch] = useState("");
   const detail = trpc.compras.obterOrcamento.useQuery(
     { id: editingId || 1 },
     { enabled: Boolean(editingId && open) }
@@ -231,6 +250,58 @@ export default function Compras() {
   const activeMaterials = useMemo(
     () => ((data?.materiais as any[]) || []).filter(m => m.ativo),
     [data?.materiais]
+  );
+  const filteredQuotes = useMemo(
+    () =>
+      ((data?.orcamentos || []) as any[]).filter(quote =>
+        matchesTableSearch(quote, tableSearch, [
+          STATUS[quote.status],
+          money(quote.valorCotado),
+          money(quote.valorNegociado),
+          money(quote.valorPago),
+          String(quote.dataOrcamento || "").split("-").reverse().join("/"),
+        ])
+      ),
+    [data?.orcamentos, tableSearch]
+  );
+  const filteredNoteSuppliers = useMemo(
+    () =>
+      ((data?.fornecedores || []) as any[]).filter(
+        supplier =>
+          supplier.ativo &&
+          supplier.fornecedorNota &&
+          matchesTableSearch(supplier, tableSearch)
+      ),
+    [data?.fornecedores, tableSearch]
+  );
+  const filteredItemSuppliers = useMemo(
+    () =>
+      ((data?.fornecedores || []) as any[]).filter(
+        supplier =>
+          supplier.ativo &&
+          supplier.fornecedorItem &&
+          matchesTableSearch(supplier, tableSearch)
+      ),
+    [data?.fornecedores, tableSearch]
+  );
+  const filteredMaterials = useMemo(
+    () =>
+      ((data?.materiais || []) as any[]).filter(
+        material =>
+          material.ativo && matchesTableSearch(material, tableSearch)
+      ),
+    [data?.materiais, tableSearch]
+  );
+  const filteredHistory = useMemo(
+    () =>
+      ((data?.historico || []) as any[]).filter(entry =>
+        matchesTableSearch(entry, tableSearch, [
+          entry.criadoEm
+            ? new Date(entry.criadoEm).toLocaleString("pt-BR")
+            : "",
+        ])
+      ),
+    [data?.historico, tableSearch]
   );
   const selectedItemSupplierIds = useMemo(
     () =>
@@ -367,7 +438,7 @@ export default function Compras() {
         "Valor do desconto",
         "Valor final",
       ],
-      ...((data?.orcamentos || []) as any[]).map(o => [
+      ...filteredQuotes.map(o => [
         o.numero,
         o.dataOrcamento,
         o.titulo,
@@ -424,6 +495,16 @@ export default function Compras() {
             {label}
           </button>
         ))}
+        <label className="compras-global-search">
+          <Search size={16} aria-hidden="true" />
+          <input
+            type="search"
+            value={tableSearch}
+            onChange={event => setTableSearch(event.target.value)}
+            placeholder="Pesquisar em todos os campos..."
+            aria-label="Pesquisar em todos os campos da tabela atual"
+          />
+        </label>
       </nav>
       {tab === "orcamentos" && (
         <section>
@@ -440,13 +521,13 @@ export default function Compras() {
           <div className="compras-cards">
             <article>
               <span>Orçamentos</span>
-              <b>{data?.orcamentos.length || 0}</b>
+              <b>{filteredQuotes.length}</b>
             </article>
             <article>
               <span>Valor cotado</span>
               <b>
                 {money(
-                  ((data?.orcamentos as any[]) || []).reduce(
+                  filteredQuotes.reduce(
                     (s, o) => s + Number(o.valorCotado || 0),
                     0
                   )
@@ -457,7 +538,7 @@ export default function Compras() {
               <span>Valor final</span>
               <b>
                 {money(
-                  ((data?.orcamentos as any[]) || []).reduce(
+                  filteredQuotes.reduce(
                     (s, o) => s + Number(o.valorPago || 0),
                     0
                   )
@@ -486,16 +567,16 @@ export default function Compras() {
                   <tr>
                     <td colSpan={10}>Carregando...</td>
                   </tr>
-                ) : ((data?.orcamentos || []) as any[]).length === 0 ? (
+                ) : filteredQuotes.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="compras-empty">
-                      Nenhum orçamento cadastrado. Os fornecedores e materiais
-                      da planilha ficam disponíveis após a execução da carga
-                      histórica no servidor.
+                      {tableSearch
+                        ? "Nenhum orçamento encontrado para a pesquisa informada."
+                        : "Nenhum orçamento cadastrado. Os fornecedores e materiais da planilha ficam disponíveis após a execução da carga histórica no servidor."}
                     </td>
                   </tr>
                 ) : (
-                  ((data?.orcamentos || []) as any[]).map(o => (
+                  filteredQuotes.map(o => (
                     <tr key={o.id}>
                       <td>{o.numero}</td>
                       <td>
@@ -535,9 +616,7 @@ export default function Compras() {
         <Cadastro
           tipo="fornecedor"
           categoriaFornecedor="NOTA"
-          items={((data?.fornecedores || []) as any[]).filter(
-            fornecedor => fornecedor.ativo && fornecedor.fornecedorNota
-          )}
+          items={filteredNoteSuppliers}
           refresh={refresh}
         />
       )}{" "}
@@ -545,16 +624,14 @@ export default function Compras() {
         <Cadastro
           tipo="fornecedor"
           categoriaFornecedor="ITEM"
-          items={((data?.fornecedores || []) as any[]).filter(
-            fornecedor => fornecedor.ativo && fornecedor.fornecedorItem
-          )}
+          items={filteredItemSuppliers}
           refresh={refresh}
         />
       )}{" "}
       {tab === "materiais" && (
         <Cadastro
           tipo="material"
-          items={((data?.materiais || []) as any[]).filter(material => material.ativo)}
+          items={filteredMaterials}
           refresh={refresh}
         />
       )}{" "}
@@ -571,7 +648,15 @@ export default function Compras() {
               </tr>
             </thead>
             <tbody>
-              {((data?.historico || []) as any[]).map(x => (
+              {filteredHistory.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="compras-empty">
+                    {tableSearch
+                      ? "Nenhuma carga encontrada para a pesquisa informada."
+                      : "Nenhuma carga histórica registrada."}
+                  </td>
+                </tr>
+              ) : filteredHistory.map(x => (
                 <tr key={x.id}>
                   <td>{x.arquivo}</td>
                   <td>{new Date(x.criadoEm).toLocaleString("pt-BR")}</td>

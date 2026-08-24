@@ -63,6 +63,30 @@
   background: linear-gradient(#fff8d9, #efc74b);
   border-top: 2px solid #d89500;
 }
+.compras-global-search {
+  width: min(390px, 32vw);
+  height: 31px;
+  margin-left: auto;
+  padding: 0 10px;
+  border: 1px solid #7895b0;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  align-self: center;
+}
+.compras-global-search:focus-within {
+  border-color: #d89500;
+  box-shadow: inset 0 0 0 1px #d89500;
+}
+.compras-global-search input {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 0;
+}
 .compras-toolbar {
   display: flex;
   gap: 8px;
