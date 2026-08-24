@@ -525,7 +525,7 @@ export default function Compras() {
           ["fornecedores", "Fornecedores", Users],
           ["fornecedor_item", "Fornecedor Item", Users],
           ["materiais", "Materiais", PackageSearch],
-          ["relatorios", "RelatÃ³rios", BarChart3],
+          ["relatorios", "Relatórios", BarChart3],
         ].map(([key, label, Icon]: any) => (
           <button
             className={tab === key ? "active" : ""}
@@ -1143,7 +1143,7 @@ function RelatoriosCompras({
       { nome: string; cotado: number; final: number }
     >();
     registros.forEach(item => {
-      const nome = item.titulo || "NÃ£o informado";
+      const nome = item.titulo || "Não informado";
       const atual = mapa.get(nome) || { nome, cotado: 0, final: 0 };
       atual.cotado += Number(item.valorCotado || 0);
       atual.final += Number(item.valorPago || 0);
@@ -1155,7 +1155,7 @@ function RelatoriosCompras({
   const porStatus = useMemo(() => {
     const mapa = new Map<string, number>();
     registros.forEach(item => {
-      const nome = STATUS[item.status] || item.status || "NÃ£o informado";
+      const nome = STATUS[item.status] || item.status || "Não informado";
       mapa.set(nome, (mapa.get(nome) || 0) + 1);
     });
     return Array.from(mapa.entries()).map(([nome, quantidade]) => ({
@@ -1167,7 +1167,7 @@ function RelatoriosCompras({
   const aplicar = (event: React.FormEvent) => {
     event.preventDefault();
     if (rascunho.inicio && rascunho.fim && rascunho.inicio > rascunho.fim) {
-      toast.error("A data inicial nÃ£o pode ser posterior Ã  data final.");
+      toast.error("A data inicial não pode ser posterior à data final.");
       return;
     }
     setFiltros({ ...rascunho });
@@ -1175,16 +1175,16 @@ function RelatoriosCompras({
 
   const nomeSelecionado = (lista: any[], id: string, campo = "nome") =>
     lista.find(item => Number(item.id) === Number(id))?.[campo] || "Todos";
-  const periodo = `${filtros.inicio ? filtros.inicio.split("-").reverse().join("/") : "InÃ­cio"} a ${filtros.fim ? filtros.fim.split("-").reverse().join("/") : "Hoje"}`;
-  const resumo = `PerÃ­odo: ${periodo} | Objeto: ${nomeSelecionado(objetos, filtros.objetoId)} | Fornecedor: ${nomeSelecionado(fornecedores, filtros.fornecedorId)} | VeÃ­culo/Equipamento: ${nomeSelecionado(veiculos, filtros.veiculoId)}`;
+  const periodo = `${filtros.inicio ? filtros.inicio.split("-").reverse().join("/") : "Início"} a ${filtros.fim ? filtros.fim.split("-").reverse().join("/") : "Hoje"}`;
+  const resumo = `Período: ${periodo} | Objeto: ${nomeSelecionado(objetos, filtros.objetoId)} | Fornecedor: ${nomeSelecionado(fornecedores, filtros.fornecedorId)} | Veículo/Equipamento: ${nomeSelecionado(veiculos, filtros.veiculoId)}`;
 
   const exportarExcel = () => {
     const linhas = [
       [
-        "NÃºmero",
+        "Número",
         "Data",
-        "Objeto da cotaÃ§Ã£o",
-        "VeÃ­culo/Equipamento",
+        "Objeto da cotação",
+        "Veículo/Equipamento",
         "Fornecedor da nota",
         "Status",
         "Itens",
@@ -1250,25 +1250,25 @@ function RelatoriosCompras({
               .split("-")
               .reverse()
               .join("/")
-          )}</td><td>${escape(item.titulo)}</td><td>${escape(item.veiculoEquipamento || "â€”")}</td><td>${escape(item.fornecedorEscolhido || "â€”")}</td><td>${escape(STATUS[item.status] || item.status)}</td><td>${escape(item.itens)}</td><td>${escape(money(item.valorCotado))}</td><td>${escape(money(item.valorNegociado))}</td><td>${escape(money(item.valorPago))}</td></tr>`
+          )}</td><td>${escape(item.titulo)}</td><td>${escape(item.veiculoEquipamento || "—")}</td><td>${escape(item.fornecedorEscolhido || "—")}</td><td>${escape(STATUS[item.status] || item.status)}</td><td>${escape(item.itens)}</td><td>${escape(money(item.valorCotado))}</td><td>${escape(money(item.valorNegociado))}</td><td>${escape(money(item.valorPago))}</td></tr>`
       )
       .join("");
     const janela = window.open("", "_blank");
     if (!janela)
       return toast.error("Permita pop-ups para gerar o PDF/Imprimir.");
     janela.document
-      .write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>RelatÃ³rio de Controle de Compras</title><style>
+      .write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de Controle de Compras</title><style>
       @page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{font:10px Arial,sans-serif;color:#071c32;margin:0;text-transform:uppercase}header{display:flex;align-items:center;gap:22px;border-bottom:2px solid #e4a100;padding:0 0 12px;margin-bottom:12px}header img{width:76px;height:52px;object-fit:contain}h1{font-size:22px;margin:0}h1 small{display:block;font-size:11px;color:#40566a;margin-top:5px}.filters{font-size:9px;color:#40566a;margin-bottom:12px}.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px}.metrics div{border:1px solid #9bb2c7;padding:9px}.metrics small{display:block;color:#536b81}.metrics strong{font-size:15px}.chart{border:1px solid #9bb2c7;padding:10px;margin-bottom:14px;break-inside:avoid}.chart h2{font-size:13px}.bar-row{display:grid;grid-template-columns:180px 1fr 95px;align-items:center;gap:8px;margin:5px 0}.bar-row i{display:block;height:13px;background:#dfa000}.bar-row b{text-align:right}table{width:100%;border-collapse:collapse;font-size:8px}th{background:#dbe9f4}th,td{border:1px solid #abc0d2;padding:5px;text-align:left;vertical-align:top}tr{break-inside:avoid}footer{margin-top:12px;border-top:1px solid #e4a100;padding-top:6px;color:#60788d;text-align:right}@media print{button{display:none}}
-    </style></head><body><header><img src="${escape(minasfaltoLogo)}"><h1>RelatÃ³rio de Controle de Compras<small>OrÃ§amentos e anÃ¡lise de aquisiÃ§Ãµes</small></h1></header><div class="filters">${escape(resumo)}</div><section class="metrics"><div><small>OrÃ§amentos</small><strong>${registros.length}</strong></div><div><small>Itens</small><strong>${totais.itens}</strong></div><div><small>Valor cotado</small><strong>${escape(money(totais.cotado))}</strong></div><div><small>Valor do desconto</small><strong>${escape(money(totais.desconto))}</strong></div><div><small>Valor final</small><strong>${escape(money(totais.final))}</strong></div></section><section class="chart"><h2>Comparativo financeiro por objeto da cotaÃ§Ã£o</h2>${barras || "Nenhum dado para o perÃ­odo."}</section><table><thead><tr><th>NÃºmero</th><th>Data</th><th>Objeto</th><th>VeÃ­culo/Equipamento</th><th>Fornecedor</th><th>Status</th><th>Itens</th><th>Cotado</th><th>Desconto</th><th>Final</th></tr></thead><tbody>${linhas || '<tr><td colspan="10">Nenhum orÃ§amento encontrado.</td></tr>'}</tbody></table><footer>Minasfalto â€” RelatÃ³rio emitido em ${new Date().toLocaleString("pt-BR")}</footer><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));<\/script></body></html>`);
+    </style></head><body><header><img src="${escape(minasfaltoLogo)}"><h1>Relatório de Controle de Compras<small>Orçamentos e análise de aquisições</small></h1></header><div class="filters">${escape(resumo)}</div><section class="metrics"><div><small>Orçamentos</small><strong>${registros.length}</strong></div><div><small>Itens</small><strong>${totais.itens}</strong></div><div><small>Valor cotado</small><strong>${escape(money(totais.cotado))}</strong></div><div><small>Valor do desconto</small><strong>${escape(money(totais.desconto))}</strong></div><div><small>Valor final</small><strong>${escape(money(totais.final))}</strong></div></section><section class="chart"><h2>Comparativo financeiro por objeto da cotação</h2>${barras || "Nenhum dado para o período."}</section><table><thead><tr><th>Número</th><th>Data</th><th>Objeto</th><th>Veículo/Equipamento</th><th>Fornecedor</th><th>Status</th><th>Itens</th><th>Cotado</th><th>Desconto</th><th>Final</th></tr></thead><tbody>${linhas || '<tr><td colspan="10">Nenhum orçamento encontrado.</td></tr>'}</tbody></table><footer>Minasfalto — Relatório emitido em ${new Date().toLocaleString("pt-BR")}</footer><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));<\/script></body></html>`);
     janela.document.close();
   };
 
   return (
     <section className="compras-reports">
       <form className="compras-report-filters" onSubmit={aplicar}>
-        <h2>RelatÃ³rio de OrÃ§amentos / Controle de Compras</h2>
+        <h2>Relatório de Orçamentos / Controle de Compras</h2>
         <p>
-          Defina os critÃ©rios para analisar as cotaÃ§Ãµes e os valores de
+          Defina os critérios para analisar as cotações e os valores de
           compra.
         </p>
         <div className="compras-report-filter-grid">
@@ -1291,7 +1291,7 @@ function RelatoriosCompras({
             />
           </label>
           <label>
-            Objeto da cotaÃ§Ã£o
+            Objeto da cotação
             <select
               value={rascunho.objetoId}
               onChange={e =>
@@ -1323,7 +1323,7 @@ function RelatoriosCompras({
             </select>
           </label>
           <label>
-            VeÃ­culo/Equipamento
+            Veículo/Equipamento
             <select
               value={rascunho.veiculoId}
               onChange={e =>
@@ -1342,7 +1342,7 @@ function RelatoriosCompras({
         <div className="compras-report-actions">
           <button className="primary" type="submit">
             <BarChart3 size={15} />
-            Gerar relatÃ³rio
+            Gerar relatório
           </button>
           <button
             type="button"
@@ -1366,7 +1366,7 @@ function RelatoriosCompras({
       <div className="compras-report-summary">{resumo}</div>
       <div className="compras-report-metrics">
         <article>
-          <small>OrÃ§amentos</small>
+          <small>Orçamentos</small>
           <strong>{registros.length}</strong>
         </article>
         <article>
@@ -1424,7 +1424,7 @@ function RelatoriosCompras({
           </div>
         </article>
         <article>
-          <h2>OrÃ§amentos por status</h2>
+          <h2>Orçamentos por status</h2>
           <div style={{ height: 270 }}>
             <ResponsiveContainer>
               <BarChart
@@ -1441,22 +1441,22 @@ function RelatoriosCompras({
                 />
                 <YAxis allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="quantidade" name="OrÃ§amentos" fill="#d99b00" />
+                <Bar dataKey="quantidade" name="Orçamentos" fill="#d99b00" />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </article>
       </div>
       <section className="compras-report-data">
-        <h2>Dados do relatÃ³rio</h2>
+        <h2>Dados do relatório</h2>
         <div className="compras-table">
           <table>
             <thead>
               <tr>
-                <th>NÃºmero</th>
+                <th>Número</th>
                 <th>Data</th>
-                <th>Objeto da cotaÃ§Ã£o</th>
-                <th>VeÃ­culo/Equipamento</th>
+                <th>Objeto da cotação</th>
+                <th>Veículo/Equipamento</th>
                 <th>Fornecedor da nota</th>
                 <th>Status</th>
                 <th>Itens</th>
@@ -1478,8 +1478,8 @@ function RelatoriosCompras({
                         .join("/")}
                     </td>
                     <td>{item.titulo}</td>
-                    <td>{item.veiculoEquipamento || "â€”"}</td>
-                    <td>{item.fornecedorEscolhido || "â€”"}</td>
+                    <td>{item.veiculoEquipamento || "—"}</td>
+                    <td>{item.fornecedorEscolhido || "—"}</td>
                     <td>{STATUS[item.status] || item.status}</td>
                     <td>{item.itens}</td>
                     <td>{money(item.valorCotado)}</td>
@@ -1490,7 +1490,7 @@ function RelatoriosCompras({
               ) : (
                 <tr>
                   <td colSpan={10} className="compras-empty">
-                    Nenhum orÃ§amento encontrado para os filtros informados.
+                    Nenhum orçamento encontrado para os filtros informados.
                   </td>
                 </tr>
               )}
