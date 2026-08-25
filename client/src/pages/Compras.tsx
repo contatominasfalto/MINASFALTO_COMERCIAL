@@ -998,6 +998,7 @@ export default function Compras() {
                     <span>Incluir</span>
                     <span>Fornecedor do item</span>
                     <span>Valor unitário</span>
+                    <span>Valor total</span>
                     <span>Prazo de entrega</span>
                     <span>Ação</span>
                   </div>
@@ -1051,6 +1052,20 @@ export default function Compras() {
                         itens[idx] = { ...item };
                         setForm({ ...form, itens });
                       }}
+                    />
+                    <input
+                      type="number"
+                      className="compra-oferta-total"
+                      aria-label={`Valor total da proposta ${oi + 1} do item ${idx + 1}`}
+                      title="Valor unitário multiplicado pela quantidade do item"
+                      readOnly
+                      tabIndex={-1}
+                      value={Number(
+                        (
+                          Number(oferta.valorUnitario || 0) *
+                          Number(item.quantidade || 0)
+                        ).toFixed(2)
+                      )}
                     />
                     <input
                       placeholder="Prazo"
