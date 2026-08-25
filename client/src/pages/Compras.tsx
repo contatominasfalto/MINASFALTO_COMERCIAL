@@ -195,11 +195,14 @@ export default function Compras() {
   );
   const refresh = () => utils.compras.painel.invalidate();
   const saveOptions = {
-    onSuccess: () => {
+    onSuccess: async (result: { id: number }) => {
+      await Promise.all([
+        utils.compras.obterOrcamento.reset({ id: result.id }),
+        utils.compras.painel.invalidate(),
+      ]);
       toast.success("Orçamento salvo com sucesso.");
       setOpen(false);
       setEditingId(null);
-      refresh();
     },
     onError: (e: any) => toast.error(e.message),
   };
@@ -421,6 +424,7 @@ export default function Compras() {
     setOpen(true);
   };
   const openEdit = (id: number) => {
+    setForm(emptyForm());
     setEditingId(id);
     setOpen(true);
   };
