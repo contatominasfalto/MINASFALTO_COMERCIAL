@@ -4,6 +4,10 @@ import {
   ArrowRightLeft,
   BarChart3,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Download,
   FileText,
   PackageSearch,
@@ -138,6 +142,136 @@ type SearchOption = {
   label: string;
   detail?: string;
 };
+
+function useComprasPagination<T extends { id: number }>(
+  rows: T[],
+  resetKey: unknown,
+  initialPageSize = 50
+) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(initialPageSize);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const visibleRows = useMemo(
+    () => rows.slice((page - 1) * pageSize, page * pageSize),
+    [rows, page, pageSize]
+  );
+  useEffect(() => {
+    setPage(1);
+    setSelectedId(null);
+  }, [resetKey, pageSize]);
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+  useEffect(() => {
+    setSelectedId(null);
+  }, [page]);
+  return {
+    page,
+    pageSize,
+    selectedId,
+    totalPages,
+    visibleRows,
+    setPage,
+    setPageSize,
+    setSelectedId,
+  };
+}
+
+function ComprasPagination({
+  page,
+  pageSize,
+  total,
+  totalPages,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+}) {
+  const firstItem = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastItem = Math.min(total, page * pageSize);
+  const goToPage = (nextPage: number) =>
+    onPageChange(Math.min(Math.max(1, nextPage), totalPages));
+  return (
+    <div className="compras-pagination" aria-label="Paginação">
+      <span>{firstItem}-{lastItem} de {total}</span>
+      <select
+        aria-label="Registros por página"
+        value={pageSize}
+        onChange={event => onPageSizeChange(Number(event.target.value))}
+      >
+        {[25, 50, 100, 200].map(option => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
+      <button type="button" onClick={() => goToPage(1)} disabled={page <= 1} title="Primeira página">
+        <ChevronsLeft size={15} />
+      </button>
+      <button type="button" onClick={() => goToPage(page - 1)} disabled={page <= 1} title="Página anterior">
+        <ChevronLeft size={15} />
+      </button>
+      <strong>Página {page} de {totalPages}</strong>
+      <button type="button" onClick={() => goToPage(page + 1)} disabled={page >= totalPages} title="Próxima página">
+        <ChevronRight size={15} />
+      </button>
+      <button type="button" onClick={() => goToPage(totalPages)} disabled={page >= totalPages} title="Última página">
+        <ChevronsRight size={15} />
+      </button>
+    </div>
+  );
+}
+
+function handleComprasTableKeyDown<T extends { id: number }>(
+  event: React.KeyboardEvent<HTMLDivElement>,
+  options: {
+    rows: T[];
+    selectedId: number | null;
+    setSelectedId: (id: number | null) => void;
+    page: number;
+    totalPages: number;
+    setPage: (page: number) => void;
+    onEnter?: (row: T) => void;
+  }
+) {
+  if (event.shiftKey && event.key === "ArrowRight") {
+    event.preventDefault();
+    options.setPage(Math.min(options.page + 1, options.totalPages));
+    return;
+  }
+  if (event.shiftKey && event.key === "ArrowLeft") {
+    event.preventDefault();
+    options.setPage(Math.max(options.page - 1, 1));
+    return;
+  }
+  if (["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.key)) {
+    event.preventDefault();
+    if (!options.rows.length) return;
+    const currentIndex = options.rows.findIndex(row => Number(row.id) === Number(options.selectedId));
+    const isForward = event.key === "ArrowDown" || event.key === "ArrowRight";
+    const nextIndex = currentIndex < 0
+      ? isForward ? 0 : options.rows.length - 1
+      : isForward
+        ? Math.min(currentIndex + 1, options.rows.length - 1)
+        : Math.max(currentIndex - 1, 0);
+    options.setSelectedId(Number(options.rows[nextIndex].id));
+    window.requestAnimationFrame(() => {
+      (event.currentTarget.querySelector("tbody tr.selected") as HTMLElement | null)?.scrollIntoView({ block: "nearest" });
+    });
+    return;
+  }
+  if (event.key === "Enter" && options.onEnter) {
+    const selected = options.rows.find(row => Number(row.id) === Number(options.selectedId));
+    if (selected) {
+      event.preventDefault();
+      options.onEnter(selected);
+    }
+  }
+}
 
 function CurrencyField({
   value,
@@ -472,6 +606,10 @@ export default function Compras() {
       ),
     [data?.materiais, tableSearch]
   );
+  const quotesPagination = useComprasPagination(
+    filteredQuotes,
+    `orcamentos:${tableSearch}`
+  );
   const selectedItemSupplierIds = useMemo(
     () =>
       new Set(
@@ -743,7 +881,23 @@ export default function Compras() {
               </b>
             </article>
           </div>
-          <div className="compras-table">
+          <div
+            className="compras-table compras-keyboard-table"
+            tabIndex={0}
+            role="grid"
+            aria-label="Orçamentos"
+            onKeyDown={event =>
+              handleComprasTableKeyDown(event, {
+                rows: quotesPagination.visibleRows,
+                selectedId: quotesPagination.selectedId,
+                setSelectedId: quotesPagination.setSelectedId,
+                page: quotesPagination.page,
+                totalPages: quotesPagination.totalPages,
+                setPage: quotesPagination.setPage,
+                onEnter: row => openEdit(row.id),
+              })
+            }
+          >
             <table>
               <thead>
                 <tr>
@@ -774,8 +928,13 @@ export default function Compras() {
                     </td>
                   </tr>
                 ) : (
-                  filteredQuotes.map(o => (
-                    <tr key={o.id}>
+                  quotesPagination.visibleRows.map(o => (
+                    <tr
+                      key={o.id}
+                      className={quotesPagination.selectedId === Number(o.id) ? "selected" : ""}
+                      onClick={() => quotesPagination.setSelectedId(Number(o.id))}
+                      onDoubleClick={() => openEdit(Number(o.id))}
+                    >
                       <td>{o.numero}</td>
                       <td>
                         {String(o.dataOrcamento).split("-").reverse().join("/")}
@@ -827,6 +986,14 @@ export default function Compras() {
               </tbody>
             </table>
           </div>
+          <ComprasPagination
+            page={quotesPagination.page}
+            pageSize={quotesPagination.pageSize}
+            total={filteredQuotes.length}
+            totalPages={quotesPagination.totalPages}
+            onPageChange={quotesPagination.setPage}
+            onPageSizeChange={quotesPagination.setPageSize}
+          />
         </section>
       )}
       {tab === "fornecedores" && (
@@ -835,6 +1002,7 @@ export default function Compras() {
           categoriaFornecedor="NOTA"
           items={filteredNoteSuppliers}
           refresh={refresh}
+          searchKey={tableSearch}
         />
       )}{" "}
       {tab === "fornecedor_item" && (
@@ -843,10 +1011,16 @@ export default function Compras() {
           categoriaFornecedor="ITEM"
           items={filteredItemSuppliers}
           refresh={refresh}
+          searchKey={tableSearch}
         />
       )}{" "}
       {tab === "materiais" && (
-        <Cadastro tipo="material" items={filteredMaterials} refresh={refresh} />
+        <Cadastro
+          tipo="material"
+          items={filteredMaterials}
+          refresh={refresh}
+          searchKey={tableSearch}
+        />
       )}{" "}
       {tab === "relatorios" && (
         <RelatoriosCompras
@@ -1396,6 +1570,10 @@ function RelatoriosCompras({
     () => [...registros].sort(compararCronologicamente),
     [registros]
   );
+  const reportPagination = useComprasPagination(
+    registrosOrdenados,
+    `relatorio:${JSON.stringify(filtros)}`
+  );
 
   const totais = useMemo(
     () => ({
@@ -1719,7 +1897,22 @@ function RelatoriosCompras({
       </div>
       <section className="compras-report-data">
         <h2>Dados do relatório</h2>
-        <div className="compras-table">
+        <div
+          className="compras-table compras-keyboard-table"
+          tabIndex={0}
+          role="grid"
+          aria-label="Dados do relatório"
+          onKeyDown={event =>
+            handleComprasTableKeyDown(event, {
+              rows: reportPagination.visibleRows,
+              selectedId: reportPagination.selectedId,
+              setSelectedId: reportPagination.setSelectedId,
+              page: reportPagination.page,
+              totalPages: reportPagination.totalPages,
+              setPage: reportPagination.setPage,
+            })
+          }
+        >
           <table>
             <thead>
               <tr>
@@ -1737,8 +1930,18 @@ function RelatoriosCompras({
             </thead>
             <tbody>
               {registrosOrdenados.length ? (
-                registrosOrdenados.map(item => (
-                  <tr key={item.id}>
+                reportPagination.visibleRows.map(item => (
+                  <tr
+                    key={item.id}
+                    className={
+                      reportPagination.selectedId === Number(item.id)
+                        ? "selected"
+                        : ""
+                    }
+                    onClick={() =>
+                      reportPagination.setSelectedId(Number(item.id))
+                    }
+                  >
                     <td>{item.numero}</td>
                     <td>
                       {formatarData(item.dataOrcamento)}
@@ -1763,6 +1966,14 @@ function RelatoriosCompras({
             </tbody>
           </table>
         </div>
+        <ComprasPagination
+          page={reportPagination.page}
+          pageSize={reportPagination.pageSize}
+          total={registrosOrdenados.length}
+          totalPages={reportPagination.totalPages}
+          onPageChange={reportPagination.setPage}
+          onPageSizeChange={reportPagination.setPageSize}
+        />
       </section>
     </section>
   );
@@ -1786,6 +1997,13 @@ function CadastroAuxiliarModal({
     ativo: true,
   });
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const pagination = useComprasPagination(items, `auxiliar:${tipo}`, 25);
+  const editItem = (item: any) =>
+    setForm({
+      id: Number(item.id),
+      nome: item.nome,
+      ativo: Boolean(item.ativo),
+    });
   const save = trpc.compras.salvarCadastroAuxiliar.useMutation({
     onSuccess: () => {
       toast.success(`${label} salvo com sucesso.`);
@@ -1857,7 +2075,23 @@ function CadastroAuxiliarModal({
             </button>
           )}
         </div>
-        <div className="compras-table compras-aux-table">
+        <div
+          className="compras-table compras-aux-table compras-keyboard-table"
+          tabIndex={0}
+          role="grid"
+          aria-label={`Lista de ${label}`}
+          onKeyDown={event =>
+            handleComprasTableKeyDown(event, {
+              rows: pagination.visibleRows,
+              selectedId: pagination.selectedId,
+              setSelectedId: pagination.setSelectedId,
+              page: pagination.page,
+              totalPages: pagination.totalPages,
+              setPage: pagination.setPage,
+              onEnter: editItem,
+            })
+          }
+        >
           <table>
             <thead>
               <tr>
@@ -1874,20 +2108,23 @@ function CadastroAuxiliarModal({
                   </td>
                 </tr>
               ) : (
-                items.map(item => (
-                  <tr key={item.id}>
+                pagination.visibleRows.map(item => (
+                  <tr
+                    key={item.id}
+                    className={
+                      pagination.selectedId === Number(item.id)
+                        ? "selected"
+                        : ""
+                    }
+                    onClick={() => pagination.setSelectedId(Number(item.id))}
+                    onDoubleClick={() => editItem(item)}
+                  >
                     <td>{item.nome}</td>
                     <td>{item.ativo ? "ATIVO" : "INATIVO"}</td>
                     <td>
                       <button
                         title="Editar"
-                        onClick={() =>
-                          setForm({
-                            id: Number(item.id),
-                            nome: item.nome,
-                            ativo: Boolean(item.ativo),
-                          })
-                        }
+                        onClick={() => editItem(item)}
                       >
                         <Pencil size={15} />
                       </button>
@@ -1904,6 +2141,14 @@ function CadastroAuxiliarModal({
             </tbody>
           </table>
         </div>
+        <ComprasPagination
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          total={items.length}
+          totalPages={pagination.totalPages}
+          onPageChange={pagination.setPage}
+          onPageSizeChange={pagination.setPageSize}
+        />
         <footer>
           <button onClick={onClose}>Fechar</button>
         </footer>
@@ -1932,11 +2177,13 @@ function Cadastro({
   tipo,
   items,
   refresh,
+  searchKey,
   categoriaFornecedor = "NOTA",
 }: {
   tipo: "fornecedor" | "material";
   items: any[];
   refresh: () => void;
+  searchKey: string;
   categoriaFornecedor?: "NOTA" | "ITEM";
 }) {
   const blank =
@@ -1957,6 +2204,27 @@ function Cadastro({
   const [transferConfirmOpen, setTransferConfirmOpen] = useState(false);
   const isProductBrand =
     tipo === "fornecedor" && categoriaFornecedor === "ITEM";
+  const pagination = useComprasPagination(
+    items,
+    `${tipo}:${categoriaFornecedor}:${searchKey}`
+  );
+  const editItem = (item: any) =>
+    setForm({
+      ...blank,
+      ...item,
+      ativo: Boolean(item.ativo),
+      ...(tipo === "fornecedor"
+        ? {
+            documento: item.documento ?? "",
+            telefone: item.telefone ?? "",
+            email: item.email ?? "",
+            endereco: item.endereco ?? "",
+          }
+        : {
+            categoria: item.categoria ?? "",
+            unidade: item.unidade ?? "",
+          }),
+    });
   const cadastroOptions = {
     onSuccess: () => {
       toast.success("Cadastro salvo.");
@@ -2047,7 +2315,29 @@ function Cadastro({
           Salvar
         </button>
       </div>
-      <div className="compras-table">
+      <div
+        className="compras-table compras-keyboard-table"
+        tabIndex={0}
+        role="grid"
+        aria-label={
+          tipo === "material"
+            ? "Materiais"
+            : isProductBrand
+              ? "Marcas do produto"
+              : "Fornecedores da nota"
+        }
+        onKeyDown={event =>
+          handleComprasTableKeyDown(event, {
+            rows: pagination.visibleRows,
+            selectedId: pagination.selectedId,
+            setSelectedId: pagination.setSelectedId,
+            page: pagination.page,
+            totalPages: pagination.totalPages,
+            setPage: pagination.setPage,
+            onEnter: editItem,
+          })
+        }
+      >
         <table>
           <thead>
             <tr>
@@ -2061,8 +2351,13 @@ function Cadastro({
             </tr>
           </thead>
           <tbody>
-            {items.map(x => (
-              <tr key={x.id}>
+            {pagination.visibleRows.map(x => (
+              <tr
+                key={x.id}
+                className={pagination.selectedId === Number(x.id) ? "selected" : ""}
+                onClick={() => pagination.setSelectedId(Number(x.id))}
+                onDoubleClick={() => editItem(x)}
+              >
                 {Object.keys(blank)
                   .filter(k => k !== "ativo")
                   .map(k => (
@@ -2071,24 +2366,7 @@ function Cadastro({
                 <td>{x.origemPlanilha ? "Planilha" : "Sistema"}</td>
                 <td>
                   <button
-                    onClick={() =>
-                      setForm({
-                        ...blank,
-                        ...x,
-                        ativo: Boolean(x.ativo),
-                        ...(tipo === "fornecedor"
-                          ? {
-                              documento: x.documento ?? "",
-                              telefone: x.telefone ?? "",
-                              email: x.email ?? "",
-                              endereco: x.endereco ?? "",
-                            }
-                          : {
-                              categoria: x.categoria ?? "",
-                              unidade: x.unidade ?? "",
-                            }),
-                      })
-                    }
+                    onClick={() => editItem(x)}
                   >
                     <Pencil size={15} />
                   </button>
@@ -2117,6 +2395,14 @@ function Cadastro({
           </tbody>
         </table>
       </div>
+      <ComprasPagination
+        page={pagination.page}
+        pageSize={pagination.pageSize}
+        total={items.length}
+        totalPages={pagination.totalPages}
+        onPageChange={pagination.setPage}
+        onPageSizeChange={pagination.setPageSize}
+      />
       {transferTarget && !transferConfirmOpen && (
         <div className="compras-transfer-overlay" role="presentation">
           <div

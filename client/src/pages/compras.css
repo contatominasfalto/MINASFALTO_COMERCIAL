@@ -146,6 +146,46 @@
   padding: 3px;
   min-height: 24px;
 }
+.compras-keyboard-table:focus {
+  outline: 2px solid #d99b00;
+  outline-offset: 2px;
+}
+.compras-table tbody tr.selected,
+.compras-table tbody tr.selected:nth-child(even) {
+  background: #d4e8f6;
+  box-shadow: inset 3px 0 #d99b00;
+}
+.compras-pagination {
+  min-height: 42px;
+  padding: 7px 10px;
+  border: 1px solid #9bb2c7;
+  border-top: 0;
+  background: #f8fbfd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.compras-pagination > span {
+  min-width: 130px;
+  text-align: center;
+  color: #40566a;
+}
+.compras-pagination select {
+  width: 76px;
+  height: 28px;
+  border: 1px solid #7895b0;
+  background: #fff;
+}
+.compras-pagination button {
+  width: 30px;
+  min-height: 28px;
+  padding: 2px;
+}
+.compras-pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 .compras-action-loading {
   animation: compras-action-pulse 0.8s ease-in-out infinite alternate;
 }
