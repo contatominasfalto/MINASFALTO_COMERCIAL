@@ -96,6 +96,63 @@ type SearchOption = {
   detail?: string;
 };
 
+function CurrencyField({
+  value,
+  onChange,
+  readOnly = false,
+  className = "",
+  ariaLabel,
+  title,
+  tabIndex,
+}: {
+  value: number;
+  onChange?: (value: number) => void;
+  readOnly?: boolean;
+  className?: string;
+  ariaLabel?: string;
+  title?: string;
+  tabIndex?: number;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const formattedValue = Number(value || 0).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const parseCurrency = (input: string) => {
+    const sanitized = input.replace(/[^\d,.-]/g, "");
+    const normalized = sanitized.includes(",")
+      ? sanitized.replaceAll(".", "").replace(",", ".")
+      : sanitized;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+  };
+
+  return (
+    <div className={`compra-currency-field ${className}`.trim()} title={title}>
+      <span aria-hidden="true">R$</span>
+      <input
+        type="text"
+        inputMode="decimal"
+        value={editing && !readOnly ? draft : formattedValue}
+        readOnly={readOnly}
+        tabIndex={tabIndex}
+        aria-label={ariaLabel}
+        onFocus={() => {
+          if (readOnly) return;
+          setDraft(String(Number(value || 0)).replace(".", ","));
+          setEditing(true);
+        }}
+        onBlur={() => setEditing(false)}
+        onChange={event => {
+          setDraft(event.target.value);
+          onChange?.(parseCurrency(event.target.value));
+        }}
+      />
+    </div>
+  );
+}
+
 function SearchableSelect({
   value,
   options,
@@ -894,10 +951,7 @@ export default function Compras() {
                       } as any
                     )[k]
                   }
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
+                  <CurrencyField
                     className={
                       k === "valorNegociado" ? "" : "compra-total-calculado"
                     }
@@ -909,9 +963,9 @@ export default function Compras() {
                           ? finalTotal
                           : form.valorNegociado
                     }
-                    onChange={e =>
+                    onChange={value =>
                       k === "valorNegociado" &&
-                      setForm({ ...form, valorNegociado: Number(e.target.value) })
+                      setForm({ ...form, valorNegociado: value })
                     }
                   />
                 </label>
@@ -1057,24 +1111,22 @@ export default function Compras() {
                         setForm({ ...form, itens });
                       }}
                     />
-                    <input
-                      type="number"
-                      placeholder="Valor unitário"
+                    <CurrencyField
+                      ariaLabel={`Valor unitário da proposta ${oi + 1} do item ${idx + 1}`}
                       value={oferta.valorUnitario}
-                      onChange={e => {
+                      onChange={value => {
                         const itens = [...form.itens];
                         item.ofertas[oi] = {
                           ...oferta,
-                          valorUnitario: Number(e.target.value),
+                          valorUnitario: value,
                         };
                         itens[idx] = { ...item };
                         setForm({ ...form, itens });
                       }}
                     />
-                    <input
-                      type="number"
-                      className="compra-oferta-total"
-                      aria-label={`Valor total da proposta ${oi + 1} do item ${idx + 1}`}
+                    <CurrencyField
+                      className="compra-oferta-total compra-total-calculado"
+                      ariaLabel={`Valor total da proposta ${oi + 1} do item ${idx + 1}`}
                       title="Valor unitário multiplicado pela quantidade do item"
                       readOnly
                       tabIndex={-1}

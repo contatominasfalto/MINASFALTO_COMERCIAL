@@ -627,6 +627,36 @@
   font-weight: 700;
   cursor: not-allowed;
 }
+.compra-currency-field {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 36px;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #8ca8c0;
+  background: #fff;
+}
+.compra-currency-field > span {
+  flex: 0 0 auto;
+  padding-left: 8px;
+  color: #17324a;
+  font-weight: 700;
+}
+.compra-currency-field > input {
+  width: 100% !important;
+  min-width: 0;
+  height: 100% !important;
+  padding: 6px 7px !important;
+  border: 0 !important;
+  outline: 0;
+  background: transparent !important;
+}
+.compra-currency-field:focus-within {
+  outline: 2px solid #2f668f;
+  outline-offset: -2px;
+}
 .compra-item-title strong {
   font-size: 12px;
 }
