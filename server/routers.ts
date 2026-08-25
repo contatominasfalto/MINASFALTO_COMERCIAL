@@ -434,12 +434,12 @@ const licitacaoPedidoCrtiSchema = z.object({
 const compraOfertaSchema = z.object({
   fornecedorId: z.number().int().positive(),
   valorUnitario: z.number().nonnegative(),
+  incluidoCalculo: z.boolean().default(true),
   prazoEntrega: z.string().max(120).optional(),
   condicaoPagamento: z.string().max(180).optional(),
   selecionada: z.boolean(),
 });
 const compraItemSchema = z.object({
-  incluidoCalculo: z.boolean().default(true),
   materialId: z.number().int().positive().nullable().optional(),
   descricao: z.string().trim().min(2).max(300),
   quantidade: z.number().positive(),

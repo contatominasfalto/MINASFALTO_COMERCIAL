@@ -36,13 +36,17 @@ export async function ensureComprasSchema(pool: mysql.Pool) {
         "SELECT column_name FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='compras_orcamentos' AND column_name='prazo_entrega_padrao'"
       );
       if (!columns.length) await pool.query(comprasPrazoEntregaPadraoMigration);
-      const [itemColumns] = await pool.query<mysql.RowDataPacket[]>(
-        "SELECT column_name FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='compras_orcamento_itens' AND column_name='incluido_calculo'"
+      const [offerColumns] = await pool.query<mysql.RowDataPacket[]>(
+        "SELECT column_name FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='compras_orcamento_ofertas' AND column_name='incluido_calculo'"
       );
-      if (!itemColumns.length)
+      if (!offerColumns.length) {
         await pool.query(
-          "ALTER TABLE compras_orcamento_itens ADD COLUMN incluido_calculo boolean NOT NULL DEFAULT true AFTER unidade"
+          "ALTER TABLE compras_orcamento_ofertas ADD COLUMN incluido_calculo boolean NOT NULL DEFAULT true AFTER valor_total"
         );
+        await pool.query(`UPDATE compras_orcamento_ofertas o
+          JOIN compras_orcamento_itens i ON i.id=o.item_id
+          SET o.incluido_calculo=i.incluido_calculo`);
+      }
       await pool.query(comprasCadastrosOrcamentoMigration);
       await pool.query(comprasVeiculosMigration);
       const [relationColumns] = await pool.query<mysql.RowDataPacket[]>(
@@ -194,22 +198,22 @@ export async function obterOrcamento(id: number) {
       [id]
     ),
     pool.query(
-      "SELECT id,material_id materialId,descricao,quantidade,unidade,incluido_calculo incluidoCalculo,ordem FROM compras_orcamento_itens WHERE orcamento_id=? ORDER BY ordem,id",
+      "SELECT id,material_id materialId,descricao,quantidade,unidade,ordem FROM compras_orcamento_itens WHERE orcamento_id=? ORDER BY ordem,id",
       [id]
     ),
     pool.query(
-      "SELECT o.id,o.item_id itemId,o.fornecedor_id fornecedorId,f.nome fornecedor,o.valor_unitario valorUnitario,o.valor_total valorTotal,COALESCE(o.prazo_entrega,'') prazoEntrega,COALESCE(o.condicao_pagamento,'') condicaoPagamento,o.selecionada FROM compras_orcamento_ofertas o JOIN compras_fornecedores f ON f.id=o.fornecedor_id WHERE o.orcamento_id=? ORDER BY o.item_id,f.nome",
+      "SELECT o.id,o.item_id itemId,o.fornecedor_id fornecedorId,f.nome fornecedor,o.valor_unitario valorUnitario,o.valor_total valorTotal,o.incluido_calculo incluidoCalculo,COALESCE(o.prazo_entrega,'') prazoEntrega,COALESCE(o.condicao_pagamento,'') condicaoPagamento,o.selecionada FROM compras_orcamento_ofertas o JOIN compras_fornecedores f ON f.id=o.fornecedor_id WHERE o.orcamento_id=? ORDER BY o.item_id,f.nome",
       [id]
     ),
   ]);
   if (!(rows as any[])[0]) throw new Error("Orçamento não encontrado.");
   return {
     orcamento: (rows as any[])[0],
-    itens: (itens as any[]).map(item => ({
-      ...item,
-      incluidoCalculo: Boolean(item.incluidoCalculo),
+    itens,
+    ofertas: (ofertas as any[]).map(oferta => ({
+      ...oferta,
+      incluidoCalculo: Boolean(oferta.incluidoCalculo),
     })),
-    ofertas,
   } as any;
 }
 
@@ -229,7 +233,6 @@ type OrcamentoInput = {
   valorPago: number;
   itens: Array<{
     id?: number;
-    incluidoCalculo: boolean;
     materialId?: number | null;
     descricao: string;
     quantidade: number;
@@ -237,6 +240,7 @@ type OrcamentoInput = {
     ofertas: Array<{
       fornecedorId: number;
       valorUnitario: number;
+      incluidoCalculo: boolean;
       prazoEntrega?: string;
       condicaoPagamento?: string;
       selecionada: boolean;
@@ -249,11 +253,11 @@ export function calcularTotaisOrcamento(
   valorDesconto: number
 ) {
   const valorCotado = itens.reduce((total, item) => {
-    if (!item.incluidoCalculo) return total;
-    const totais = item.ofertas
-      .map(oferta => Number(oferta.valorUnitario) * Number(item.quantidade))
-      .filter(valor => Number.isFinite(valor) && valor > 0);
-    return total + (totais.length ? Math.min(...totais) : 0);
+    return total + item.ofertas.reduce((subtotal, oferta) => {
+      if (!oferta.incluidoCalculo) return subtotal;
+      const valor = Number(oferta.valorUnitario) * Number(item.quantidade);
+      return subtotal + (Number.isFinite(valor) && valor > 0 ? valor : 0);
+    }, 0);
   }, 0);
   const cotado = Math.round((valorCotado + Number.EPSILON) * 100) / 100;
   const desconto = Math.round((Number(valorDesconto || 0) + Number.EPSILON) * 100) / 100;
@@ -340,26 +344,26 @@ export async function salvarOrcamento(data: OrcamentoInput, usuario: string) {
     for (let n = 0; n < data.itens.length; n++) {
       const item = data.itens[n];
       const [r] = await cx.execute<mysql.ResultSetHeader>(
-        "INSERT INTO compras_orcamento_itens(orcamento_id,material_id,descricao,quantidade,unidade,incluido_calculo,ordem) VALUES(?,?,?,?,?,?,?)",
+        "INSERT INTO compras_orcamento_itens(orcamento_id,material_id,descricao,quantidade,unidade,ordem) VALUES(?,?,?,?,?,?)",
         [
           id,
           item.materialId || null,
           comprasUppercase(item.descricao),
           item.quantidade,
           comprasUppercase(item.unidade) || null,
-          item.incluidoCalculo,
           n,
         ]
       );
       for (const oferta of item.ofertas)
         await cx.execute(
-          "INSERT INTO compras_orcamento_ofertas(orcamento_id,item_id,fornecedor_id,valor_unitario,valor_total,prazo_entrega,condicao_pagamento,selecionada) VALUES(?,?,?,?,?,?,?,?)",
+          "INSERT INTO compras_orcamento_ofertas(orcamento_id,item_id,fornecedor_id,valor_unitario,valor_total,incluido_calculo,prazo_entrega,condicao_pagamento,selecionada) VALUES(?,?,?,?,?,?,?,?,?)",
           [
             id,
             r.insertId,
             oferta.fornecedorId,
             oferta.valorUnitario,
             oferta.valorUnitario * item.quantidade,
+            oferta.incluidoCalculo,
             comprasUppercase(oferta.prazoEntrega) || null,
             comprasUppercase(oferta.condicaoPagamento) || null,
             oferta.selecionada,

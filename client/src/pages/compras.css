@@ -627,13 +627,17 @@
 }
 .compra-offer-heading {
   display: grid !important;
-  grid-template-columns: minmax(260px, 1fr) 180px 180px 38px !important;
+  grid-template-columns: 54px minmax(260px, 1fr) 180px 180px 38px !important;
   margin: 11px 0 2px 30px;
   gap: 6px !important;
 }
 .compra-item .oferta {
-  grid-template-columns: minmax(260px, 1fr) 180px 180px 38px;
+  grid-template-columns: 54px minmax(260px, 1fr) 180px 180px 38px;
   align-items: start;
+}
+.compra-oferta-calculo-toggle {
+  justify-content: center;
+  height: 36px;
 }
 .compras-search-select {
   position: relative;
@@ -725,7 +729,7 @@
   .compra-item
     > div:not(.compra-item-title):not(.compra-offer-heading):not(.oferta),
   .compra-item .oferta {
-    grid-template-columns: 1fr 110px 85px 38px;
+    grid-template-columns: 40px 1fr 110px 85px 38px;
   }
   .compra-offer-heading {
     display: none !important;

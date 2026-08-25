@@ -38,7 +38,6 @@ const STATUS: any = {
   CANCELADO: "Cancelado",
 };
 const emptyItem = () => ({
-  incluidoCalculo: true,
   descricao: "",
   materialId: null as number | null,
   quantidade: 1,
@@ -242,13 +241,13 @@ export default function Compras() {
       valorPago: Number(o.valor_pago || 0),
       itens: (detail.data.itens as any[]).map(i => ({
         ...i,
-        incluidoCalculo: i.incluidoCalculo !== false,
         quantidade: Number(i.quantidade),
         ofertas: offers
           .filter(x => x.itemId === i.id)
           .map(x => ({
             ...x,
             valorUnitario: Number(x.valorUnitario),
+            incluidoCalculo: x.incluidoCalculo !== false,
             prazoEntrega: x.prazoEntrega || prazoEntregaPadrao,
             condicaoPagamento: x.condicaoPagamento || "",
             selecionada: Boolean(x.selecionada),
@@ -259,11 +258,18 @@ export default function Compras() {
   const suggestedTotal = useMemo(
     () =>
       form.itens.reduce((sum, item) => {
-        if (item.incluidoCalculo === false) return sum;
-        const values = item.ofertas
-          .map(o => Number(o.valorUnitario || 0) * Number(item.quantidade || 0))
-          .filter(v => v > 0);
-        return sum + (values.length ? Math.min(...values) : 0);
+        return (
+          sum +
+          item.ofertas.reduce(
+            (itemTotal, oferta) =>
+              oferta.incluidoCalculo === false
+                ? itemTotal
+                : itemTotal +
+                  Number(oferta.valorUnitario || 0) *
+                    Number(item.quantidade || 0),
+            0
+          )
+        );
       }, 0),
     [form.itens]
   );
@@ -869,21 +875,6 @@ export default function Compras() {
                 <div className="compra-item-title">
                   <div className="compra-item-title-main">
                     <strong>Item {idx + 1}</strong>
-                    <label className="compra-item-calculo-toggle">
-                      <input
-                        type="checkbox"
-                        checked={item.incluidoCalculo !== false}
-                        onChange={event => {
-                          const itens = [...form.itens];
-                          itens[idx] = {
-                            ...item,
-                            incluidoCalculo: event.target.checked,
-                          };
-                          setForm({ ...form, itens });
-                        }}
-                      />
-                      Incluir no valor cotado
-                    </label>
                   </div>
                   <span>
                     Material cadastrado, quantidade e unidade de medida
@@ -957,6 +948,7 @@ export default function Compras() {
                 </div>
                 {item.ofertas.length > 0 && (
                   <div className="compra-offer-heading">
+                    <span>Incluir</span>
                     <span>Fornecedor do item</span>
                     <span>Valor unitário</span>
                     <span>Prazo de entrega</span>
@@ -965,6 +957,25 @@ export default function Compras() {
                 )}
                 {item.ofertas.map((oferta: any, oi: number) => (
                   <div className="oferta" key={oi}>
+                    <label
+                      className="compra-item-calculo-toggle compra-oferta-calculo-toggle"
+                      title="Incluir esta proposta no valor cotado"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={oferta.incluidoCalculo !== false}
+                        aria-label={`Incluir proposta ${oi + 1} do item ${idx + 1} no valor cotado`}
+                        onChange={event => {
+                          const itens = [...form.itens];
+                          item.ofertas[oi] = {
+                            ...oferta,
+                            incluidoCalculo: event.target.checked,
+                          };
+                          itens[idx] = { ...item };
+                          setForm({ ...form, itens });
+                        }}
+                      />
+                    </label>
                     <SearchableSelect
                       value={String(oferta.fornecedorId || "")}
                       options={itemSupplierOptions}
@@ -1045,6 +1056,7 @@ export default function Compras() {
                           prazoEntrega: form.prazoEntregaPadrao,
                           condicaoPagamento: "",
                           selecionada: false,
+                          incluidoCalculo: true,
                         },
                       ],
                     };

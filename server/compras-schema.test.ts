@@ -56,6 +56,9 @@ describe("Controle de Compras", () => {
     expect(sql).toContain("`prazo_entrega_padrao` varchar(120) NULL");
     expect(sql).toContain("`objeto_cotacao_id` int NULL");
     expect(sql).toContain("`veiculo_equipamento_id` int NULL");
+    expect(sql).toMatch(
+      /CREATE TABLE IF NOT EXISTS `compras_orcamento_ofertas`[\s\S]*`incluido_calculo` boolean NOT NULL DEFAULT true/
+    );
   });
 
   it("normaliza o conteúdo textual de compras em caixa alta", () => {
