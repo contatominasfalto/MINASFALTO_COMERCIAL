@@ -32,6 +32,7 @@
     "usuarios:schema": "node scripts/create-user-access-schema.mjs",
     "compras:schema": "node scripts/create-compras-schema.mjs",
     "compras:migrate": "node scripts/migrate-compras-planilha.mjs",
+    "compras:reload-materials": "node scripts/reload-compras-materiais.mjs",
     "compras:setup": "npm run compras:schema -- --apply && npm run compras:migrate -- --apply"
   },
   "dependencies": {
