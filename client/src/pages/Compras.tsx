@@ -629,6 +629,7 @@ export default function Compras() {
         "Número",
         "Data",
         "Título",
+        "Veículo/Equipamento",
         "Status",
         "Fornecedor escolhido",
         "Valor cotado",
@@ -639,6 +640,7 @@ export default function Compras() {
         o.numero,
         String(o.dataOrcamento || "").split("-").reverse().join("/"),
         o.titulo,
+        o.veiculoEquipamento || "",
         STATUS[o.status],
         o.fornecedorEscolhido || "",
         money(o.valorCotado),
@@ -748,6 +750,7 @@ export default function Compras() {
                   <th>Número</th>
                   <th>Data</th>
                   <th>Objeto da cotação</th>
+                  <th>Veículo/Equipamento</th>
                   <th>Status</th>
                   <th>Itens</th>
                   <th>Fornecedor escolhido</th>
@@ -760,11 +763,11 @@ export default function Compras() {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={10}>Carregando...</td>
+                    <td colSpan={11}>Carregando...</td>
                   </tr>
                 ) : filteredQuotes.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="compras-empty">
+                    <td colSpan={11} className="compras-empty">
                       {tableSearch
                         ? "Nenhum orçamento encontrado para a pesquisa informada."
                         : "Nenhum orçamento cadastrado."}
@@ -778,6 +781,7 @@ export default function Compras() {
                         {String(o.dataOrcamento).split("-").reverse().join("/")}
                       </td>
                       <td>{o.titulo}</td>
+                      <td>{o.veiculoEquipamento || "—"}</td>
                       <td>
                         <span className={`status ${o.status}`}>
                           {STATUS[o.status]}
