@@ -146,6 +146,14 @@
   padding: 3px;
   min-height: 24px;
 }
+.compras-action-loading {
+  animation: compras-action-pulse 0.8s ease-in-out infinite alternate;
+}
+@keyframes compras-action-pulse {
+  to {
+    opacity: 0.35;
+  }
+}
 .status {
   padding: 3px 6px;
   border: 1px solid #9cadba;

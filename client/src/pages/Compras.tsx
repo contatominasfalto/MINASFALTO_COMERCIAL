@@ -5,6 +5,7 @@ import {
   BarChart3,
   ChevronDown,
   Download,
+  FileText,
   PackageSearch,
   Pencil,
   Plus,
@@ -215,6 +216,30 @@ export default function Compras() {
       refresh();
     },
     onError: e => toast.error(e.message),
+  });
+  const [generatingMirrorId, setGeneratingMirrorId] = useState<number | null>(
+    null
+  );
+  const mirrorPdf = trpc.compras.exportarEspelhoPdf.useMutation({
+    onSuccess: result => {
+      const bytes = Uint8Array.from(atob(result.base64), char =>
+        char.charCodeAt(0)
+      );
+      const url = URL.createObjectURL(
+        new Blob([bytes], { type: "application/pdf" })
+      );
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = result.filename;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setGeneratingMirrorId(null);
+      toast.success("Espelho da cotação gerado com sucesso.");
+    },
+    onError: error => {
+      setGeneratingMirrorId(null);
+      toast.error(error.message);
+    },
   });
   useEffect(() => {
     if (!detail.data) return;
@@ -669,6 +694,24 @@ export default function Compras() {
                       <td>
                         <button title="Editar" onClick={() => openEdit(o.id)}>
                           <Pencil size={15} />
+                        </button>
+                        <button
+                          title="Espelho Cotação"
+                          aria-label={`Baixar espelho da cotação ${o.numero}`}
+                          disabled={mirrorPdf.isPending}
+                          onClick={() => {
+                            setGeneratingMirrorId(Number(o.id));
+                            mirrorPdf.mutate({ id: Number(o.id) });
+                          }}
+                        >
+                          <FileText
+                            size={15}
+                            className={
+                              generatingMirrorId === Number(o.id)
+                                ? "compras-action-loading"
+                                : undefined
+                            }
+                          />
                         </button>
                         <button
                           title="Excluir"

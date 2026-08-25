@@ -194,7 +194,7 @@ export async function obterOrcamento(id: number) {
   await ensureComprasSchema(pool);
   const [[rows], [itens], [ofertas]] = await Promise.all([
     pool.query(
-      "SELECT o.*,DATE_FORMAT(o.data_orcamento,'%Y-%m-%d') data_orcamento FROM compras_orcamentos o WHERE o.id=?",
+      "SELECT o.*,DATE_FORMAT(o.data_orcamento,'%Y-%m-%d') data_orcamento,f.nome fornecedorEscolhido,v.nome veiculoEquipamento FROM compras_orcamentos o LEFT JOIN compras_fornecedores f ON f.id=o.fornecedor_escolhido_id LEFT JOIN compras_veiculos_equipamentos v ON v.id=o.veiculo_equipamento_id WHERE o.id=?",
       [id]
     ),
     pool.query(

@@ -15,6 +15,7 @@ import * as alimentacao from "./alimentacao";
 import * as compras from "./compras";
 import { TIPOS_REFEICAO } from "./alimentacao-rules";
 import { buildAlimentacaoPdf } from "./alimentacao-pdf";
+import { buildComprasEspelhoPdf } from "./compras-pdf";
 import { buildLicitacaoPdf } from "./licitacao-pdf";
 import { TRPCError } from "@trpc/server";
 import { ONE_YEAR_MS } from "@shared/const";
@@ -1469,6 +1470,15 @@ export const appRouter = router({
     obterOrcamento: protectedProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .query(({ input }) => compras.obterOrcamento(input.id)),
+    exportarEspelhoPdf: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const pdf = await buildComprasEspelhoPdf(input.id);
+        return {
+          filename: pdf.filename,
+          base64: pdf.buffer.toString("base64"),
+        };
+      }),
     criarOrcamento: protectedProcedure
       .input(compraOrcamentoSchema.omit({ id: true }))
       .mutation(({ input, ctx }) =>
