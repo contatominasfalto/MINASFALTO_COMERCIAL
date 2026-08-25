@@ -57,6 +57,7 @@ describe("Espelho PDF da cotação", () => {
     expect(pdf).toContain(`/MediaBox [0 0 ${PDF_PAGE_WIDTH} ${PDF_PAGE_HEIGHT}]`);
     expect(pdf).not.toContain(`/MediaBox [0 0 ${PDF_PAGE_HEIGHT} ${PDF_PAGE_WIDTH}]`);
     expect(pdf).toContain("ESPELHO DA COTA");
+    expect(pdf).toContain("MARCA DO PRODUTO");
     expect(pdf).toContain("FIRESTONE H/T");
     expect(pdf).toContain("MÃO DE OBRA");
   });

@@ -575,7 +575,7 @@ export default function Compras() {
       )
     ) {
       return toast.error(
-        "Selecione um fornecedor em todas as propostas ou remova a proposta vazia."
+        "Selecione uma marca do produto em todas as propostas ou remova a proposta vazia."
       );
     }
 
@@ -586,7 +586,7 @@ export default function Compras() {
       })
     ) {
       return toast.error(
-        "O mesmo fornecedor não pode aparecer duas vezes no mesmo item."
+        "A mesma marca do produto não pode aparecer duas vezes no mesmo item."
       );
     }
 
@@ -671,7 +671,7 @@ export default function Compras() {
         {[
           ["orcamentos", "Orçamentos", BarChart3],
           ["fornecedores", "Fornecedores", Users],
-          ["fornecedor_item", "Fornecedor Item", Users],
+          ["fornecedor_item", "Marca do Produto", Users],
           ["materiais", "Materiais", PackageSearch],
           ["relatorios", "Relatórios", BarChart3],
         ].map(([key, label, Icon]: any) => (
@@ -1009,7 +1009,7 @@ export default function Compras() {
               ))}
             </div>
             <h3 className="compras-section-title">
-              Itens e propostas de fornecedores
+              Itens e propostas de marcas do produto
             </h3>
             <p className="compras-section-help">
               Selecione um material do cadastro, informe a quantidade e registre
@@ -1105,7 +1105,7 @@ export default function Compras() {
                 {item.ofertas.length > 0 && (
                   <div className="compra-offer-heading">
                     <span>Incluir</span>
-                    <span>Fornecedor do item</span>
+                    <span>Marca do produto</span>
                     <span>Valor unitário</span>
                     <span>Valor total</span>
                     <span>Prazo de entrega</span>
@@ -1136,8 +1136,8 @@ export default function Compras() {
                     <SearchableSelect
                       value={String(oferta.fornecedorId || "")}
                       options={itemSupplierOptions}
-                      placeholder="Selecione o fornecedor"
-                      searchPlaceholder="Pesquisar fornecedor..."
+                      placeholder="Selecione a marca do produto"
+                      searchPlaceholder="Pesquisar marca do produto..."
                       onChange={value => {
                         const itens = [...form.itens];
                         item.ofertas[oi] = {
@@ -1203,14 +1203,14 @@ export default function Compras() {
                   disabled={itemSupplierOptions.length === 0}
                   title={
                     itemSupplierOptions.length > 0
-                      ? "Adicionar proposta de fornecedor"
-                      : "Cadastre ou importe ao menos um fornecedor"
+                      ? "Adicionar proposta de marca"
+                      : "Cadastre ou importe ao menos uma marca do produto"
                   }
                   onClick={() => {
                     const primeiroFornecedor = itemSupplierOptions[0];
                     if (!primeiroFornecedor) {
                       toast.error(
-                        "Cadastre um fornecedor antes de adicionar propostas."
+                        "Cadastre uma marca do produto antes de adicionar propostas."
                       );
                       return;
                     }
@@ -1955,6 +1955,8 @@ function Cadastro({
   const [transferTarget, setTransferTarget] = useState<any>(null);
   const [transferDestination, setTransferDestination] = useState("");
   const [transferConfirmOpen, setTransferConfirmOpen] = useState(false);
+  const isProductBrand =
+    tipo === "fornecedor" && categoriaFornecedor === "ITEM";
   const cadastroOptions = {
     onSuccess: () => {
       toast.success("Cadastro salvo.");
@@ -1971,7 +1973,9 @@ function Cadastro({
     onSuccess: result => {
       toast.success(
         result.acao === "EXCLUIDO"
-          ? "Fornecedor excluído com sucesso."
+          ? isProductBrand
+            ? "Marca do produto excluída com sucesso."
+            : "Fornecedor excluído com sucesso."
           : "Cadastro inativado."
       );
       setTarget(null);
@@ -1995,7 +1999,7 @@ function Cadastro({
       <h2>
         {tipo === "fornecedor"
           ? categoriaFornecedor === "ITEM"
-            ? "Cadastro de fornecedores do item"
+            ? "Cadastro de marcas do produto"
             : "Cadastro de fornecedores da nota"
           : "Cadastro de materiais"}
       </h2>
@@ -2142,11 +2146,11 @@ function Cadastro({
                 {tipo === "material" ? (
                   <>
                     <option value="FORNECEDOR_NOTA">Fornecedores</option>
-                    <option value="FORNECEDOR_ITEM">Fornecedor Item</option>
+                    <option value="FORNECEDOR_ITEM">Marca do Produto</option>
                   </>
                 ) : categoriaFornecedor === "NOTA" ? (
                   <>
-                    <option value="FORNECEDOR_ITEM">Fornecedor Item</option>
+                    <option value="FORNECEDOR_ITEM">Marca do Produto</option>
                     <option value="MATERIAL">Materiais</option>
                   </>
                 ) : (
@@ -2178,13 +2182,16 @@ function Cadastro({
         details={
           transferTarget
             ? [
-                { label: "Fornecedor", value: transferTarget.nome },
+                {
+                  label: isProductBrand ? "Marca do produto" : "Fornecedor",
+                  value: transferTarget.nome,
+                },
                 {
                   label: "Destino",
                   value: (
                     {
                       FORNECEDOR_NOTA: "Fornecedores",
-                      FORNECEDOR_ITEM: "Fornecedor Item",
+                      FORNECEDOR_ITEM: "Marca do Produto",
                       MATERIAL: "Materiais",
                     } as Record<string, string>
                   )[transferDestination],
@@ -2214,12 +2221,16 @@ function Cadastro({
         onOpenChange={o => !o && setTarget(null)}
         title={
           tipo === "fornecedor"
-            ? "Confirmar exclusão de fornecedor"
+            ? isProductBrand
+              ? "Confirmar exclusão de marca do produto"
+              : "Confirmar exclusão de fornecedor"
             : "Confirmar inativação"
         }
         description={
           tipo === "fornecedor"
-            ? "O fornecedor será excluído definitivamente do cadastro."
+            ? isProductBrand
+              ? "A marca do produto será excluída definitivamente do cadastro."
+              : "O fornecedor será excluído definitivamente do cadastro."
             : "O cadastro deixará de aparecer em novas cotações."
         }
         finalDescription={

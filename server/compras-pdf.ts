@@ -114,7 +114,7 @@ export async function buildComprasEspelhoPdf(orcamentoId: number) {
   field("VALOR FINAL", money(orcamento.valor_pago), 380, 165);
   y -= 58;
 
-  content += drawText("ITENS E PROPOSTAS DE FORNECEDORES", 50, y, 10, true, "0 0.10 0.20");
+  content += drawText("ITENS E PROPOSTAS DE MARCAS DO PRODUTO", 50, y, 10, true, "0 0.10 0.20");
   y -= 15;
 
   itens.forEach((item, itemIndex) => {
@@ -132,7 +132,7 @@ export async function buildComprasEspelhoPdf(orcamentoId: number) {
     );
     y -= 44;
     content += drawText("INCLUIR", 55, y + 5, 6, true);
-    content += drawText("FORNECEDOR DO ITEM", 105, y + 5, 6, true);
+    content += drawText("MARCA DO PRODUTO", 105, y + 5, 6, true);
     content += drawText("VALOR UNIT.", 330, y + 5, 6, true);
     content += drawText("VALOR TOTAL", 405, y + 5, 6, true);
     content += drawText("PRAZO", 485, y + 5, 6, true);
