@@ -65,6 +65,49 @@ const money = (v: any) =>
     style: "currency",
     currency: "BRL",
   });
+const escapeExcelValue = (value: unknown) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+const buildExcelWorkbook = (sheetName: string, rows: unknown[][]) => `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:o="urn:schemas-microsoft-com:office:office"
+  xmlns:x="urn:schemas-microsoft-com:office:excel"
+  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:html="http://www.w3.org/TR/REC-html40">
+  <Worksheet ss:Name="${escapeExcelValue(sheetName)}">
+    <Table>
+      ${rows
+        .map(
+          row => `<Row>${row
+            .map(
+              cell =>
+                `<Cell><Data ss:Type="String">${escapeExcelValue(cell)}</Data></Cell>`
+            )
+            .join("")}</Row>`
+        )
+        .join("")}
+    </Table>
+  </Worksheet>
+</Workbook>`;
+const downloadExcel = (sheetName: string, filename: string, rows: unknown[][]) => {
+  const content = buildExcelWorkbook(sheetName, rows);
+  const url = URL.createObjectURL(
+    new Blob([content], {
+      type: "application/vnd.ms-excel;charset=utf-8;",
+    })
+  );
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
 const normalizeItemUnit = (value: unknown) =>
   ["LT", "L", "LITRO", "LITROS"].includes(
     String(value ?? "").trim().toLocaleUpperCase("pt-BR")
@@ -580,7 +623,7 @@ export default function Compras() {
       ? updateQuote.mutate({ ...payload, id: editingId } as any)
       : createQuote.mutate(payload as any);
   };
-  const exportCsv = () => {
+  const exportExcel = () => {
     const rows = [
       [
         "Número",
@@ -594,31 +637,21 @@ export default function Compras() {
       ],
       ...filteredQuotes.map(o => [
         o.numero,
-        o.dataOrcamento,
+        String(o.dataOrcamento || "").split("-").reverse().join("/"),
         o.titulo,
         STATUS[o.status],
         o.fornecedorEscolhido || "",
-        o.valorCotado,
-        o.valorNegociado,
-        o.valorPago,
+        money(o.valorCotado),
+        money(o.valorNegociado),
+        money(o.valorPago),
       ]),
     ];
-    const blob = new Blob(
-      [
-        "\ufeff" +
-          rows
-            .map(r =>
-              r.map(v => `"${String(v ?? "").replaceAll('"', '""')}"`).join(";")
-            )
-            .join("\r\n"),
-      ],
-      { type: "text/csv;charset=utf-8" }
+    downloadExcel(
+      "Cotações",
+      `controle-cotacao-${new Date().toISOString().slice(0, 10)}.xls`,
+      rows
     );
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "controle-cotacao.csv";
-    a.click();
-    URL.revokeObjectURL(a.href);
+    toast.success(`${filteredQuotes.length} cotação(ões) exportada(s).`);
   };
   return (
     <main className="compras-page">
@@ -675,7 +708,7 @@ export default function Compras() {
               <Plus size={16} />
               Cadastrar Objeto da Cotação
             </button>
-            <button onClick={exportCsv}>
+            <button onClick={exportExcel}>
               <Download size={16} />
               Excel
             </button>
@@ -1426,6 +1459,9 @@ function RelatoriosCompras({
 
   const exportarExcel = () => {
     const linhas = [
+      ["RELATÓRIO DE ORÇAMENTOS / CONTROLE DE COTAÇÃO"],
+      [resumo],
+      [],
       [
         "Número",
         "Data",
@@ -1446,28 +1482,17 @@ function RelatoriosCompras({
         item.fornecedorEscolhido || "",
         STATUS[item.status] || item.status,
         item.itens,
-        item.valorCotado,
-        item.valorNegociado,
-        item.valorPago,
+        money(item.valorCotado),
+        money(item.valorNegociado),
+        money(item.valorPago),
       ]),
     ];
-    const conteudo =
-      "\ufeff" +
+    downloadExcel(
+      "Relatório de Cotações",
+      `relatorio-controle-cotacao-${new Date().toISOString().slice(0, 10)}.xls`,
       linhas
-        .map(linha =>
-          linha
-            .map(valor => `"${String(valor ?? "").replaceAll('"', '""')}"`)
-            .join(";")
-        )
-        .join("\r\n");
-    const url = URL.createObjectURL(
-      new Blob([conteudo], { type: "text/csv;charset=utf-8" })
     );
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "relatorio-controle-cotacao.csv";
-    link.click();
-    URL.revokeObjectURL(url);
+    toast.success(`${registrosOrdenados.length} cotação(ões) exportada(s).`);
   };
 
   const imprimir = () => {
