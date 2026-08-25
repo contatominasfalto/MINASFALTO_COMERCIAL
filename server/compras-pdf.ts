@@ -115,53 +115,106 @@ export async function buildComprasEspelhoPdf(orcamentoId: number) {
   y -= 58;
 
   content += drawText("ITENS E PROPOSTAS DE MARCAS DO PRODUTO", 50, y, 10, true, "0 0.10 0.20");
-  y -= 15;
+  y -= 20;
 
   itens.forEach((item, itemIndex) => {
     const itemOffers = ofertas.filter(oferta => Number(oferta.itemId) === Number(item.id));
-    ensureSpace(58 + Math.max(1, itemOffers.length) * 23);
-    content += drawRect(50, y - 28, 495, 28, "0.86 0.92 0.96");
-    content += drawText(`ITEM ${itemIndex + 1} - ${item.descricao}`, 57, y - 11, 8, true, "0 0.10 0.20");
-    content += drawText(
-      `QUANTIDADE: ${Number(item.quantidade).toLocaleString("pt-BR")} ${item.unidade || ""}`,
-      380,
-      y - 11,
-      7,
-      true,
-      "0.20 0.28 0.36"
-    );
-    y -= 44;
-    content += drawText("INCLUIR", 55, y + 5, 6, true);
-    content += drawText("MARCA DO PRODUTO", 105, y + 5, 6, true);
-    content += drawText("VALOR UNIT.", 330, y + 5, 6, true);
-    content += drawText("VALOR TOTAL", 405, y + 5, 6, true);
-    content += drawText("PRAZO", 485, y + 5, 6, true);
-    y -= 10;
     const rows = itemOffers.length ? itemOffers : [null];
-    rows.forEach((oferta, rowIndex) => {
-      ensureSpace(23);
-      content += drawRect(
-        50,
-        y - 18,
-        495,
-        21,
-        rowIndex % 2 ? "0.97 0.98 0.99" : "1 1 1"
+    let rowOffset = 0;
+    let segment = 0;
+    while (rowOffset < rows.length) {
+      if (y - 78 < 125) {
+        newPage(true);
+        content += drawText(
+          "ITENS E MARCAS DO PRODUTO - CONTINUAÇÃO",
+          50,
+          y,
+          9,
+          true,
+          "0 0.10 0.20"
+        );
+        y -= 22;
+      }
+      const maxRows = Math.max(1, Math.floor((y - 125 - 55) / 23));
+      const chunk = rows.slice(rowOffset, rowOffset + maxRows);
+      const cardHeight = 55 + chunk.length * 23;
+      const cardBottom = y - cardHeight;
+
+      // Sombra, cartão e filete vertical mantêm material e marcas visualmente vinculados.
+      content += drawRect(53, cardBottom - 3, 495, cardHeight, "0.84 0.87 0.90", "0.84 0.87 0.90");
+      content += drawRect(50, cardBottom, 495, cardHeight, "1 1 1", "0.58 0.68 0.77");
+      content += drawRect(50, cardBottom, 3, cardHeight, "0.91 0.62 0.05", "0.91 0.62 0.05");
+      content += drawRect(53, y - 30, 492, 30, "0.86 0.92 0.96", "0.58 0.68 0.77");
+      content += drawText(
+        `ITEM ${itemIndex + 1} - ${String(item.descricao).slice(0, 57)}${segment ? " (CONTINUAÇÃO)" : ""}`,
+        60,
+        y - 12,
+        8,
+        true,
+        "0 0.10 0.20"
       );
-      if (!oferta) {
-        content += drawText("NENHUMA PROPOSTA CADASTRADA", 57, y - 10, 7);
-      } else {
+      content += drawText(
+        `QUANTIDADE: ${Number(item.quantidade).toLocaleString("pt-BR")} ${item.unidade || ""}`,
+        395,
+        y - 12,
+        7,
+        true,
+        "0.20 0.28 0.36"
+      );
+      content += drawRect(53, y - 49, 492, 19, "0.95 0.97 0.98", "0.76 0.82 0.87");
+      content += drawText("INCLUIR", 60, y - 42, 6, true);
+      content += drawText("MARCA DO PRODUTO", 108, y - 42, 6, true);
+      content += drawText("VALOR UNIT.", 330, y - 42, 6, true);
+      content += drawText("VALOR TOTAL", 405, y - 42, 6, true);
+      content += drawText("PRAZO", 485, y - 42, 6, true);
+
+      chunk.forEach((oferta, rowIndex) => {
+        const rowTop = y - 49 - rowIndex * 23;
+        content += drawRect(
+          53,
+          rowTop - 23,
+          492,
+          23,
+          rowIndex % 2 ? "0.97 0.98 0.99" : "1 1 1",
+          "0.82 0.87 0.91"
+        );
+        const textY = rowTop - 15;
+        if (!oferta) {
+          content += drawText("NENHUMA PROPOSTA CADASTRADA", 60, textY, 7);
+          return;
+        }
         const quantidade = Number(item.quantidade || 0);
         const unitario = Number(oferta.valorUnitario || 0);
-        content += drawText(oferta.incluidoCalculo ? "SIM" : "NÃO", 57, y - 10, 7, true,
-          oferta.incluidoCalculo ? "0.08 0.42 0.18" : "0.65 0.08 0.08");
-        content += drawText(String(oferta.fornecedor).slice(0, 42), 105, y - 10, 7);
-        content += drawText(money(unitario), 330, y - 10, 7);
-        content += drawText(money(unitario * quantidade), 405, y - 10, 7);
-        content += drawText(String(oferta.prazoEntrega || "—").slice(0, 15), 485, y - 10, 7);
+        content += drawText(
+          oferta.incluidoCalculo ? "SIM" : "NÃO",
+          60,
+          textY,
+          7,
+          true,
+          oferta.incluidoCalculo ? "0.08 0.42 0.18" : "0.65 0.08 0.08"
+        );
+        content += drawText(String(oferta.fornecedor).slice(0, 40), 108, textY, 7);
+        content += drawText(money(unitario), 330, textY, 7);
+        content += drawText(money(unitario * quantidade), 405, textY, 7);
+        content += drawText(String(oferta.prazoEntrega || "—").slice(0, 15), 485, textY, 7);
+      });
+
+      y = cardBottom - 15;
+      rowOffset += chunk.length;
+      segment += 1;
+      if (rowOffset < rows.length) {
+        newPage(true);
+        content += drawText(
+          "ITENS E MARCAS DO PRODUTO - CONTINUAÇÃO",
+          50,
+          y,
+          9,
+          true,
+          "0 0.10 0.20"
+        );
+        y -= 22;
       }
-      y -= 23;
-    });
-    y -= 10;
+    }
   });
 
   if (orcamento.observacoes) {
