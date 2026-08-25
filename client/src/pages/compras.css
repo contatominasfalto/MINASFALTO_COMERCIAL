@@ -280,9 +280,19 @@
 }
 .compras-aux-modal > .close {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 14px;
+  right: 14px;
   z-index: 3;
+}
+.compras-aux-modal > .compras-modal-heading {
+  margin: 0;
+  padding: 18px 64px 17px 22px;
+}
+.compras-aux-modal > .compras-modal-heading h2 {
+  line-height: 1.25;
+}
+.compras-aux-modal > .compras-modal-heading p {
+  line-height: 1.45;
 }
 .compras-aux-form {
   display: grid;
