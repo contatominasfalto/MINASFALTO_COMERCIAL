@@ -60,5 +60,8 @@ describe("Espelho PDF da cotação", () => {
     expect(pdf).toContain("MARCA DO PRODUTO");
     expect(pdf).toContain("FIRESTONE H/T");
     expect(pdf).toContain("MÃO DE OBRA");
+    expect(pdf).not.toContain("/SIG");
+    expect(pdf).not.toContain("MAXWELL");
+    expect(pdf).toContain("MARCO AURELIO BARRETO MODESTO");
   });
 });

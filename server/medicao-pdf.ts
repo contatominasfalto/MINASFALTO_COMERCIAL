@@ -117,7 +117,7 @@ export function wrap(text: unknown, maxChars: number, maxLines = 2) {
   return (lines.length ? lines : [""]).slice(0, maxLines);
 }
 
-export function createPdf(pages: Array<string | PdfPage>, timbrado: PdfImage, assinatura: PdfImage, logo: PdfImage) {
+export function createPdf(pages: Array<string | PdfPage>, timbrado: PdfImage, logo: PdfImage) {
   const chunks: Buffer[] = [];
   const offsets: number[] = [];
   let position = 0;
@@ -133,22 +133,21 @@ export function createPdf(pages: Array<string | PdfPage>, timbrado: PdfImage, as
     write("\nendobj\n");
   };
 
-  const pageIds = pages.map((_, index) => 6 + index * 2);
-  const maxObject = 5 + pages.length * 2;
+  const pageIds = pages.map((_, index) => 5 + index * 2);
+  const maxObject = 4 + pages.length * 2;
   write("%PDF-1.3\n");
   obj(1, "<< /Type /Catalog /Pages 2 0 R >>");
   obj(2, `<< /Type /Pages /Count ${pages.length} /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] >>`);
   obj(3, `<< /Type /XObject /Subtype /Image /Width ${timbrado.width} /Height ${timbrado.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${timbrado.data.length} >>\nstream\n${timbrado.data.toString("binary")}\nendstream`);
-  obj(4, `<< /Type /XObject /Subtype /Image /Width ${assinatura.width} /Height ${assinatura.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${assinatura.data.length} >>\nstream\n${assinatura.data.toString("binary")}\nendstream`);
-  obj(5, `<< /Type /XObject /Subtype /Image /Width ${logo.width} /Height ${logo.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.data.length} >>\nstream\n${logo.data.toString("binary")}\nendstream`);
+  obj(4, `<< /Type /XObject /Subtype /Image /Width ${logo.width} /Height ${logo.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.data.length} >>\nstream\n${logo.data.toString("binary")}\nendstream`);
 
   pages.forEach((page, index) => {
     const { content, width = PAGE_WIDTH, height = PAGE_HEIGHT } =
       typeof page === "string" ? { content: page } : page;
-    const pageId = 6 + index * 2;
-    const contentId = 7 + index * 2;
+    const pageId = 5 + index * 2;
+    const contentId = 6 + index * 2;
     const contentBytes = Buffer.from(content, "binary");
-    obj(pageId, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >> >> /XObject << /BG 3 0 R /SIG 4 0 R /LOGO 5 0 R >> >> /Contents ${contentId} 0 R >>`);
+    obj(pageId, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >> >> /XObject << /BG 3 0 R /LOGO 4 0 R >> >> /Contents ${contentId} 0 R >>`);
     obj(contentId, `<< /Length ${contentBytes.length} >>\nstream\n${content}\nendstream`);
   });
 
@@ -163,6 +162,17 @@ export function createPdf(pages: Array<string | PdfPage>, timbrado: PdfImage, as
 
 export function drawText(text: unknown, x: number, y: number, size = 9, bold = false, color = "0 0 0") {
   return `BT /${bold ? "F2" : "F1"} ${size} Tf ${color} rg ${x} ${y} Td (${pdfText(text)}) Tj ET\n`;
+}
+
+export function drawPhysicalSignatureBlock(
+  lineY: number,
+  pageWidth = PDF_PAGE_WIDTH
+) {
+  const centerX = pageWidth / 2;
+  return `0 0 0 RG ${centerX - 122} ${lineY} m ${centerX + 122} ${lineY} l S\n` +
+    drawCenteredText("MINASFALTO INDUSTRIA E COMERCIO LTDA", lineY - 15, 8, false, "0 0 0", centerX) +
+    drawCenteredText("MARCO AURELIO BARRETO MODESTO", lineY - 30, 8, false, "0 0 0", centerX) +
+    drawCenteredText("CPF N 055.467.797-05 - CI N 1.481.440", lineY - 45, 8, false, "0 0 0", centerX);
 }
 
 export function drawRotatedText(
@@ -229,7 +239,6 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
   const saldo = receitaTotal - impostoTotal - despesaTotal - custoTotal;
 
   const timbrado = await loadJpeg("client/src/assets/papel-timbrado-minasfalto.jpeg");
-  const assinatura = await loadJpeg("client/src/assets/assinatura-diretor.jpg");
   const logo = await loadJpeg("client/src/assets/minasfalto-logo.jpg");
   const pages: string[] = [];
   let content = "";
@@ -275,16 +284,8 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
   const signatureBlock = () => {
     if (y < CONTENT_BOTTOM_Y + 100) newPage();
     y -= 24;
-    const signatureWidth = 190;
-    const signatureHeight = 25;
-    const signatureX = (PAGE_WIDTH - signatureWidth) / 2;
-    const signatureY = y - signatureHeight;
-    const lineY = signatureY - 8;
-    content += `q ${signatureWidth} 0 0 ${signatureHeight} ${signatureX} ${signatureY} cm /SIG Do Q\n`;
-    content += `0 0 0 RG 190 ${lineY} m 405 ${lineY} l S\n`;
-    content += drawCenteredText("MINASFALTO INDUSTRIA E COMERCIO LTDA", lineY - 14, 8, false, "0 0 0");
-    content += drawCenteredText("Marco Aurelio Barreto Modesto", lineY - 28, 8, false, "0 0 0");
-    content += drawCenteredText("CPF n 055.467.797-05 - CI n 1.481.440", lineY - 42, 8, false, "0 0 0");
+    const lineY = y - 57;
+    content += drawPhysicalSignatureBlock(lineY);
     y = lineY - 62;
   };
 
@@ -333,7 +334,7 @@ async function buildMedicaoPdf(pedidoObraIdOrPedidoNum: number) {
 
   return {
     filename: `resultado-obra-${pedido.pedido}-${new Date().toISOString().slice(0, 10)}.pdf`,
-    buffer: createPdf(pages, timbrado, assinatura, logo),
+    buffer: createPdf(pages, timbrado, logo),
   };
 }
 
@@ -375,7 +376,6 @@ async function buildCronologicoPdf(pedidoObraIdOrPedidoNum: number, referenciaMe
   const saldo = receitaTotal - impostoTotal - despesaTotal - custoTotal;
 
   const timbrado = await loadJpeg("client/src/assets/papel-timbrado-minasfalto.jpeg");
-  const assinatura = await loadJpeg("client/src/assets/assinatura-diretor.jpg");
   const logo = await loadJpeg("client/src/assets/minasfalto-logo.jpg");
   const pages: string[] = [];
   let content = "";
@@ -422,16 +422,8 @@ async function buildCronologicoPdf(pedidoObraIdOrPedidoNum: number, referenciaMe
   const signatureBlock = () => {
     if (y < CONTENT_BOTTOM_Y + 100) newPage();
     y -= 24;
-    const signatureWidth = 190;
-    const signatureHeight = 25;
-    const signatureX = (PAGE_WIDTH - signatureWidth) / 2;
-    const signatureY = y - signatureHeight;
-    const lineY = signatureY - 8;
-    content += `q ${signatureWidth} 0 0 ${signatureHeight} ${signatureX} ${signatureY} cm /SIG Do Q\n`;
-    content += `0 0 0 RG 190 ${lineY} m 405 ${lineY} l S\n`;
-    content += drawCenteredText("MINASFALTO INDUSTRIA E COMERCIO LTDA", lineY - 14, 8, false, "0 0 0");
-    content += drawCenteredText("Marco Aurelio Barreto Modesto", lineY - 28, 8, false, "0 0 0");
-    content += drawCenteredText("CPF n 055.467.797-05 - CI n 1.481.440", lineY - 42, 8, false, "0 0 0");
+    const lineY = y - 57;
+    content += drawPhysicalSignatureBlock(lineY);
     y = lineY - 62;
   };
 
@@ -480,7 +472,7 @@ async function buildCronologicoPdf(pedidoObraIdOrPedidoNum: number, referenciaMe
 
   return {
     filename: `pdf-crono-${pedido.pedido}-${referenciaMes}-${new Date().toISOString().slice(0, 10)}.pdf`,
-    buffer: createPdf(pages, timbrado, assinatura, logo),
+    buffer: createPdf(pages, timbrado, logo),
   };
 }
 

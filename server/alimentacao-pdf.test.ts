@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { aggregateAlimentacaoPdfRows } from "./alimentacao-pdf";
 import {
   createPdf,
+  drawPhysicalSignatureBlock,
   PDF_PAGE_HEIGHT,
   PDF_PAGE_WIDTH,
   type PdfImage,
@@ -57,13 +58,12 @@ describe("PDF do relatorio de alimentacao", () => {
     const pdf = createPdf(
       [
         {
-          content: "",
+          content: drawPhysicalSignatureBlock(100, PDF_PAGE_HEIGHT),
           width: PDF_PAGE_HEIGHT,
           height: PDF_PAGE_WIDTH,
         },
         { content: "" },
       ],
-      image,
       image,
       image
     ).toString("binary");
@@ -74,5 +74,8 @@ describe("PDF do relatorio de alimentacao", () => {
     expect(pdf).toContain(
       `/MediaBox [0 0 ${PDF_PAGE_WIDTH} ${PDF_PAGE_HEIGHT}]`
     );
+    expect(pdf).not.toContain("/SIG");
+    expect(pdf).toContain("MARCO AURELIO BARRETO MODESTO");
+    expect(pdf).toContain("CPF N 055.467.797-05 - CI N 1.481.440");
   });
 });

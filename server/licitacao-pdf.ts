@@ -4,6 +4,7 @@ import {
   dateBR,
   dateTimeBR,
   drawCenteredText,
+  drawPhysicalSignatureBlock,
   drawPageBackground,
   drawRect,
   drawRotatedText,
@@ -38,7 +39,6 @@ export async function buildLicitacaoPdf(
   ]);
   const config = REPORTS[type];
   const timbrado = await loadJpeg("client/src/assets/papel-timbrado-minasfalto.jpeg");
-  const assinatura = await loadJpeg("client/src/assets/assinatura-maxwell-relatorio.jpg");
   const logo = await loadJpeg("client/src/assets/minasfalto-logo.jpg");
   const period = `${filters.inicio ? dateBR(filters.inicio) : "INÍCIO"} A ${filters.fim ? dateBR(filters.fim) : "HOJE"}`;
   const pages: PdfPage[] = [];
@@ -184,18 +184,13 @@ export async function buildLicitacaoPdf(
       y -= 20;
     });
     content += drawText(`EMITIDO EM ${dateTimeBR(new Date())}`, 50, 180, 6, false, "0.38 0.45 0.54");
-    const scale = Math.min(160 / assinatura.width, 52 / assinatura.height);
-    const width = assinatura.width * scale;
-    const height = assinatura.height * scale;
-    content += `q ${width.toFixed(2)} 0 0 ${height.toFixed(2)} ${((PDF_PAGE_WIDTH - width) / 2).toFixed(2)} 146 cm /SIG Do Q\n0 0 0 RG 190 147 m 405 147 l S\n`;
-    content += drawCenteredText("Maxwell Viana", 133, 8, false);
-    content += drawCenteredText("Técnico de Planejamento", 119, 8, false);
+    content += drawPhysicalSignatureBlock(147);
     if (pageIndex > 0) content += drawText(`CONTINUAÇÃO ${pageIndex + 1}`, 470, 730, 6, true, "0.38 0.45 0.54");
     pages.push({ content });
   });
 
   return {
     filename: `relatorio-licitacoes-${type}-${new Date().toISOString().slice(0, 10)}.pdf`,
-    buffer: createPdf(pages, timbrado, assinatura, logo),
+    buffer: createPdf(pages, timbrado, logo),
   };
 }

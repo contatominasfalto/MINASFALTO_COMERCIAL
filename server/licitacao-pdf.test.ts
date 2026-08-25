@@ -59,6 +59,9 @@ describe("PDF de relatórios de licitações", () => {
     expect(result.filename).toContain("relatorio-licitacoes-adesoes_vendedor");
     expect(pdf).toContain(`/MediaBox [0 0 ${PDF_PAGE_HEIGHT} ${PDF_PAGE_WIDTH}]`);
     expect(pdf).toContain(`/MediaBox [0 0 ${PDF_PAGE_WIDTH} ${PDF_PAGE_HEIGHT}]`);
+    expect(pdf).not.toContain("/SIG");
+    expect(pdf).not.toContain("MAXWELL");
+    expect(pdf).toContain("MARCO AURELIO BARRETO MODESTO");
   });
 
   it("inclui detalhamento individual nos relatórios de status, cidade e vendedor", async () => {

@@ -4,6 +4,7 @@ import {
   dateBR,
   dateTimeBR,
   drawCenteredText,
+  drawPhysicalSignatureBlock,
   drawPageBackground,
   drawRect,
   drawText,
@@ -28,9 +29,6 @@ export async function buildComprasEspelhoPdf(orcamentoId: number) {
   const ofertas = detalhe.ofertas as any[];
   const timbrado = await loadJpeg(
     "client/src/assets/papel-timbrado-minasfalto.jpeg"
-  );
-  const assinatura = await loadJpeg(
-    "client/src/assets/assinatura-maxwell-relatorio.jpg"
   );
   const logo = await loadJpeg("client/src/assets/minasfalto-logo.jpg");
   const pages: string[] = [];
@@ -226,10 +224,12 @@ export async function buildComprasEspelhoPdf(orcamentoId: number) {
     });
     y -= 58;
   }
+  if (y < 220) newPage(true);
+  content += drawPhysicalSignatureBlock(155);
   content += drawText(
     `EMITIDO EM ${dateTimeBR(new Date())} | FORMATO A4 VERTICAL (${PDF_PAGE_WIDTH.toFixed(0)} X ${PDF_PAGE_HEIGHT.toFixed(0)})`,
     50,
-    105,
+    82,
     6,
     false,
     "0.38 0.45 0.54"
@@ -238,6 +238,6 @@ export async function buildComprasEspelhoPdf(orcamentoId: number) {
 
   return {
     filename: `espelho-cotacao-${String(orcamento.numero).toLowerCase()}.pdf`,
-    buffer: createPdf(pages, timbrado, assinatura, logo),
+    buffer: createPdf(pages, timbrado, logo),
   };
 }
