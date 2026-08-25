@@ -65,6 +65,12 @@ const money = (v: any) =>
     style: "currency",
     currency: "BRL",
   });
+const normalizeItemUnit = (value: unknown) =>
+  ["LT", "L", "LITRO", "LITROS"].includes(
+    String(value ?? "").trim().toLocaleUpperCase("pt-BR")
+  )
+    ? "LT"
+    : "UN";
 
 const normalizeTableSearch = (value: unknown) =>
   String(value ?? "")
@@ -270,6 +276,7 @@ export default function Compras() {
       itens: (detail.data.itens as any[]).map(i => ({
         ...i,
         quantidade: Number(i.quantidade),
+        unidade: normalizeItemUnit(i.unidade),
         ofertas: offers
           .filter(x => x.itemId === i.id)
           .map(x => ({
@@ -945,7 +952,9 @@ export default function Compras() {
                           ...item,
                           materialId: Number(material.id),
                           descricao: material.descricao,
-                          unidade: material.unidade || item.unidade || "UN",
+                          unidade: normalizeItemUnit(
+                            material.unidade || item.unidade
+                          ),
                         };
                         setForm({ ...form, itens });
                       }}
@@ -971,12 +980,21 @@ export default function Compras() {
                   </label>
                   <label className="compra-control">
                     <span>Unidade</span>
-                    <input
+                    <select
                       aria-label={`Unidade do item ${idx + 1}`}
                       value={item.unidade}
-                      readOnly
-                      title="Unidade definida no cadastro do material"
-                    />
+                      onChange={event => {
+                        const itens = [...form.itens];
+                        itens[idx] = {
+                          ...item,
+                          unidade: event.target.value,
+                        };
+                        setForm({ ...form, itens });
+                      }}
+                    >
+                      <option value="UN">UN</option>
+                      <option value="LT">LT - Litro</option>
+                    </select>
                   </label>
                   <button
                     type="button"
