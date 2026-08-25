@@ -94,7 +94,7 @@ export const ACCESS_CATALOG: AccessResource[] = [
   },
   {
     key: "compras",
-    label: "Controle de Compras",
+    label: "Controle de Cotação",
     route: "/compras",
     actions: [
       ...crud,

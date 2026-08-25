@@ -133,9 +133,9 @@ export default function Home({ view = "welcome" }: { view?: HomeView }) {
             </button>
           )}
           {permissions.can("compras", "access") && (
-            <button type="button" className="home-menu-trigger" onClick={() => navigate("/compras")} title="Controle de Compras">
+            <button type="button" className="home-menu-trigger" onClick={() => navigate("/compras")} title="Controle de Cotação">
               <ShoppingCart size={22} />
-              {!collapsed && <span>Controle de Compras</span>}
+              {!collapsed && <span>Controle de Cotação</span>}
             </button>
           )}
           {permissions.can("usuarios", "access") && (

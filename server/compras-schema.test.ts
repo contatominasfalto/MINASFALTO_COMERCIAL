@@ -9,7 +9,7 @@ import {
   validarTransferenciaCompras,
 } from "./compras";
 
-describe("Controle de Compras", () => {
+describe("Controle de Cotação", () => {
   it("mapeia cada operação para a permissão granular correta", () => {
     expect(permissionTargetForProcedure("compras.painel", "query")).toEqual({ resource: "compras", action: "read" });
     expect(permissionTargetForProcedure("compras.criarOrcamento", "mutation")).toEqual({ resource: "compras", action: "create" });

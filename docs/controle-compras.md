@@ -1,4 +1,4 @@
-# Controle de Compras
+# Controle de Cotação
 
 ## Implantação automática
 
