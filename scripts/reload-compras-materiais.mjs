@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import os from "node:os";
 import path from "node:path";
 import ExcelJS from "exceljs";
@@ -7,7 +8,10 @@ import mysql from "mysql2/promise";
 
 const apply = process.argv.includes("--apply");
 const fileIndex = process.argv.indexOf("--file");
-const file = fileIndex >= 0 ? process.argv[fileIndex + 1] : "";
+const bundledFile = fileURLToPath(
+  new URL("../materiais CRTi.xlsx", import.meta.url)
+);
+const file = fileIndex >= 0 ? process.argv[fileIndex + 1] : bundledFile;
 if (!file) throw new Error("Informe a planilha com --file <caminho>.");
 
 const normalized = value =>
