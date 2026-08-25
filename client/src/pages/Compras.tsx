@@ -1157,6 +1157,31 @@ function RelatoriosCompras({
   };
   const [rascunho, setRascunho] = useState(vazio);
   const [filtros, setFiltros] = useState(vazio);
+  const objetoOptions = useMemo<SearchOption[]>(
+    () => [
+      { value: "", label: "Todos" },
+      ...objetos.map(item => ({ value: String(item.id), label: item.nome })),
+    ],
+    [objetos]
+  );
+  const fornecedorOptions = useMemo<SearchOption[]>(
+    () => [
+      { value: "", label: "Todos" },
+      ...fornecedores.map(item => ({
+        value: String(item.id),
+        label: item.nome,
+        detail: item.documento || item.email || undefined,
+      })),
+    ],
+    [fornecedores]
+  );
+  const veiculoOptions = useMemo<SearchOption[]>(
+    () => [
+      { value: "", label: "Todos" },
+      ...veiculos.map(item => ({ value: String(item.id), label: item.nome })),
+    ],
+    [veiculos]
+  );
 
   const chaveData = (valor: unknown) => {
     if (!valor) return "";
@@ -1377,51 +1402,39 @@ function RelatoriosCompras({
           </label>
           <label>
             Objeto da cotação
-            <select
+            <SearchableSelect
               value={rascunho.objetoId}
-              onChange={e =>
-                setRascunho({ ...rascunho, objetoId: e.target.value })
+              options={objetoOptions}
+              placeholder="Todos"
+              searchPlaceholder="Pesquisar objeto da cotação..."
+              onChange={value =>
+                setRascunho({ ...rascunho, objetoId: value })
               }
-            >
-              <option value="">Todos</option>
-              {objetos.map(item => (
-                <option key={item.id} value={item.id}>
-                  {item.nome}
-                </option>
-              ))}
-            </select>
+            />
           </label>
           <label>
             Fornecedor da nota
-            <select
+            <SearchableSelect
               value={rascunho.fornecedorId}
-              onChange={e =>
-                setRascunho({ ...rascunho, fornecedorId: e.target.value })
+              options={fornecedorOptions}
+              placeholder="Todos"
+              searchPlaceholder="Pesquisar fornecedor da nota..."
+              onChange={value =>
+                setRascunho({ ...rascunho, fornecedorId: value })
               }
-            >
-              <option value="">Todos</option>
-              {fornecedores.map(item => (
-                <option key={item.id} value={item.id}>
-                  {item.nome}
-                </option>
-              ))}
-            </select>
+            />
           </label>
           <label>
             Veículo/Equipamento
-            <select
+            <SearchableSelect
               value={rascunho.veiculoId}
-              onChange={e =>
-                setRascunho({ ...rascunho, veiculoId: e.target.value })
+              options={veiculoOptions}
+              placeholder="Todos"
+              searchPlaceholder="Pesquisar veículo ou equipamento..."
+              onChange={value =>
+                setRascunho({ ...rascunho, veiculoId: value })
               }
-            >
-              <option value="">Todos</option>
-              {veiculos.map(item => (
-                <option key={item.id} value={item.id}>
-                  {item.nome}
-                </option>
-              ))}
-            </select>
+            />
           </label>
         </div>
         <div className="compras-report-actions">

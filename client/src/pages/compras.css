@@ -367,8 +367,9 @@
 }
 .compras-report-filter-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(145px, 1fr));
-  gap: 9px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  align-items: end;
 }
 .compras-report-filter-grid label {
   display: grid;
@@ -378,12 +379,21 @@
 }
 .compras-report-filter-grid input,
 .compras-report-filter-grid select {
+  box-sizing: border-box;
   width: 100%;
   height: 34px;
   min-width: 0;
   border: 1px solid #8ca8c0;
   background: #fff;
   padding: 5px 8px;
+}
+.compras-report-filter-grid .compras-search-select {
+  width: 100%;
+  min-width: 0;
+  font-weight: 500;
+}
+.compras-report-filter-grid .compras-search-trigger {
+  height: 34px;
 }
 .compras-report-actions {
   display: flex;
