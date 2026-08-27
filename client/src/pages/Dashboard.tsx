@@ -314,7 +314,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="desktop-shell">
+    <div className="desktop-shell commercial-dashboard-shell">
       <header className="desktop-titlebar">
         <img
           src={minasfaltoLogo}

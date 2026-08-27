@@ -328,6 +328,41 @@ table :is(th, td) :where(a, button, input, select, textarea, label, span, strong
   border: 1px solid #aebdcc;
 }
 
+/*
+ * Comercial: congela título, ações e filtros na viewport. Somente a grade de
+ * pedidos recebe rolagem, mantendo também o cabeçalho das colunas visível.
+ */
+.commercial-dashboard-shell {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.commercial-dashboard-shell > .desktop-titlebar,
+.commercial-dashboard-shell > .desktop-toolbar,
+.commercial-dashboard-shell > .desktop-filters,
+.commercial-dashboard-shell > .desktop-footer {
+  flex: 0 0 auto;
+}
+
+.commercial-dashboard-shell > .desktop-grid-frame {
+  height: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.commercial-dashboard-shell .desktop-table-scroll {
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.commercial-dashboard-shell .desktop-table thead th {
+  z-index: 3;
+  box-shadow: inset 0 -1px 0 var(--sap-line);
+}
+
 .desktop-titlebar {
   height: 68px;
   display: flex;
