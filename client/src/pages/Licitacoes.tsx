@@ -23,7 +23,6 @@ import {
   Pencil,
   Plus,
   Save,
-  Search,
   Trash2,
   Upload,
   X,

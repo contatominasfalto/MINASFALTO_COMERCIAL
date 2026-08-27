@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import SapDoubleConfirmDialog from "@/components/SapDoubleConfirmDialog";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileSpreadsheet, FileText, Flag, Link2, Pencil, Plus, RefreshCw, Save, Search, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileSpreadsheet, FileText, Flag, Link2, Pencil, Plus, RefreshCw, Save, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -113,10 +113,6 @@ const formatCurrency = (value: unknown) =>
     currency: "BRL",
   }).format(numberValue(value));
 
-const formatCurrencyOrBlank = (value: unknown) => {
-  if (value === null || value === undefined || value === "") return "";
-  return formatCurrency(value);
-};
 const getReceitaValor = (receita: any) => numberValue(receita?.valorTotalDocumento ?? receita?.valor);
 const getReceitaDate = (receita: any) => receita?.dataVencimento || receita?.dataEmissao || receita?.data || "";
 const getReceitaStatusLabel = (receita: any) =>
@@ -150,12 +146,6 @@ const buildExcelWorkbook = (sheets: Array<{ name: string; rows: unknown[][] }>) 
   ${sheets.map((sheet) => buildExcelSheet(sheet.name, sheet.rows)).join("")}
 </Workbook>`;
 const isNegativeAmount = (value: unknown) => value !== null && value !== undefined && value !== "" && numberValue(value) < 0;
-
-const formatDecimal = (value: unknown, digits = 0) =>
-  new Intl.NumberFormat("pt-BR", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format(numberValue(value));
 
 const formatDateTime = (value: unknown) => {
   if (!value) return "Nao disponivel";
@@ -543,14 +533,6 @@ export default function CustoObras() {
       invalidateModal();
     },
     onError: (mutationError) => toast.error(`Erro ao salvar dados financeiros: ${mutationError.message}`),
-  });
-
-  const clearFinanceiro = trpc.pedidosObras.clearFinanceiro.useMutation({
-    onSuccess: () => {
-      toast.success("Dados financeiros limpos");
-      invalidateModal();
-    },
-    onError: (mutationError) => toast.error(`Erro ao limpar dados financeiros: ${mutationError.message}`),
   });
 
   const createReceita = trpc.pedidosObras.createReceita.useMutation({
@@ -1500,14 +1482,6 @@ export default function CustoObras() {
       faturamentoDireto: parseMoneyInput(financeForm.faturamentoDireto),
       valorTotalImposto: modalCalculations.valorTotalImpostoBase,
       porcentagemImposto: parsePercentInput(financeForm.porcentagemImposto),
-    });
-  };
-
-  const handleClearFinanceiro = () => {
-    if (!modalPedido) return;
-    clearFinanceiro.mutate({
-      pedidoObraId: modalPedido.id,
-      pedidoNum: String(modalPedido.pedido),
     });
   };
 

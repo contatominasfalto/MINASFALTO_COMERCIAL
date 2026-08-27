@@ -25,8 +25,6 @@ import { usePermissions } from "@/_core/hooks/usePermissions";
 
 const SESSION_STORAGE_KEY = "minasfalto_active_session";
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
-const HIDDEN_COST_PROFILES = new Set(["comercial", "subcomercial", "semicomercial"]);
-
 function normalizeUserKey(value: unknown) {
   return String(value || "").trim().toLowerCase();
 }

@@ -1,196 +1,83 @@
 # Sistema Integrado Minasfalto
 
-Sistema interno da Minasfalto para apoio às rotinas comerciais, controle de estoque e evolução dos módulos de obras, custos e medições.
+Plataforma interna para rotinas comerciais, estoque, custos de obras, licitações, alimentação, compras, usuários e rastreabilidade. A descrição técnica vigente está em [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md).
 
-O projeto começou como um controle comercial para pedidos de Tap Fácil e granel. Atualmente está organizado como uma plataforma interna com tela inicial por módulos e integração com o CRTI para sincronização de pedidos.
+## Requisitos e instalação
 
----
-
-## Módulos
-
-- **Login**: acesso por usuário e senha local, com sessão por cookie.
-- **Tela Inicial**: hub de entrada com menu lateral para os módulos disponíveis.
-- **Comercial**: painel existente de pedidos, contatos, histórico, filtros, sincronização CRTI e acesso ao estoque.
-- **Estoque**: lançamentos e relatório de movimentações.
-- **Custo Obras**: módulo reservado/em desenvolvimento.
-
-### Permissões de Navegação
-
-Os usuários `comercial` e `subcomercial` não visualizam o menu **Custo Obras**.
-
-Perfis locais previstos:
-
-- `admfull`
-- `comercial`
-- `subcomercial`
-- `gerencia`
-- `diretoria`
-
----
-
-## Fluxo de Uso em Produção Local
-
-O sistema é desenvolvido na máquina local, enviado para o GitHub e atualizado no servidor interno por `git pull`.
-
-Fluxo recomendado no servidor:
+- Node.js 20+ e npm (o projeto também declara pnpm 10)
+- MySQL para uso normal e PostgreSQL CRTI para sincronizações
 
 ```powershell
-git pull
+git clone <URL_DO_REPOSITORIO>
+cd <DIRETORIO_DO_PROJETO>
 npm install
-npm run check
-npm run build
-npm start
 ```
 
-Endereço padrão usado na rede local:
-
-```txt
-http://IP_DO_SERVIDOR:PORTA/control_pedidos/
-```
-
-No ambiente atual, o sistema usa `VITE_BASE_PATH=/control_pedidos/`.
-
----
-
-## Comandos Principais
-
-```powershell
-npm run dev
-npm run check
-npm run build
-npm start
-npm test
-```
-
-Scripts úteis de banco e integração:
-
-```powershell
-npm run env:check
-npm run db:schema:check
-npm run db:data:check
-npm run integration:check
-npm run crti:check
-npm run crti:summary
-npm run crti:balance
-```
-
----
+Não versione `.env`. Use a configuração fornecida pela administração e valide-a com `npm run env:check`.
 
 ## Configuração
 
-O arquivo `.env` não deve ser versionado.
+Obrigatórias: `DATABASE_URL` (MySQL) e `JWT_SECRET`. Em produção, mantenha `LOCAL_AUTH_BYPASS=false`. Também são usadas, conforme o ambiente, `PORT`, `VITE_BASE_PATH`, `APP_BASE_PATH`, `AUTH_MODE`, `LOCAL_LOGIN_*`, `CRTI_*`, `LICITACOES_DOCUMENTOS_ROOT` e as variáveis OAuth.
 
-Variáveis importantes:
-
-- `DATABASE_URL`: conexão MySQL do sistema.
-- `JWT_SECRET`: segredo usado para assinatura da sessão.
-- `VITE_BASE_PATH`: base pública da aplicação. Exemplo: `/control_pedidos/`.
-- `PORT`: porta do servidor local.
-- `LOCAL_AUTH_BYPASS`: deve ficar `false` no servidor.
-- `LOCAL_LOGIN_ADMFULL`
-- `LOCAL_LOGIN_COMERCIAL`
-- `LOCAL_LOGIN_SUBCOMERCIAL`
-- `LOCAL_LOGIN_GERENCIA`
-- `LOCAL_LOGIN_DIRETORIA`
-
-Variáveis da integração CRTI:
-
-- `CRTI_HOST`
-- `CRTI_PORT`
-- `CRTI_DATABASE`
-- `CRTI_USER`
-- `CRTI_PASSWORD`
-- `CRTI_SSL`
-- `CRTI_SSL_REJECT_UNAUTHORIZED`
-- `CRTI_SYNC_DAYS`
-- `CRTI_TABLE_APROVADOS`
-- `CRTI_TABLE_CONCLUIDOS`
-- `CRTI_TABLE_SAIDAS`
-
----
-
-## Integração CRTI
-
-O sistema possui integração com o CRTI via PostgreSQL para:
-
-- importar pedidos aprovados;
-- atualizar pedidos concluídos;
-- recalcular saldo, percentual e quantidade pendente;
-- registrar última sincronização;
-- apoiar auditoria de divergências.
-
-Rotinas relacionadas estão em:
-
-```txt
-server/crti-sync.ts
-scripts/check-crti-readonly.mjs
-scripts/crti-summary.mjs
-scripts/crti-balance-audit.mjs
-scripts/find-crti-pedido.mjs
-scripts/inspect-crti-table.mjs
+```powershell
+npm run db:schema:check
+npm run db:data:check
+npm run integration:check
 ```
 
-No painel Comercial, o botão **Atualizar** executa a sincronização completa dos últimos dias configurados.
+Consulte [GUIA_INSTALACAO.md](GUIA_INSTALACAO.md), [CONFIGURACAO_CRTI.md](CONFIGURACAO_CRTI.md) e [DEPLOY_A2_HOSTING.md](DEPLOY_A2_HOSTING.md).
 
----
+## Execução
 
-## Estrutura Principal
-
-```txt
-client/src/App.tsx              Rotas principais
-client/src/pages/Login.tsx      Tela de login
-client/src/pages/Home.tsx       Tela inicial e menu de módulos
-client/src/pages/Dashboard.tsx  Painel Comercial
-client/src/pages/Stock.tsx      Tela de Estoque
-client/src/components/          Formulários, modais e UI
-client/src/contexts/            Contextos React
-server/routers.ts               Rotas tRPC
-server/db.ts                    Funções de banco MySQL
-server/crti-sync.ts             Integração CRTI
-drizzle/schema.ts               Schema e tipos do banco
-scripts/                        Verificações e utilitários
+```powershell
+npm run dev
+npm run start:local
+npm run start:demo
+npm run build
+npm start
 ```
 
----
+O caminho público é controlado por `VITE_BASE_PATH`/`APP_BASE_PATH`; no ambiente interno costuma ser `/control_pedidos/`.
 
-## Stack Técnica
+## Publicação no servidor local
 
-- React
-- Vite
-- TypeScript
-- tRPC
-- Express
-- Drizzle ORM
-- MySQL
-- PostgreSQL para leitura CRTI
-- Zod
-- Vitest
+A produção roda em um servidor local da Minasfalto. O GitHub distribui as versões, mas não hospeda a aplicação. O procedimento oficial é publicar a versão aprovada no GitHub e então atualizá-la no servidor:
 
----
+```powershell
+git status
+git pull
+npm install
+npm run env:check
+npm run check
+npm run build
+npm start
+```
 
-## Cuidados Antes de Subir Para o Servidor
+Quando o servidor usa um gerenciador de processos ou serviço do Windows, reinicie pelo mecanismo configurado em vez de abrir um segundo `npm start`.
 
-Antes de atualizar o servidor local, valide:
+Antes do `git pull`, confirme que a árvore do servidor não contém alterações manuais, que o `.env` está preservado e que existe backup atual do banco quando a versão inclui migrações. Depois do reinício, teste em produção: login/logout, permissões, abertura dos módulos afetados, leitura/gravação no MySQL, sincronização CRTI quando aplicável e acesso pelo endereço/base path da rede local.
+
+Se a validação falhar, registre os logs e volte ao commit anteriormente implantado. Migrações e alterações de dados exigem um plano de rollback próprio; reverter apenas o código pode não ser suficiente. O processo detalhado está em [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md#ambiente-oficial-e-processo-de-publicação).
+
+## Testes
 
 ```powershell
 npm run check
+npm test
 npm run build
 ```
 
-No servidor, confirme:
+Testes de integração exigem os bancos configurados. Antes de mudanças de schema, faça backup e execute primeiro os scripts sem `--apply`.
 
-- `.env` presente e atualizado;
-- `LOCAL_AUTH_BYPASS=false`;
-- `VITE_BASE_PATH=/control_pedidos/`;
-- banco MySQL acessível;
-- credenciais CRTI corretas;
-- backup do banco em dia.
+## Contribuição
 
----
+1. Crie uma branch a partir de `main` e mantenha commits focados.
+2. Não inclua `.env`, credenciais ou dados sensíveis.
+3. Preserve autorização no backend; ocultação no frontend é apenas UX.
+4. Inclua migração, documentação e rollback aplicável em mudanças de banco.
+5. Execute check, testes e build; registre dependências externas indisponíveis.
+6. Envie a versão aprovada ao GitHub; não trate a publicação no GitHub como implantação concluída.
+7. Atualize e valide a versão no servidor local de produção.
+8. Na revisão, descreva impacto, validações e reversão.
 
-## Observações
-
-- Não versionar `.env`.
-- Não alterar credenciais diretamente no código.
-- Evitar excluir dados comerciais sem necessidade; preferir cancelamento/status quando houver rastreabilidade envolvida.
-- Alterações de tela devem preservar o fluxo: Login -> Tela Inicial -> Módulos.
+Mudanças arquiteturais devem atualizar primeiro [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md).

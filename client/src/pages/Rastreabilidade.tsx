@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Eye, RefreshCw, Search, ShieldCheck, X } from "lucide-react";
+import { ArrowLeft, Eye, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 

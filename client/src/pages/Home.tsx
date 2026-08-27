@@ -24,7 +24,6 @@ import assinaturaMaxwell from "@/assets/assinatura-maxwell.png";
 import { usePermissions } from "@/_core/hooks/usePermissions";
 
 type HomeView = "welcome" | "costs";
-const HIDDEN_COST_PROFILES = new Set(["comercial", "subcomercial", "semicomercial"]);
 
 function normalizeUserKey(value: unknown) {
   return String(value || "").trim().toLowerCase();
