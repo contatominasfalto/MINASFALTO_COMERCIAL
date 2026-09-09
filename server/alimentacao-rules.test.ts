@@ -17,6 +17,12 @@ describe("regras de alimentação", () => {
     ).toBe(35));
   it("recusa quantidade fracionada", () =>
     expect(() => totalItem(1.2, 10)).toThrow());
+  it("aceita quantidade zero quando o grupo possui custo extra", () =>
+    expect(totalGrupo([{ quantidade: 0, valorUnitario: 20 }], 30)).toBe(30));
+  it("recusa quantidade zero quando o grupo não possui custo extra", () =>
+    expect(() =>
+      totalGrupo([{ quantidade: 0, valorUnitario: 20 }], 0)
+    ).toThrow("Preencha o custo extra do grupo"));
   it("valida data ISO", () => {
     expect(dataIso("2026-08-06")).toBe("2026-08-06");
     expect(() => dataIso("06/08/2026")).toThrow();

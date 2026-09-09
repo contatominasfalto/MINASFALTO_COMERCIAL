@@ -462,6 +462,21 @@ function Lancamentos({ cad, concluir }: any) {
       toast.error("Informe a data da refeição.");
       return;
     }
+    if (
+      itens.some(
+        item => !Number.isInteger(item.quantidade) || item.quantidade < 0
+      )
+    ) {
+      toast.error("A quantidade deve ser um número inteiro maior ou igual a zero.");
+      return;
+    }
+    if (
+      itens.some(item => item.quantidade === 0) &&
+      Number(form.valorExtra) <= 0
+    ) {
+      toast.error("Preencha o custo extra do grupo para usar quantidade zero.");
+      return;
+    }
     const data = {
       ...form,
       fornecedorId: Number(form.fornecedorId),
@@ -585,7 +600,7 @@ function Lancamentos({ cad, concluir }: any) {
                   aria-label={`Quantidade de ${x.nome}`}
                   title="Quantidade de refeições"
                   type="number"
-                  min="1"
+                  min="0"
                   value={x.quantidade}
                   onChange={e =>
                     setItens(

@@ -9,8 +9,8 @@ export function dinheiro(value: unknown) {
   return Math.round(number * 100) / 100;
 }
 export function totalItem(quantidade: number, valorUnitario: number) {
-  if (!Number.isInteger(quantidade) || quantidade <= 0)
-    throw new Error("A quantidade deve ser um inteiro positivo.");
+  if (!Number.isInteger(quantidade) || quantidade < 0)
+    throw new Error("A quantidade deve ser um inteiro maior ou igual a zero.");
   return Math.round(quantidade * dinheiro(valorUnitario) * 100) / 100;
 }
 export function totalGrupo(
@@ -18,13 +18,19 @@ export function totalGrupo(
   extra: number
 ) {
   if (!itens.length) throw new Error("Inclua ao menos um funcionário.");
+  const valorExtra = dinheiro(extra);
+  if (itens.some(item => item.quantidade === 0) && valorExtra <= 0) {
+    throw new Error(
+      "Preencha o custo extra do grupo para usar quantidade zero."
+    );
+  }
   return (
     Math.round(
       (itens.reduce(
         (sum, item) => sum + totalItem(item.quantidade, item.valorUnitario),
         0
       ) +
-        dinheiro(extra)) *
+        valorExtra) *
         100
     ) / 100
   );

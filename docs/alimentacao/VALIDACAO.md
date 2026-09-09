@@ -4,6 +4,7 @@
 - [ ] criação/edição/inativação de funcionário e fornecedor;
 - [ ] bloqueio de cadastro inativo em novo lançamento;
 - [ ] lançamento em grupo com quantidades diferentes;
+- [ ] criação e atualização aceitam quantidade zero com custo extra positivo e rejeitam quantidade zero sem custo extra;
 - [ ] custo extra contabilizado uma única vez;
 - [ ] repetição do mesmo token não duplica lançamento;
 - [ ] edição transacional e exclusão lógica com motivo;

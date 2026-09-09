@@ -1,7 +1,7 @@
 # Uso do módulo
 
 - **Painel:** custos, quantidades, médias, evolução mensal e rankings.
-- **Lançamentos:** selecione fornecedor, tipo, data e um ou mais funcionários. O custo extra é aplicado uma vez ao grupo.
+- **Lançamentos:** selecione fornecedor, tipo, data e um ou mais funcionários. O custo extra é aplicado uma vez ao grupo. É permitido salvar ou atualizar um funcionário com quantidade zero somente quando o custo extra do grupo for maior que zero.
 - **Cadastros:** colaboradores e fornecedores inativos deixam de aparecer em novos lançamentos, mas permanecem no histórico.
 - **Relatórios:** filtre período, fornecedor, funcionário, setor e tipo; exporte o resultado em Excel ou PDF. O relatório **Custos extras dos grupos** lista cada grupo uma única vez e detalha data, fornecedor, número da nota, tipo, quantidade de refeições, funcionários, setores, observação e valor extra.
 

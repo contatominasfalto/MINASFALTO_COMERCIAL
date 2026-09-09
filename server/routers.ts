@@ -1708,12 +1708,23 @@ export const appRouter = router({
             .array(
               z.object({
                 funcionarioId: z.number().int().positive(),
-                quantidade: z.number().int().positive(),
+                quantidade: z.number().int().nonnegative(),
                 valorUnitario: z.number().nonnegative(),
               })
             )
             .min(1)
             .max(100),
+        }).superRefine((data, ctx) => {
+          if (
+            data.itens.some(item => item.quantidade === 0) &&
+            data.valorExtra <= 0
+          ) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["valorExtra"],
+              message: "Preencha o custo extra do grupo para usar quantidade zero.",
+            });
+          }
         })
       )
       .mutation(({ input, ctx }) =>
@@ -1737,12 +1748,24 @@ export const appRouter = router({
               .array(
                 z.object({
                   funcionarioId: z.number().int().positive(),
-                  quantidade: z.number().int().positive(),
+                  quantidade: z.number().int().nonnegative(),
                   valorUnitario: z.number().nonnegative(),
                 })
               )
               .min(1)
               .max(100),
+          }).superRefine((data, ctx) => {
+            if (
+              data.itens.some(item => item.quantidade === 0) &&
+              data.valorExtra <= 0
+            ) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["valorExtra"],
+                message:
+                  "Preencha o custo extra do grupo para usar quantidade zero.",
+              });
+            }
           }),
         })
       )

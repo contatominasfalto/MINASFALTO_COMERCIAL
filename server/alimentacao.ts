@@ -1,6 +1,6 @@
 import type mysql from "mysql2/promise";
 import { getMysqlPool } from "./db";
-import { dinheiro, totalItem } from "./alimentacao-rules";
+import { dinheiro, totalGrupo, totalItem } from "./alimentacao-rules";
 
 export type Filtros = {
   inicio?: string;
@@ -202,6 +202,7 @@ export async function excluirCusto(
 }
 
 export async function criarLancamento(data: any, usuario: string) {
+  totalGrupo(data.itens, data.valorExtra);
   const pool = await getMysqlPool();
   const conn = await pool.getConnection();
   try {
@@ -302,6 +303,7 @@ export async function atualizarLancamento(
   data: any,
   usuario: string
 ) {
+  totalGrupo(data.itens, data.valorExtra);
   const pool = await getMysqlPool();
   const conn = await pool.getConnection();
   try {
