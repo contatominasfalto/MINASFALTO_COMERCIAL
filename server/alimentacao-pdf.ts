@@ -1,6 +1,10 @@
 import * as alimentacao from "./alimentacao";
 import type { Filtros } from "./alimentacao";
 import {
+  agruparCustosExtrasPorData,
+  detalharCustosExtrasAlimentacao,
+} from "@shared/alimentacao-report";
+import {
   createPdf,
   dateBR,
   dateTimeBR,
@@ -22,7 +26,8 @@ export type TipoRelatorioAlimentacao =
   | "fornecedor"
   | "mensal"
   | "setor"
-  | "tipo";
+  | "tipo"
+  | "custos_extras";
 
 const configs = {
   funcionario: {
@@ -60,12 +65,22 @@ const configs = {
     key: (r: any) => r.tipo,
     mode: "total",
   },
+  custos_extras: {
+    titulo: "CUSTOS EXTRAS DOS GRUPOS",
+    rotulo: "DATA",
+    grupos: "GRUPOS COM CUSTO EXTRA",
+    key: (r: any) => r.dataRefeicao,
+    mode: "total",
+  },
 } as const;
 
 export function aggregateAlimentacaoPdfRows(
   rows: any[],
   type: TipoRelatorioAlimentacao
 ) {
+  if (type === "custos_extras") {
+    return agruparCustosExtrasPorData(detalharCustosExtrasAlimentacao(rows));
+  }
   const config = configs[type];
   const groups = new Map<
     string,
@@ -92,10 +107,12 @@ export async function buildAlimentacaoPdf(
     alimentacao.relatorio(filters),
     alimentacao.cadastros(),
   ]);
+  const extraCosts = detalharCustosExtrasAlimentacao(rows);
   const data = aggregateAlimentacaoPdfRows(rows, type);
-  const chartData = type === "mensal"
-    ? [...data].sort((a, b) => a.nome.localeCompare(b.nome))
-    : data;
+  const chartData =
+    type === "mensal"
+      ? [...data].sort((a, b) => a.nome.localeCompare(b.nome))
+      : data;
   const config = configs[type];
   const totalQuantity = data.reduce((sum, item) => sum + item.quantidade, 0);
   const totalValue = data.reduce((sum, item) => sum + item.total, 0);
@@ -137,7 +154,10 @@ export async function buildAlimentacaoPdf(
     content += "0.95 0.65 0.10 RG 50 740 m 545 740 l S\n";
     return content;
   };
-  const globalMax = Math.max(...chartData.map(item => Number(item[config.mode])), 1);
+  const globalMax = Math.max(
+    ...chartData.map(item => Number(item[config.mode])),
+    1
+  );
   const landscapeWidth = PDF_PAGE_HEIGHT;
   const landscapeHeight = PDF_PAGE_WIDTH;
   let chartContent = drawPageBackground(
@@ -248,53 +268,167 @@ export async function buildAlimentacaoPdf(
     height: landscapeHeight,
   });
 
-  const rowsPerPage = 24;
-  const tableChunks = data.length
-    ? Array.from({ length: Math.ceil(data.length / rowsPerPage) }, (_, index) =>
-        data.slice(index * rowsPerPage, index * rowsPerPage + rowsPerPage)
-      )
-    : [[]];
-  tableChunks.forEach((chunk, pageIndex) => {
-    let content = header(`DADOS - ${config.titulo}`);
-    content += drawRect(50, 700, 495, 20, "0.86 0.90 0.94");
-    content += drawText(config.rotulo, 56, 707, 7, true, "0 0.10 0.20");
-    content += drawText("QTD.", 392, 707, 7, true, "0 0.10 0.20");
-    content += drawText("TOTAL", 465, 707, 7, true, "0 0.10 0.20");
-    let y = 680;
-    chunk.forEach((item, index) => {
-      content += drawRect(
-        50,
-        y,
-        495,
-        20,
-        index % 2 ? "0.97 0.98 0.99" : "1 1 1",
-        "0.86 0.90 0.94"
-      );
-      content += drawText(String(item.nome).slice(0, 58), 56, y + 7, 7);
+  if (type === "custos_extras") {
+    const rowsPerPage = 6;
+    const detailChunks = extraCosts.length
+      ? Array.from(
+          { length: Math.ceil(extraCosts.length / rowsPerPage) },
+          (_, index) =>
+            extraCosts.slice(
+              index * rowsPerPage,
+              index * rowsPerPage + rowsPerPage
+            )
+        )
+      : [[]];
+    detailChunks.forEach((chunk, pageIndex) => {
+      let content = header("DETALHAMENTO - CUSTOS EXTRAS DOS GRUPOS");
+      if (!pageIndex) {
+        content += drawText(filterLineA, 50, 730, 6, false, "0.30 0.38 0.47");
+        content += drawText(filterLineB, 50, 721, 6, false, "0.30 0.38 0.47");
+      }
+      let y = 640;
+      if (!chunk.length) {
+        content += drawCenteredText(
+          "SEM CUSTOS EXTRAS PARA OS FILTROS SELECIONADOS",
+          620,
+          9,
+          false,
+          "0.38 0.45 0.54"
+        );
+      }
+      chunk.forEach((item, index) => {
+        content += drawRect(
+          50,
+          y,
+          495,
+          78,
+          index % 2 ? "0.97 0.98 0.99" : "1 1 1",
+          "0.78 0.84 0.90"
+        );
+        content += drawText(
+          `${dateBR(item.dataRefeicao)} | FORNECEDOR: ${item.fornecedor}`.slice(
+            0,
+            76
+          ),
+          57,
+          y + 64,
+          7,
+          true,
+          "0 0.10 0.20"
+        );
+        content += drawText(
+          money(item.valorExtra),
+          470,
+          y + 64,
+          8,
+          true,
+          "0.55 0.30 0"
+        );
+        content += drawText(
+          `NOTA: ${item.numeroNota} | TIPO: ${item.tipo} | GRUPO: ${item.id} | REFEIÇÕES: ${item.quantidadeRefeicoes}`.slice(
+            0,
+            92
+          ),
+          57,
+          y + 50,
+          6.5
+        );
+        content += drawText(
+          `FUNCIONÁRIOS: ${item.funcionarios.join(", ") || "Não informado"}`.slice(
+            0,
+            105
+          ),
+          57,
+          y + 37,
+          6
+        );
+        content += drawText(
+          `SETORES: ${item.setores.join(", ") || "Não informado"}`.slice(
+            0,
+            105
+          ),
+          57,
+          y + 25,
+          6
+        );
+        content += drawText(
+          `OBSERVAÇÃO: ${item.observacao}`.slice(0, 112),
+          57,
+          y + 12,
+          6
+        );
+        y -= 84;
+      });
       content += drawText(
-        item.quantidade.toLocaleString("pt-BR"),
-        392,
-        y + 7,
-        7
+        `TOTAL DE GRUPOS: ${extraCosts.length} | TOTAL DE CUSTOS EXTRAS: ${money(totalValue)}`,
+        50,
+        118,
+        7,
+        true,
+        "0 0.10 0.20"
       );
-      content += drawText(money(item.total), 465, y + 7, 7);
-      y -= 20;
+      content += drawText(
+        `EMITIDO EM ${dateTimeBR(new Date())}`,
+        50,
+        102,
+        6,
+        false,
+        "0.38 0.45 0.54"
+      );
+      content += drawPhysicalSignatureBlock(78);
+      pages.push({ content });
     });
-    if (!pageIndex) {
-      content += drawText(filterLineA, 50, 730, 6, false, "0.30 0.38 0.47");
-      content += drawText(filterLineB, 50, 721, 6, false, "0.30 0.38 0.47");
-    }
-    content += drawText(
-      `EMITIDO EM ${dateTimeBR(new Date())}`,
-      50,
-      180,
-      6,
-      false,
-      "0.38 0.45 0.54"
-    );
-    content += drawPhysicalSignatureBlock(147);
-    pages.push({ content });
-  });
+  } else {
+    const rowsPerPage = 24;
+    const tableChunks = data.length
+      ? Array.from(
+          { length: Math.ceil(data.length / rowsPerPage) },
+          (_, index) =>
+            data.slice(index * rowsPerPage, index * rowsPerPage + rowsPerPage)
+        )
+      : [[]];
+    tableChunks.forEach((chunk, pageIndex) => {
+      let content = header(`DADOS - ${config.titulo}`);
+      content += drawRect(50, 700, 495, 20, "0.86 0.90 0.94");
+      content += drawText(config.rotulo, 56, 707, 7, true, "0 0.10 0.20");
+      content += drawText("QTD.", 392, 707, 7, true, "0 0.10 0.20");
+      content += drawText("TOTAL", 465, 707, 7, true, "0 0.10 0.20");
+      let y = 680;
+      chunk.forEach((item, index) => {
+        content += drawRect(
+          50,
+          y,
+          495,
+          20,
+          index % 2 ? "0.97 0.98 0.99" : "1 1 1",
+          "0.86 0.90 0.94"
+        );
+        content += drawText(String(item.nome).slice(0, 58), 56, y + 7, 7);
+        content += drawText(
+          item.quantidade.toLocaleString("pt-BR"),
+          392,
+          y + 7,
+          7
+        );
+        content += drawText(money(item.total), 465, y + 7, 7);
+        y -= 20;
+      });
+      if (!pageIndex) {
+        content += drawText(filterLineA, 50, 730, 6, false, "0.30 0.38 0.47");
+        content += drawText(filterLineB, 50, 721, 6, false, "0.30 0.38 0.47");
+      }
+      content += drawText(
+        `EMITIDO EM ${dateTimeBR(new Date())}`,
+        50,
+        180,
+        6,
+        false,
+        "0.38 0.45 0.54"
+      );
+      content += drawPhysicalSignatureBlock(147);
+      pages.push({ content });
+    });
+  }
 
   return {
     filename: `relatorio-alimentacao-${type}-${new Date().toISOString().slice(0, 10)}.pdf`,

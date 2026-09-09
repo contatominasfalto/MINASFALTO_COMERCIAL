@@ -15,6 +15,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import {
+  agruparCustosExtrasPorData,
+  detalharCustosExtrasAlimentacao,
+} from "@shared/alimentacao-report";
+import {
   Area,
   AreaChart,
   Bar,
@@ -42,6 +46,13 @@ const dataBR = (value: unknown) => {
   const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
   return match ? `${match[3]}/${match[2]}/${match[1]}` : text;
 };
+const escapeHtml = (value: unknown) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 const gerarTokenIdempotencia = () => {
   const webCrypto = globalThis.crypto;
   if (typeof webCrypto?.randomUUID === "function") {
@@ -136,13 +147,11 @@ export default function Alimentacao() {
 
 function Painel({ data }: any) {
   const m = data?.metricas || {};
-  const evolucao = [...(data?.evolucao || [])]
-    .reverse()
-    .map((item: any) => ({
-      ...item,
-      total: Number(item.total || 0),
-      periodo: String(item.mes || "").replace(/^(\d{4})-(\d{2})$/, "$2/$1"),
-    }));
+  const evolucao = [...(data?.evolucao || [])].reverse().map((item: any) => ({
+    ...item,
+    total: Number(item.total || 0),
+    periodo: String(item.mes || "").replace(/^(\d{4})-(\d{2})$/, "$2/$1"),
+  }));
   const funcionarios = (data?.ranking || []).map((item: any) => ({
     ...item,
     total: Number(item.total || 0),
@@ -154,7 +163,9 @@ function Painel({ data }: any) {
   }));
   const cores = ["#d99b00", "#315f86", "#6f8fa9", "#e2b84e", "#56758f"];
   const vazio = (
-    <div className="dashboard-empty">Ainda não há dados para este indicador.</div>
+    <div className="dashboard-empty">
+      Ainda não há dados para este indicador.
+    </div>
   );
 
   return (
@@ -183,22 +194,56 @@ function Painel({ data }: any) {
           {evolucao.length ? (
             <div className="dashboard-chart dashboard-chart-large">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={evolucao} margin={{ top: 12, right: 18, left: 8, bottom: 4 }}>
+                <AreaChart
+                  data={evolucao}
+                  margin={{ top: 12, right: 18, left: 8, bottom: 4 }}
+                >
                   <defs>
-                    <linearGradient id="foodCostGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#d99b00" stopOpacity={0.42} />
-                      <stop offset="95%" stopColor="#d99b00" stopOpacity={0.04} />
+                    <linearGradient
+                      id="foodCostGradient"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="5%"
+                        stopColor="#d99b00"
+                        stopOpacity={0.42}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor="#d99b00"
+                        stopOpacity={0.04}
+                      />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#cbd8e4" />
                   <XAxis dataKey="periodo" tick={{ fontSize: 10 }} />
-                  <YAxis width={78} tick={{ fontSize: 10 }} tickFormatter={value => `R$ ${Number(value).toLocaleString("pt-BR")}`} />
-                  <Tooltip labelFormatter={label => `Período: ${label}`} formatter={(value: any) => [moeda(value), "Custo"]} />
-                  <Area type="monotone" dataKey="total" stroke="#c88900" strokeWidth={2.5} fill="url(#foodCostGradient)" />
+                  <YAxis
+                    width={78}
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={value =>
+                      `R$ ${Number(value).toLocaleString("pt-BR")}`
+                    }
+                  />
+                  <Tooltip
+                    labelFormatter={label => `Período: ${label}`}
+                    formatter={(value: any) => [moeda(value), "Custo"]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="total"
+                    stroke="#c88900"
+                    strokeWidth={2.5}
+                    fill="url(#foodCostGradient)"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-          ) : vazio}
+          ) : (
+            vazio
+          )}
         </article>
         <article className="dashboard-panel dashboard-suppliers">
           <h2>Participação por fornecedor</h2>
@@ -207,17 +252,32 @@ function Painel({ data }: any) {
             <div className="dashboard-chart dashboard-chart-large">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={fornecedores} dataKey="total" nameKey="nome" innerRadius="42%" outerRadius="70%" paddingAngle={2}>
+                  <Pie
+                    data={fornecedores}
+                    dataKey="total"
+                    nameKey="nome"
+                    innerRadius="42%"
+                    outerRadius="70%"
+                    paddingAngle={2}
+                  >
                     {fornecedores.map((item: any, index: number) => (
-                      <Cell key={item.nome} fill={cores[index % cores.length]} />
+                      <Cell
+                        key={item.nome}
+                        fill={cores[index % cores.length]}
+                      />
                     ))}
                   </Pie>
                   <Tooltip formatter={(value: any) => moeda(value)} />
-                  <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 10 }} />
+                  <Legend
+                    verticalAlign="bottom"
+                    wrapperStyle={{ fontSize: 10 }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-          ) : vazio}
+          ) : (
+            vazio
+          )}
         </article>
         <article className="dashboard-panel dashboard-employees">
           <h2>Funcionários com maior consumo acumulado</h2>
@@ -225,16 +285,39 @@ function Painel({ data }: any) {
           {funcionarios.length ? (
             <div className="dashboard-chart dashboard-chart-ranking">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={funcionarios} layout="vertical" margin={{ top: 4, right: 28, left: 28, bottom: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#cbd8e4" />
-                  <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={value => `R$ ${Number(value).toLocaleString("pt-BR")}`} />
-                  <YAxis type="category" dataKey="nome" width={145} tick={{ fontSize: 10 }} />
-                  <Tooltip formatter={(value: any) => [moeda(value), "Custo"]} />
+                <BarChart
+                  data={funcionarios}
+                  layout="vertical"
+                  margin={{ top: 4, right: 28, left: 28, bottom: 4 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    horizontal={false}
+                    stroke="#cbd8e4"
+                  />
+                  <XAxis
+                    type="number"
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={value =>
+                      `R$ ${Number(value).toLocaleString("pt-BR")}`
+                    }
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="nome"
+                    width={145}
+                    tick={{ fontSize: 10 }}
+                  />
+                  <Tooltip
+                    formatter={(value: any) => [moeda(value), "Custo"]}
+                  />
                   <Bar dataKey="total" fill="#315f86" radius={[0, 3, 3, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          ) : vazio}
+          ) : (
+            vazio
+          )}
         </article>
       </div>
     </section>
@@ -1110,9 +1193,22 @@ function Relatorios({ cad, rows, filtros, setFiltros }: any) {
       chave: row => row.tipo,
       modo: "total",
     },
+    custos_extras: {
+      titulo: "Custos extras dos grupos",
+      rotulo: "Data",
+      chave: row => row.dataRefeicao,
+      modo: "total",
+    },
   };
   const config = configuracoes[tipoRelatorio];
+  const custosExtrasDetalhados = useMemo(
+    () => detalharCustosExtrasAlimentacao(rows),
+    [rows]
+  );
   const dados = useMemo(() => {
+    if (tipoRelatorio === "custos_extras") {
+      return agruparCustosExtrasPorData(custosExtrasDetalhados);
+    }
     const grupos = new Map<
       string,
       { nome: string; quantidade: number; total: number }
@@ -1128,11 +1224,12 @@ function Relatorios({ cad, rows, filtros, setFiltros }: any) {
     return tipoRelatorio === "mensal"
       ? agrupados.sort((a, b) => b.nome.localeCompare(a.nome))
       : agrupados.sort((a, b) => b[config.modo] - a[config.modo]);
-  }, [rows, tipoRelatorio]);
+  }, [rows, tipoRelatorio, custosExtrasDetalhados]);
   const dadosGrafico = useMemo(
-    () => tipoRelatorio === "mensal"
-      ? [...dados].sort((a, b) => a.nome.localeCompare(b.nome))
-      : dados,
+    () =>
+      tipoRelatorio === "mensal"
+        ? [...dados].sort((a, b) => a.nome.localeCompare(b.nome))
+        : dados,
     [dados, tipoRelatorio]
   );
   const totalQuantidade = useMemo(
@@ -1142,6 +1239,10 @@ function Relatorios({ cad, rows, filtros, setFiltros }: any) {
   const totalValor = useMemo(
     () => dados.reduce((s, x) => s + x.total, 0),
     [dados]
+  );
+  const totalFornecedoresCustosExtras = useMemo(
+    () => new Set(custosExtrasDetalhados.map(item => item.fornecedor)).size,
+    [custosExtrasDetalhados]
   );
   const aplicarFiltros = (event: React.FormEvent) => {
     event.preventDefault();
@@ -1160,14 +1261,30 @@ function Relatorios({ cad, rows, filtros, setFiltros }: any) {
   const nomeFiltro = (lista: any[], id: unknown) =>
     lista.find(x => x.id === Number(id))?.nome || "Todos";
   const resumoFiltros = `Período: ${filtros.inicio || "início"} até ${filtros.fim || "hoje"} | Fornecedor: ${nomeFiltro(cad?.fornecedores || [], filtros.fornecedorId)} | Funcionário: ${nomeFiltro(cad?.funcionarios || [], filtros.funcionarioId)} | Setor: ${filtros.setor || "Todos"} | Tipo: ${filtros.tipo || "Todos"}`;
-  const tabelaHtml = dados
-    .map(
-      x =>
-        `<tr><td>${x.nome}</td><td>${x.quantidade}</td><td>${x.total.toFixed(2)}</td></tr>`
-    )
-    .join("");
+  const tabelaHtml =
+    tipoRelatorio === "custos_extras"
+      ? custosExtrasDetalhados
+          .map(
+            item =>
+              `<tr><td>${escapeHtml(dataBR(item.dataRefeicao))}</td><td>${escapeHtml(item.fornecedor)}</td><td>${escapeHtml(item.numeroNota)}</td><td>${escapeHtml(item.tipo)}</td><td>${item.quantidadeRefeicoes}</td><td>${escapeHtml(item.funcionarios.join(", "))}</td><td>${escapeHtml(item.setores.join(", "))}</td><td>${escapeHtml(item.observacao)}</td><td>${item.valorExtra.toFixed(2)}</td></tr>`
+          )
+          .join("")
+      : dados
+          .map(
+            x =>
+              `<tr><td>${escapeHtml(x.nome)}</td><td>${x.quantidade}</td><td>${x.total.toFixed(2)}</td></tr>`
+          )
+          .join("");
   const exportar = () => {
-    const html = `<meta charset="utf-8"><h2>${config.titulo}</h2><p>${resumoFiltros}</p><table><tr><th>${config.rotulo}</th><th>Quantidade</th><th>Total</th></tr>${tabelaHtml}<tr><th>Total geral</th><th>${totalQuantidade}</th><th>${totalValor.toFixed(2)}</th></tr></table>`;
+    const cabecalho =
+      tipoRelatorio === "custos_extras"
+        ? "<tr><th>Data</th><th>Fornecedor</th><th>Número da nota</th><th>Tipo</th><th>Refeições</th><th>Funcionários</th><th>Setores</th><th>Observação</th><th>Custo extra</th></tr>"
+        : `<tr><th>${escapeHtml(config.rotulo)}</th><th>Quantidade</th><th>Total</th></tr>`;
+    const rodape =
+      tipoRelatorio === "custos_extras"
+        ? `<tr><th colspan="8">Total geral (${custosExtrasDetalhados.length} grupos)</th><th>${totalValor.toFixed(2)}</th></tr>`
+        : `<tr><th>Total geral</th><th>${totalQuantidade}</th><th>${totalValor.toFixed(2)}</th></tr>`;
+    const html = `<meta charset="utf-8"><h2>${escapeHtml(config.titulo)}</h2><p>${escapeHtml(resumoFiltros)}</p><table>${cabecalho}${tabelaHtml}${rodape}</table>`;
     const url = URL.createObjectURL(
       new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8" })
     );
@@ -1191,7 +1308,8 @@ function Relatorios({ cad, rows, filtros, setFiltros }: any) {
           | "fornecedor"
           | "mensal"
           | "setor"
-          | "tipo",
+          | "tipo"
+          | "custos_extras",
       },
       {
         onSuccess: result => {
@@ -1231,6 +1349,7 @@ function Relatorios({ cad, rows, filtros, setFiltros }: any) {
             <option value="mensal">Custo mensal</option>
             <option value="setor">Custo por setor</option>
             <option value="tipo">Custo por tipo</option>
+            <option value="custos_extras">Custos extras dos grupos</option>
           </select>
         </label>
         <label>
@@ -1338,16 +1457,32 @@ function Relatorios({ cad, rows, filtros, setFiltros }: any) {
       </form>
       <div className="report-metrics">
         <article>
-          <small>Total de alimentações</small>
+          <small>
+            {tipoRelatorio === "custos_extras"
+              ? "Grupos com custo extra"
+              : "Total de alimentações"}
+          </small>
           <strong>{totalQuantidade.toLocaleString("pt-BR")}</strong>
         </article>
         <article>
-          <small>Valor total</small>
+          <small>
+            {tipoRelatorio === "custos_extras"
+              ? "Total de custos extras"
+              : "Valor total"}
+          </small>
           <strong>{moeda(totalValor)}</strong>
         </article>
         <article>
-          <small>{config.rotulo}s listados</small>
-          <strong>{dados.length}</strong>
+          <small>
+            {tipoRelatorio === "custos_extras"
+              ? "Fornecedores listados"
+              : `${config.rotulo}s listados`}
+          </small>
+          <strong>
+            {tipoRelatorio === "custos_extras"
+              ? totalFornecedoresCustosExtras
+              : dados.length}
+          </strong>
         </article>
       </div>
       <section className="report-chart">
@@ -1404,16 +1539,55 @@ function Relatorios({ cad, rows, filtros, setFiltros }: any) {
       <section className="report-data">
         <h2>Dados do relatório</h2>
         <div className="table-wrap">
-          <table>
+          <table
+            className={
+              tipoRelatorio === "custos_extras"
+                ? "extra-cost-report-table"
+                : undefined
+            }
+          >
             <thead>
-              <tr>
-                <th>{config.rotulo}</th>
-                <th>Qtd.</th>
-                <th>Total</th>
-              </tr>
+              {tipoRelatorio === "custos_extras" ? (
+                <tr>
+                  <th>Data</th>
+                  <th>Fornecedor</th>
+                  <th>Nº nota</th>
+                  <th>Tipo</th>
+                  <th>Refeições</th>
+                  <th>Funcionários</th>
+                  <th>Setores</th>
+                  <th>Observação</th>
+                  <th>Custo extra</th>
+                </tr>
+              ) : (
+                <tr>
+                  <th>{config.rotulo}</th>
+                  <th>Qtd.</th>
+                  <th>Total</th>
+                </tr>
+              )}
             </thead>
             <tbody>
-              {dados.length ? (
+              {tipoRelatorio === "custos_extras" &&
+              custosExtrasDetalhados.length ? (
+                custosExtrasDetalhados.map(item => (
+                  <tr key={item.id}>
+                    <td>{dataBR(item.dataRefeicao)}</td>
+                    <td>{item.fornecedor}</td>
+                    <td>{item.numeroNota}</td>
+                    <td>{item.tipo}</td>
+                    <td>{item.quantidadeRefeicoes.toLocaleString("pt-BR")}</td>
+                    <td className="report-long-text">
+                      {item.funcionarios.join(", ") || "Não informado"}
+                    </td>
+                    <td className="report-long-text">
+                      {item.setores.join(", ") || "Não informado"}
+                    </td>
+                    <td className="report-long-text">{item.observacao}</td>
+                    <td>{moeda(item.valorExtra)}</td>
+                  </tr>
+                ))
+              ) : tipoRelatorio !== "custos_extras" && dados.length ? (
                 dados.map(x => (
                   <tr key={x.nome}>
                     <td>{x.nome}</td>
@@ -1423,7 +1597,9 @@ function Relatorios({ cad, rows, filtros, setFiltros }: any) {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={3}>Sem dados no período selecionado.</td>
+                  <td colSpan={tipoRelatorio === "custos_extras" ? 9 : 3}>
+                    Sem dados no período selecionado.
+                  </td>
                 </tr>
               )}
             </tbody>

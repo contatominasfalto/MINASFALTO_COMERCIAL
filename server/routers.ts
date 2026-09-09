@@ -1605,6 +1605,7 @@ export const appRouter = router({
             "mensal",
             "setor",
             "tipo",
+            "custos_extras",
           ]),
         })
       )

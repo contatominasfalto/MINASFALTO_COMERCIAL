@@ -10,8 +10,8 @@
 - [ ] totais do painel conferem com relatório;
 - [ ] filtros combinados e período inclusivo;
 - [ ] Excel e PDF contêm filtros, totais e linhas exibidas;
+- [ ] relatório de custos extras respeita todos os filtros, não duplica grupos e confere nota, data, tipo, fornecedor, observação e valor;
 - [ ] comparação visual nas resoluções 1366×768 e 1920×1080;
 - [ ] regressão de Comercial, Estoque, Custos e Licitações.
 
 As capturas e a reconciliação com dados reais devem ser anexadas durante a homologação, pois dependem do banco autorizado e do ambiente implantado.
-

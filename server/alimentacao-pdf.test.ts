@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { aggregateAlimentacaoPdfRows } from "./alimentacao-pdf";
+import { detalharCustosExtrasAlimentacao } from "../shared/alimentacao-report";
 import {
   createPdf,
   drawPhysicalSignatureBlock,
@@ -51,6 +52,63 @@ describe("PDF do relatorio de alimentacao", () => {
       { nome: "2026-08", quantidade: 1, total: 25 },
       { nome: "2026-07", quantidade: 3, total: 60 },
     ]);
+  });
+
+  it("detalha cada custo extra de grupo uma unica vez", () => {
+    const detail = detalharCustosExtrasAlimentacao([
+      {
+        id: 10,
+        dataRefeicao: "2026-08-10",
+        fornecedor: "JOELMA",
+        numeroNota: "NF-123",
+        tipo: "almoco",
+        observacao: "Entrega especial",
+        valorExtra: 35.5,
+        quantidade: 2,
+        funcionario: "ANA",
+        setor: "USINA",
+      },
+      {
+        id: 10,
+        dataRefeicao: "2026-08-10",
+        fornecedor: "JOELMA",
+        numeroNota: "NF-123",
+        tipo: "almoco",
+        observacao: "Entrega especial",
+        valorExtra: 35.5,
+        quantidade: 1,
+        funcionario: "BIA",
+        setor: "OBRAS",
+      },
+      { id: 11, valorExtra: 0, funcionario: "CARLA" },
+    ]);
+
+    expect(detail).toEqual([
+      {
+        id: 10,
+        dataRefeicao: "2026-08-10",
+        fornecedor: "JOELMA",
+        numeroNota: "NF-123",
+        tipo: "almoco",
+        observacao: "Entrega especial",
+        valorExtra: 35.5,
+        quantidadeRefeicoes: 3,
+        funcionarios: ["ANA", "BIA"],
+        setores: ["USINA", "OBRAS"],
+      },
+    ]);
+  });
+
+  it("agrupa custos extras por data para o grafico", () => {
+    expect(
+      aggregateAlimentacaoPdfRows(
+        [
+          { id: 1, dataRefeicao: "2026-08-01", valorExtra: 10, quantidade: 1 },
+          { id: 2, dataRefeicao: "2026-08-01", valorExtra: 15, quantidade: 1 },
+        ],
+        "custos_extras"
+      )
+    ).toEqual([{ nome: "2026-08-01", quantidade: 2, total: 25 }]);
   });
 
   it("combina grafico paisagem e dados em formato vertical", () => {

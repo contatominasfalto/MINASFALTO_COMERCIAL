@@ -369,7 +369,7 @@ export async function relatorio(f: Filtros = {}) {
   const pool = await getMysqlPool();
   const w = whereRelatorio(f);
   const [rows] = await pool.query(
-    `SELECT l.id,DATE_FORMAT(l.data_refeicao,'%Y-%m-%d') dataRefeicao,l.tipo,l.numero_nota numeroNota,l.valor_extra valorExtra,
+    `SELECT l.id,DATE_FORMAT(l.data_refeicao,'%Y-%m-%d') dataRefeicao,l.tipo,l.numero_nota numeroNota,l.valor_extra valorExtra,l.observacao,
     fn.nome funcionario,fn.setor,fo.nome fornecedor,i.quantidade,i.valor_unitario valorUnitario,i.valor_total valorItens,
     (i.valor_total + CASE WHEN i.id=(SELECT MIN(i2.id) FROM alimentacao_lancamento_itens i2 WHERE i2.lancamento_id=l.id) THEN l.valor_extra ELSE 0 END) valorTotal
     FROM alimentacao_lancamentos l JOIN alimentacao_lancamento_itens i ON i.lancamento_id=l.id JOIN alimentacao_funcionarios fn ON fn.id=i.funcionario_id

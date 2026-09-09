@@ -664,6 +664,18 @@
 .report-data table {
   min-width: 640px;
 }
+.report-data .extra-cost-report-table {
+  min-width: 1480px;
+}
+.extra-cost-report-table th,
+.extra-cost-report-table td {
+  vertical-align: top;
+}
+.extra-cost-report-table .report-long-text {
+  min-width: 220px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 @media (max-width: 1050px) {
   .report-page .report-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
