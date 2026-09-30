@@ -14,6 +14,18 @@ O cadastro e a edição permitem selecionar de 1 a 5 itens, cada um em um painel
 
 ## Atualização no servidor Windows
 
+### Correção direta de `Unknown column 'itensJson'`
+
+Se o código já foi atualizado, execute na pasta da aplicação:
+
+```powershell
+node scripts/backup-e-corrigir-itens.mjs --apply
+```
+
+Esse comando usa o `.env`, localiza a ferramenta de dump, cria um backup completo com nome exclusivo em `C:\Backups\Minasfalto`, verifica o código de saída, o tamanho e o marcador de conclusão do dump e só então acrescenta a coluna pelo script de migração. A senha não é exibida nem passada nos argumentos do processo. Qualquer falha no backup impede a migração. Sem `--apply`, somente verifica o ambiente. `MINASFALTO_BACKUP_DIR` permite escolher outro diretório. Tabelas fora do InnoDB interrompem o procedimento para exigir backup apropriado em manutenção.
+
+A verificação automática do arquivo não equivale a um teste de restauração em produção. O fluxo foi validado com restauração em uma base local descartável. O backup e um resumo da verificação permanecem no diretório indicado. Não é necessário reiniciar a aplicação para a inclusão dessa coluna; após a conclusão, salvar e reabrir a licitação para validar.
+
 A publicação no GitHub não atualiza o servidor. Execute os passos abaixo na pasta real da aplicação no servidor, em janela de manutenção. Preserve o `.env` existente.
 
 ### 1. Conferir a instalação
