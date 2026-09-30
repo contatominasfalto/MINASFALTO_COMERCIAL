@@ -1,4 +1,6 @@
 import { trpc } from "@/lib/trpc";
+import LicitacaoItensEditor from "@/components/LicitacaoItensEditor";
+import { lerLicitacaoItens, licitacaoItensSchema, novoLicitacaoItem, valorTotalItem, type LicitacaoItem } from "@shared/licitacao-itens";
 import { withAppBase } from "@/lib/app-base";
 import SapDoubleConfirmDialog from "@/components/SapDoubleConfirmDialog";
 import { usePermissions } from "@/_core/hooks/usePermissions";
@@ -167,6 +169,7 @@ function normalizeExternalUrl(value: unknown) {
 }
 
 function getLicitacaoFilterValue(licitacao: any, key: string) {
+  if (["valorUnit", "lanceLimite", "valorAdjudicado"].includes(key) && licitacao.itensJson && licitacao[key] == null) return "POR ITEM";
   if (key === "data") return formatDateBR(licitacao.data);
   if (key === "status") return getLicitacaoStatusDisplay(licitacao);
   if (key === "plataformaNome") return `${licitacao.plataformaNome || ""} ${licitacao.plataformaLink || ""}`;
@@ -442,6 +445,10 @@ export default function Licitacoes() {
   const [deleteDocumentoTarget, setDeleteDocumentoTarget] = useState<{ name: string; type: "folder" | "file" } | null>(null);
   const documentosFileInput = useRef<HTMLInputElement | null>(null);
   const [licitacaoForm, setLicitacaoForm] = useState<any>(emptyLicitacao);
+  const [itensLicitacao, setItensLicitacao] = useState<LicitacaoItem[]>([novoLicitacaoItem(1)]);
+  const [itensOriginais, setItensOriginais] = useState("");
+  const itensAlterados = JSON.stringify(itensLicitacao) !== itensOriginais;
+  const totalItens = itensLicitacao.reduce((total, item) => total + Math.round(valorTotalItem(item) * 100), 0) / 100;
   const [cidadeMode, setCidadeMode] = useState("lista");
   const [simpleEdit, setSimpleEdit] = useState<any>(null);
   const [simpleForm, setSimpleForm] = useState<any>({ nome: "", link: "" });
@@ -680,7 +687,9 @@ export default function Licitacoes() {
     onError: (error) => toast.error(`Erro ao desvincular pedido: ${error.message}`),
   });
 
-  const statuses = [...defaultStatus, ...(opcoes.data?.status || []).map((item: any) => normalizeLicitacaoStatusLabel(item.nome))]
+  const statuses = [...defaultStatus, ...(opcoes.data?.status || []).map((item: any) => item.nome),
+    ...(licitacaoForm.status && licitacaoForm.status !== "Outro" ? [licitacaoForm.status] : [])]
+    .map(normalizeLicitacaoStatusLabel)
     .filter((value, index, arr) => value && arr.indexOf(value) === index);
   const vendedores = opcoes.data?.vendedores || [];
   const plataformas = opcoes.data?.plataformas || [];
@@ -839,6 +848,14 @@ export default function Licitacoes() {
         return;
       }
     }
+    try {
+      const itens = registroCompleto ? lerLicitacaoItens(registroCompleto) : [novoLicitacaoItem(1)];
+      setItensLicitacao(itens);
+      setItensOriginais(JSON.stringify(itens));
+    } catch {
+      toast.error("Não foi possível ler os itens desta licitação. Nenhum dado foi alterado.");
+      return;
+    }
     setEditingLicitacao(registroCompleto);
     setLicitacaoForm(registroCompleto ? {
       ...emptyLicitacao,
@@ -853,8 +870,15 @@ export default function Licitacoes() {
   };
 
   const submitLicitacao = () => {
+    const gravarItens = !editingLicitacao || itensAlterados;
+    const validacao = licitacaoItensSchema.safeParse(itensLicitacao);
+    if (gravarItens && !validacao.success) {
+      toast.error(`Verifique os itens: ${validacao.error.issues[0].message}`);
+      return;
+    }
     const payload = {
       ...licitacaoForm,
+      itens: gravarItens && validacao.success ? validacao.data : undefined,
       orgao: normalizeText(licitacaoForm.orgao),
       cidade: normalizeText(licitacaoForm.cidade),
       status: normalizeLicitacaoStatusLabel(licitacaoForm.status),
@@ -1275,9 +1299,9 @@ export default function Licitacoes() {
                   <td className="licitacao-col-item">{normalizeText(licitacao.item)}</td>
                   <td className="licitacao-col-tipo">{normalizeText(licitacao.tipo)}</td>
                   <td className="num licitacao-col-qtdeSc">{formatDecimal(licitacao.qtdeSc)}</td>
-                  <td className="num licitacao-col-valorUnit">{formatCurrency(licitacao.valorUnit)}</td>
-                  <td className="num licitacao-col-lanceLimite">{formatCurrency(licitacao.lanceLimite)}</td>
-                  <td className="num licitacao-col-valorAdjudicado">{formatCurrency(licitacao.valorAdjudicado)}</td>
+                  <td className="num licitacao-col-valorUnit">{getLicitacaoFilterValue(licitacao, "valorUnit")}</td>
+                  <td className="num licitacao-col-lanceLimite">{getLicitacaoFilterValue(licitacao, "lanceLimite")}</td>
+                  <td className="num licitacao-col-valorAdjudicado">{getLicitacaoFilterValue(licitacao, "valorAdjudicado")}</td>
                   <td className="num licitacao-col-qtdeTn">{formatDecimal(licitacao.qtdeTn)}</td>
                   <td className="num licitacao-col-valorInicialContrato">{formatCurrency(licitacao.valorInicialContrato)}</td>
                   <td className="num licitacao-col-kmDistancia">{formatDecimal(licitacao.kmDistancia, 0)}</td>
@@ -1397,7 +1421,7 @@ export default function Licitacoes() {
 
       {modal === "licitacao" && (
         <SimpleModal title={editingLicitacao ? "Editar Licitação" : "Cadastro Licitação"} onClose={() => setModal(null)} wide>
-          <section className="licitacao-form-grid">
+          <section className="licitacao-form-grid licitacao-cadastro-grid">
             <TextField label="Data" type="date" value={licitacaoForm.data} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, data: value }))} />
             <TextField label="Órgão" value={licitacaoForm.orgao} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, orgao: normalizeText(value) }))} />
             <SelectField label="Cidade" value={cidadeMode === "outra" ? "Outra" : licitacaoForm.cidade} onChange={(value) => { setCidadeMode(value === "Outra" ? "outra" : "lista"); setLicitacaoForm((current: any) => ({ ...current, cidade: value === "Outra" ? "" : value })); }}>
@@ -1405,7 +1429,7 @@ export default function Licitacoes() {
               {cidadesMg.map((cidade) => <option key={cidade} value={cidade}>{normalizeText(cidade)}</option>)}
             </SelectField>
             {cidadeMode === "outra" && <TextField label="Outra cidade" value={licitacaoForm.cidade} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, cidade: normalizeText(value) }))} />}
-            <SelectField label="Status" value={licitacaoForm.status} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, status: value }))}>
+            <SelectField label="Status" value={licitacaoForm.status === "Outro" ? "Outro" : normalizeLicitacaoStatusLabel(licitacaoForm.status)} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, status: value }))}>
               {statuses.map((status) => <option key={status} value={status}>{normalizeText(status)}</option>)}
               <option value="Outro">OUTRO</option>
             </SelectField>
@@ -1421,14 +1445,6 @@ export default function Licitacoes() {
               ))}
             </SelectField>
             <TextField label="Hora Início da Disputa" type="time" value={licitacaoForm.horaInicioDisputa} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, horaInicioDisputa: value }))} />
-            <TextField label="Item" value={licitacaoForm.item} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, item: normalizeText(value) }))} />
-            <TextField label="Tipo" value={licitacaoForm.tipo} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, tipo: normalizeText(value) }))} />
-            <TextField label="Qtde SC" type="number" value={licitacaoForm.qtdeSc} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, qtdeSc: Number(value) }))} />
-            <TextField label="Valor Unit" type="number" value={licitacaoForm.valorUnit} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, valorUnit: Number(value) }))} />
-            <TextField label="Lance Limite" type="number" value={licitacaoForm.lanceLimite} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, lanceLimite: Number(value) }))} />
-            <TextField label="Valor Adjudicado" type="number" value={licitacaoForm.valorAdjudicado} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, valorAdjudicado: Number(value) }))} />
-            <TextField label="Qtde TN" type="number" value={licitacaoForm.qtdeTn} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, qtdeTn: Number(value) }))} />
-            <TextField label="Valor Inicial Contrato" type="number" value={licitacaoForm.valorInicialContrato} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, valorInicialContrato: Number(value) }))} />
             <TextField label="KM distância" type="number" value={licitacaoForm.kmDistancia} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, kmDistancia: Number(value) }))} />
             <label className="licitacao-field licitacao-readonly"><span>Potencial</span><strong>{getPotencial(licitacaoForm.kmDistancia)}</strong></label>
             <SelectField label="Região" value={licitacaoForm.regiao} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, regiao: value }))}>
@@ -1450,6 +1466,13 @@ export default function Licitacoes() {
               />
               <i aria-hidden="true"><b /></i>
             </label>
+            <LicitacaoItensEditor itens={itensLicitacao} onChange={setItensLicitacao}
+              valorContrato={editingLicitacao && !itensAlterados ? numberValue(licitacaoForm.valorInicialContrato) : totalItens}
+              historico={editingLicitacao && !editingLicitacao.itensJson
+                ? itensAlterados
+                  ? "Itens alterados: ao salvar, o valor inicial do contrato será atualizado para a soma dos itens."
+                  : `Cadastro anterior — item: ${editingLicitacao.item || "não informado"}. Valores originais preservados. Alterar os itens recalcula o contrato; editar os demais campos mantém o valor histórico.`
+                : undefined} />
             {canViewDocuments && <label className="licitacao-field licitacao-documentos-field">
               <span>Pasta de documentos da licitação</span>
               <span className="licitacao-documentos-controls">

@@ -371,6 +371,7 @@ export type LicitacaoVendedor = typeof licitacaoVendedores.$inferSelect;
 export type InsertLicitacaoVendedor = typeof licitacaoVendedores.$inferInsert;
 
 export const licitacoes = mysqlTable("licitacoes", {
+  itensJson: text("itensJson"),
   id: int("id").autoincrement().primaryKey(),
   data: varchar("data", { length: 10 }),
   orgao: varchar("orgao", { length: 255 }).notNull(),

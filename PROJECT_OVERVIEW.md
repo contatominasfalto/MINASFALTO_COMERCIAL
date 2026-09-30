@@ -72,6 +72,8 @@ Dependências centrais: React/Vite, Express/tRPC, Drizzle/MySQL2/pg, Zod, TanSta
 
 ## Banco de dados
 
+Licitações permitem de 1 a 5 itens em `licitacoes.itensJson`, mantendo os campos agregados para listagem e relatórios. A migração é aditiva e não converte cadastros antigos. O guia [Licitações por item: publicação e rollback](docs/LICITACOES_ITENS_PUBLICACAO.md) detalha os cálculos, a preservação dos registros históricos e o procedimento no servidor local.
+
 O schema declara 30 tabelas MySQL, agrupadas em acesso/auditoria (`users`, permissões e logs), comercial (pedidos, atividades, contatos, histórico e sincronização), obras (financeiro, despesas, receitas, custos e alocações), licitações (cadastros, processos, atas, adesões e vínculos CRTI), estoque e alimentação. Compras é criada pela migração `0026_controle_compras.sql` e scripts próprios.
 
 Migrações ficam em `drizzle/`. Faça backup, valide em homologação e não altere migração já aplicada sem estratégia explícita.

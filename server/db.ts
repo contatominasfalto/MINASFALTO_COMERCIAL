@@ -1,3 +1,4 @@
+import { resumirLicitacaoItens, type LicitacaoItem } from "../shared/licitacao-itens";
 import { eq, and, or, like, desc, asc, isNull, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
@@ -2777,6 +2778,7 @@ export async function deleteLicitacaoVendedor(id: number) {
 }
 
 export type LicitacaoInput = {
+  itens?: LicitacaoItem[];
   data?: string;
   orgao: string;
   cidade?: string;
@@ -3008,6 +3010,8 @@ export async function listLicitacaoReportDetails(filters: { inicio?: string; fim
 }
 
 export async function createLicitacao(data: LicitacaoInput & { criadoPor?: string }) {
+  const resumo = data.itens ? resumirLicitacaoItens(data.itens) : null;
+  if (resumo) data = { ...data, ...resumo } as typeof data;
   const pool = await ensureMysqlPool();
   await ensureLicitacaoPregaoAlertSchema(pool);
   const status = normalizeLicitacaoStatus(data.status);
@@ -3016,8 +3020,8 @@ export async function createLicitacao(data: LicitacaoInput & { criadoPor?: strin
     `INSERT INTO licitacoes (
       data, orgao, cidade, status, plataformaId, horaInicioDisputa, alertaPregao, observacoesGerais, pastaDocumentos, item, tipo, qtdeSc, valorUnit,
       lanceLimite, valorAdjudicado, qtdeTn, valorInicialContrato, kmDistancia,
-      potencialCliente, regiao, statusContrato, ataVendedorId, ataVendedorNome, criadoPor
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      potencialCliente, regiao, statusContrato, ataVendedorId, ataVendedorNome, criadoPor, itensJson
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.data || "",
       data.orgao.trim(),
@@ -3031,9 +3035,9 @@ export async function createLicitacao(data: LicitacaoInput & { criadoPor?: strin
       data.item || "",
       data.tipo || "",
       normalizeMoney(data.qtdeSc),
-      normalizeMoney(data.valorUnit),
-      normalizeMoney(data.lanceLimite),
-      normalizeMoney(data.valorAdjudicado),
+      resumo ? resumo.valorUnit : normalizeMoney(data.valorUnit),
+      resumo ? resumo.lanceLimite : normalizeMoney(data.lanceLimite),
+      resumo ? resumo.valorAdjudicado : normalizeMoney(data.valorAdjudicado),
       normalizeMoney(data.qtdeTn),
       normalizeMoney(data.valorInicialContrato),
       normalizeMoney(data.kmDistancia),
@@ -3043,20 +3047,23 @@ export async function createLicitacao(data: LicitacaoInput & { criadoPor?: strin
       data.ataVendedorId || null,
       data.ataVendedorNome || "NA",
       data.criadoPor || "Sistema",
+      resumo?.itensJson ?? null,
     ],
   );
   return { id: result.insertId };
 }
 
 export async function updateLicitacao(id: number, data: LicitacaoInput) {
+  // Sem edição explícita dos itens, preservar todos os valores históricos.
+  const resumo = data.itens ? resumirLicitacaoItens(data.itens) : null;
   const pool = await ensureMysqlPool();
   await ensureLicitacaoPregaoAlertSchema(pool);
   const status = normalizeLicitacaoStatus(data.status);
   await pool.query(
     `UPDATE licitacoes SET
-      data = ?, orgao = ?, cidade = ?, status = ?, plataformaId = ?, horaInicioDisputa = ?, alertaPregao = ?, observacoesGerais = ?, pastaDocumentos = ?, item = ?, tipo = ?,
-      qtdeSc = ?, valorUnit = ?, lanceLimite = ?, valorAdjudicado = ?, qtdeTn = ?,
-      valorInicialContrato = ?, kmDistancia = ?, potencialCliente = ?, regiao = ?,
+      data = ?, orgao = ?, cidade = ?, status = ?, plataformaId = ?, horaInicioDisputa = ?, alertaPregao = ?, observacoesGerais = ?, pastaDocumentos = ?,
+      ${resumo ? "item = ?, tipo = ?, qtdeSc = ?, valorUnit = ?, lanceLimite = ?, valorAdjudicado = ?, qtdeTn = ?, valorInicialContrato = ?, itensJson = ?," : ""}
+      kmDistancia = ?, potencialCliente = ?, regiao = ?,
       statusContrato = ?, ataVendedorId = ?, ataVendedorNome = ?
     WHERE id = ?`,
     [
@@ -3069,14 +3076,9 @@ export async function updateLicitacao(id: number, data: LicitacaoInput) {
       data.alertaPregao !== false,
       data.observacoesGerais || "",
       data.pastaDocumentos || null,
-      data.item || "",
-      data.tipo || "",
-      normalizeMoney(data.qtdeSc),
-      normalizeMoney(data.valorUnit),
-      normalizeMoney(data.lanceLimite),
-      normalizeMoney(data.valorAdjudicado),
-      normalizeMoney(data.qtdeTn),
-      normalizeMoney(data.valorInicialContrato),
+      ...(resumo ? [resumo.item, resumo.tipo, resumo.qtdeSc, resumo.valorUnit,
+        resumo.lanceLimite, resumo.valorAdjudicado, resumo.qtdeTn,
+        resumo.valorInicialContrato, resumo.itensJson] : []),
       normalizeMoney(data.kmDistancia),
       getLicitacaoPotencial(data.kmDistancia),
       data.regiao || "",

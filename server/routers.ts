@@ -1,3 +1,4 @@
+import { licitacaoItensSchema } from "../shared/licitacao-itens";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -378,6 +379,7 @@ const licitacaoBooleanSchema = z.preprocess(value => {
 }, z.boolean());
 
 export const licitacaoSchema = z.object({
+  itens: licitacaoItensSchema.optional(),
   data: z.string().max(10).optional(),
   orgao: z.string().min(1).max(255),
   cidade: z.string().max(120).optional(),

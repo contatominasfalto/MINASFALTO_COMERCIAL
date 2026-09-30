@@ -192,6 +192,7 @@ const REQUIRED_COLUMNS = {
   licitacao_plataformas: ["id", "nome", "link", "criadoEm", "atualizadoEm"],
   licitacao_vendedores: ["id", "nome", "criadoEm", "atualizadoEm"],
   licitacoes: [
+    "itensJson",
     "id",
     "data",
     "orgao",
