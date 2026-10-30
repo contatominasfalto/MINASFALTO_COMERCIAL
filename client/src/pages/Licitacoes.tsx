@@ -1447,9 +1447,9 @@ export default function Licitacoes() {
             <TextField label="Hora Início da Disputa" type="time" value={licitacaoForm.horaInicioDisputa} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, horaInicioDisputa: value }))} />
             <TextField label="KM distância" type="number" value={licitacaoForm.kmDistancia} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, kmDistancia: Number(value) }))} />
             <label className="licitacao-field licitacao-readonly"><span>Potencial</span><strong>{getPotencial(licitacaoForm.kmDistancia)}</strong></label>
-            <SelectField label="Região" value={licitacaoForm.regiao} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, regiao: value }))}>
+            <SelectField label="Região" value={normalizeText(licitacaoForm.regiao)} onChange={(value) => setLicitacaoForm((current: any) => ({ ...current, regiao: value }))}>
               <option value="">Selecione</option>
-              {regioesMg.map((regiao) => <option key={regiao} value={regiao}>{normalizeText(regiao)}</option>)}
+              {regioesMg.map((regiao) => <option key={regiao} value={normalizeText(regiao)}>{normalizeText(regiao)}</option>)}
             </SelectField>
             <label className="licitacao-alert-toggle">
               <span className="licitacao-alert-toggle-text">
