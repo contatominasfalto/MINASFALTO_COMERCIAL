@@ -3389,6 +3389,13 @@ table :is(th, td) :where(a, button, input, select, textarea, label, span, strong
 }
 
 .licitacao-itens-total { grid-column: span 2; }
+.licitacao-item-totais {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 12px;
+}
+.licitacao-item-totais .licitacao-field { min-width: 0; overflow-wrap: anywhere; }
 .licitacao-itens-editor .licitacao-group-header { min-height: 38px; height: auto; padding: 6px; }
 .licitacao-itens-editor .licitacao-group-header strong small { flex: 1 1 0; text-align: left; }
 .licitacao-itens-editor [hidden] { display: none; }

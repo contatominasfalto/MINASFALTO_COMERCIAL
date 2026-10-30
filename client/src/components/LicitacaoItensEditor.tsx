@@ -58,10 +58,14 @@ export default function LicitacaoItensEditor({ itens, onChange, valorContrato, h
           {campos.map(([key, label, step]) => <label key={key} className="licitacao-field"><span>{label}</span>
             <input type="number" min="0" step={step} value={item[key]} onChange={event => alterar(index, { [key]: event.target.value === "" ? 0 : Number(event.target.value) })} />
           </label>)}
-          <label className="licitacao-field licitacao-readonly"><span>Valor Total</span><strong aria-live="polite">{moeda(valorTotalItem(item))}</strong>
-            <small>Qtde Sacos × Valor Unitário</small></label>
-          <label className="licitacao-field licitacao-readonly"><span>Valor Total Limite</span><strong aria-live="polite">{moeda(valorTotalItem({ qtdeSc: item.qtdeSc, valorUnit: item.lanceLimite }))}</strong>
-            <small>Qtde Sacos × Lance Limite</small></label>
+          <div className="licitacao-item-totais">
+            <label className="licitacao-field licitacao-readonly"><span>Valor Total</span><strong aria-live="polite">{moeda(valorTotalItem(item))}</strong>
+              <small>Qtde Sacos × Valor Unitário</small></label>
+            <label className="licitacao-field licitacao-readonly"><span>Valor Total Limite</span><strong aria-live="polite">{moeda(valorTotalItem({ qtdeSc: item.qtdeSc, valorUnit: item.lanceLimite }))}</strong>
+              <small>Qtde Sacos × Lance Limite</small></label>
+            <label className="licitacao-field licitacao-readonly"><span>Valor Total Adjudicado</span><strong aria-live="polite">{moeda(valorTotalItem({ qtdeSc: item.qtdeSc, valorUnit: item.valorAdjudicado }))}</strong>
+              <small>Qtde Sacos × Valor Adjudicado</small></label>
+          </div>
         </div>
       </div>
     </section>)}
