@@ -60,6 +60,8 @@ export default function LicitacaoItensEditor({ itens, onChange, valorContrato, h
           </label>)}
           <label className="licitacao-field licitacao-readonly"><span>Valor Total</span><strong aria-live="polite">{moeda(valorTotalItem(item))}</strong>
             <small>Qtde Sacos × Valor Unitário</small></label>
+          <label className="licitacao-field licitacao-readonly"><span>Valor Total Limite</span><strong aria-live="polite">{moeda(valorTotalItem({ qtdeSc: item.qtdeSc, valorUnit: item.lanceLimite }))}</strong>
+            <small>Qtde Sacos × Lance Limite</small></label>
         </div>
       </div>
     </section>)}
