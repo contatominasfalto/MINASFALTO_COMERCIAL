@@ -3388,7 +3388,7 @@ table :is(th, td) :where(a, button, input, select, textarea, label, span, strong
   font-size: 12px;
 }
 
-.licitacao-itens-total { grid-column: span 2; }
+.licitacao-itens-total { grid-column: auto; }
 .licitacao-item-totais {
   grid-column: 1 / -1;
   display: grid;

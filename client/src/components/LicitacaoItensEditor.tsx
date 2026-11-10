@@ -27,6 +27,8 @@ export default function LicitacaoItensEditor({ itens, onChange, valorContrato, h
     setReduzirPara(null);
   };
   const alterar = (index: number, patch: Partial<LicitacaoItem>) => onChange(itens.map((item, i) => i === index ? { ...item, ...patch } : item));
+  const valorFinalContrato = itens.reduce((total, item) =>
+    total + Math.round(valorTotalItem({ qtdeSc: item.qtdeSc, valorUnit: item.valorAdjudicado }) * 100), 0) / 100;
 
   return <section className="licitacao-itens-editor" aria-label="Itens da licitação">
     <div className="licitacao-form-grid">
@@ -41,6 +43,9 @@ export default function LicitacaoItensEditor({ itens, onChange, valorContrato, h
       </label>
       <label className="licitacao-field licitacao-readonly licitacao-itens-total"><span>Valor Inicial Contrato</span>
         <strong aria-live="polite">{moeda(valorContrato)}</strong>
+      </label>
+      <label className="licitacao-field licitacao-readonly"><span>Valor Final Contrato</span>
+        <strong aria-live="polite">{moeda(valorFinalContrato)}</strong>
       </label>
     </div>
     {historico && <p className="licitacao-itens-aviso">{historico}</p>}
