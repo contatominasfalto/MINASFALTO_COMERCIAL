@@ -712,11 +712,11 @@ export default function Licitacoes() {
       ["regiao", "Região"],
     ];
 
-    if (canViewDocuments) columns.unshift(["pastaDocumentos", "Docs"]);
-
     if (panelTab === "geral") {
       columns.splice(4, 0, ["horaInicioDisputa", "Hora Início Disputa"], ["plataformaNome", "Link Plat. Pregão"]);
     }
+
+    if (canViewDocuments) columns.unshift(["pastaDocumentos", "Docs"]);
 
     if (panelTab === "adjudicadas") {
       columns.push(["statusContrato", "Status Contrato"], ["ataVendedorNome", "Ata Vendedor"], ["ataControle", "Ata"]);
